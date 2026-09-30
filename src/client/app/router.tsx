@@ -3,6 +3,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 import { AuthGuard } from "@/client/app/auth-guard";
 import { AppLayout } from "@/client/app/layout";
 import { LoginPage } from "@/client/features/auth/login-page";
+import { WorkspacesPage } from "@/client/features/workspaces/workspaces-page";
 
 function HomePage() {
   return (
@@ -27,7 +28,10 @@ export const router = createBrowserRouter([
         <AppLayout />
       </AuthGuard>
     ),
-    children: [{ index: true, element: <HomePage /> }],
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: "workspaces", element: <WorkspacesPage /> },
+    ],
   },
   {
     path: "*",

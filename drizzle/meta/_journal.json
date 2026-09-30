@@ -8,6 +8,13 @@
       "when": 1790778626195,
       "tag": "0000_careless_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790781503266,
+      "tag": "0001_glossy_molten_man",
+      "breakpoints": true
     }
   ]
 }

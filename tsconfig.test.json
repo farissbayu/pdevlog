@@ -4,7 +4,10 @@
     "target": "es2023",
     "lib": ["ES2023"],
     "module": "esnext",
-    "types": ["./worker-configuration.d.ts"],
+    "types": [
+      "./worker-configuration.d.ts",
+      "@cloudflare/vitest-pool-workers/types"
+    ],
     "skipLibCheck": true,
 
     /* Bundler mode */

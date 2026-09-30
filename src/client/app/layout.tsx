@@ -4,11 +4,13 @@ import {
   FolderKanban,
   GraduationCap,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Menu,
   Tags,
 } from "lucide-react";
-import { Outlet } from "react-router";
+import { Link, NavLink, Outlet } from "react-router";
+import { cn } from "cn";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/client/components/ui/avatar";
 import { Button } from "@/client/components/ui/button";
@@ -22,11 +24,17 @@ import {
 } from "@/client/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/client/components/theme-toggle";
 import { meQueryOptions, useLogoutMutation } from "@/client/features/auth/api";
+import { useWorkspacesQuery } from "@/client/features/workspaces/api";
+import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 import type { UserResponse } from "@/shared/schemas/auth";
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "Workspaces", icon: FolderKanban },
+const navItems: {
+  label: string;
+  icon: typeof LayoutDashboard;
+  to?: string;
+}[] = [
+  { label: "Dashboard", icon: LayoutDashboard, to: "/" },
+  { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Brag Logs", icon: FileText },
   { label: "Learning Notes", icon: GraduationCap },
   { label: "Tags", icon: Tags },
@@ -83,20 +91,78 @@ function UserMenu({
 }
 
 function SidebarNav() {
+  const { data: workspaces, isPending } = useWorkspacesQuery();
+
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-      {navItems.map((item) => (
-        <div
-          key={item.label}
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground"
-        >
-          <item.icon className="size-4" />
-          <span>{item.label}</span>
-          <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide">
-            Soon
-          </span>
-        </div>
-      ))}
+      {navItems.map((item) =>
+        item.to ? (
+          <NavLink
+            key={item.label}
+            to={item.to}
+            end={item.to === "/"}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )
+            }
+          >
+            <item.icon className="size-4" />
+            <span>{item.label}</span>
+          </NavLink>
+        ) : (
+          <div
+            key={item.label}
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground"
+          >
+            <item.icon className="size-4" />
+            <span>{item.label}</span>
+            <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide">
+              Soon
+            </span>
+          </div>
+        ),
+      )}
+
+      <div className="pt-4">
+        <p className="px-3 pb-2 font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Your workspaces
+        </p>
+
+        {isPending ? (
+          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            <span>Loading…</span>
+          </div>
+        ) : null}
+
+        {!isPending && workspaces && workspaces.length === 0 ? (
+          <p className="px-3 py-2 text-xs text-muted-foreground">
+            No workspaces yet.
+          </p>
+        ) : null}
+
+        {!isPending && workspaces && workspaces.length > 0 ? (
+          <div className="space-y-0.5">
+            {workspaces.map((workspace) => (
+              <NavLink
+                key={workspace.id}
+                to="/workspaces"
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <span className="truncate">{workspace.name}</span>
+                <WorkspaceTypeBadge
+                  type={workspace.type}
+                  className="ml-auto shrink-0"
+                />
+              </NavLink>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </nav>
   );
 }
@@ -159,15 +225,24 @@ function MobileMenu({ user }: { user: UserResponse }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        {navItems.map((item) => (
-          <DropdownMenuItem key={item.label} disabled>
-            <item.icon className="size-4" />
-            <span>{item.label}</span>
-            <span className="ml-auto font-mono text-[10px] uppercase text-muted-foreground">
-              Soon
-            </span>
-          </DropdownMenuItem>
-        ))}
+        {navItems.map((item) =>
+          item.to ? (
+            <DropdownMenuItem key={item.label} asChild>
+              <Link to={item.to}>
+                <item.icon className="size-4" />
+                <span>{item.label}</span>
+              </Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem key={item.label} disabled>
+              <item.icon className="size-4" />
+              <span>{item.label}</span>
+              <span className="ml-auto font-mono text-[10px] uppercase text-muted-foreground">
+                Soon
+              </span>
+            </DropdownMenuItem>
+          ),
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
         <DropdownMenuItem

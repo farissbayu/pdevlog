@@ -12,8 +12,8 @@
 - **Slice 0 (Fondasi + Auth)**: Memerlukan tabel `users`, sesi autentikasi terverifikasi, auth context Hono (`c.get("userId")`), layout dasar dengan sidebar, dan setup Vitest workers pool.
 
 ## 3. Checklist Task
-- [ ] **Database & Migrasi**
-  - [ ] Tambahkan tabel `workspaces` di Drizzle schema:
+- [x] **Database & Migrasi**
+  - [x] Tambahkan tabel `workspaces` di Drizzle schema:
     - `id` (text nanoid, PK)
     - `user_id` (text, FK ke `users.id` ON DELETE CASCADE, NOT NULL)
     - `name` (text, NOT NULL)
@@ -21,43 +21,43 @@
     - `type` (text: `'work'` | `'learning'`, NOT NULL)
     - `created_at` (integer timestamp / text ISO, NOT NULL)
     - `updated_at` (integer timestamp / text ISO, NOT NULL)
-  - [ ] Tambahkan index komposit `(user_id)` pada tabel `workspaces`.
-  - [ ] Generate migrasi (`bunx drizzle-kit generate`).
-  - [ ] Terapkan migrasi ke D1 lokal (`bunx wrangler d1 migrations apply <db> --local`).
-- [ ] **Skema Zod (Shared)**
-  - [ ] Buat file `src/shared/schemas/workspace.ts`:
+  - [x] Tambahkan index komposit `(user_id)` pada tabel `workspaces`.
+  - [x] Generate migrasi (`bunx drizzle-kit generate`).
+  - [x] Terapkan migrasi ke D1 lokal (`bunx wrangler d1 migrations apply <db> --local`).
+- [x] **Skema Zod (Shared)**
+  - [x] Buat file `src/shared/schemas/workspace.ts`:
     - Skema validasi pembuatan workspace (`createWorkspaceSchema`: name, description opsional, type enum).
     - Skema update workspace (`updateWorkspaceSchema`).
     - Skema respons workspace (`workspaceResponseSchema`).
-- [ ] **Route Hono (Worker)**
-  - [ ] Buat `src/worker/features/workspaces/route.ts`:
+- [x] **Route Hono (Worker)**
+  - [x] Buat `src/worker/features/workspaces/route.ts`:
     - `GET /api/workspaces` (list workspace milik user terotentikasi, diurutkan `created_at DESC`).
     - `POST /api/workspaces` (buat workspace baru dengan `user_id` dari context).
     - `GET /api/workspaces/:id` (ambil 1 workspace, filter eksplisit `id` DAN `user_id`, return 404 jika bukan milik user).
     - `PUT /api/workspaces/:id` (update workspace, filter eksplisit `id` DAN `user_id`, return 404 jika tidak ditemukan).
     - `DELETE /api/workspaces/:id` (hapus workspace, filter eksplisit `id` DAN `user_id`, return 404 jika tidak ditemukan).
-  - [ ] Mount route workspaces ke Hono app di `src/worker/index.ts`.
-- [ ] **API Client & Hooks (Frontend)**
-  - [ ] Definisikan query hooks dan mutation hooks TanStack Query di `src/client/features/workspaces/api.ts`:
+  - [x] Mount route workspaces ke Hono app di `src/worker/index.ts`.
+- [x] **API Client & Hooks (Frontend)**
+  - [x] Definisikan query hooks dan mutation hooks TanStack Query di `src/client/features/workspaces/api.ts`:
     - `useWorkspacesQuery` (key: `['workspaces']`)
     - `useWorkspaceDetailQuery(id)`
     - `useCreateWorkspaceMutation` (invalidation key `['workspaces']`)
     - `useUpdateWorkspaceMutation`
     - `useDeleteWorkspaceMutation`
-- [ ] **Komponen & UI (Frontend)**
-  - [ ] Buat halaman manajemen workspace `src/client/features/workspaces/workspaces-page.tsx`.
-  - [ ] Buat dialog / modal create & edit workspace dengan form terikat skema Zod.
-  - [ ] Terapkan layout 3 state di halaman list: Loading skeleton, Empty state (onboarding CTA), dan Error state.
-  - [ ] Integrasikan daftar workspace ke sidebar di `src/client/app/layout.tsx` (tampilkan flat list dengan badge tipe `work` atau `learning`).
-- [ ] **Test Isolasi Data**
-  - [ ] Buat file test `tests/isolation/workspaces.test.ts` (menggunakan Vitest + `@cloudflare/vitest-pool-workers`):
+- [x] **Komponen & UI (Frontend)**
+  - [x] Buat halaman manajemen workspace `src/client/features/workspaces/workspaces-page.tsx`.
+  - [x] Buat dialog / modal create & edit workspace dengan form terikat skema Zod.
+  - [x] Terapkan layout 3 state di halaman list: Loading skeleton, Empty state (onboarding CTA), dan Error state.
+  - [x] Integrasikan daftar workspace ke sidebar di `src/client/app/layout.tsx` (tampilkan flat list dengan badge tipe `work` atau `learning`).
+- [x] **Test Isolasi Data**
+  - [x] Buat file test `tests/isolation/workspaces.test.ts` (menggunakan Vitest + `@cloudflare/vitest-pool-workers`):
     - User A membuat workspace A.
     - User B mencoba membaca workspace A -> harus return 404.
     - User B mencoba mengupdate workspace A -> harus return 404.
     - User B mencoba menghapus workspace A -> harus return 404.
-- [ ] **Verifikasi Akhir**
-  - [ ] Cek manual via browser sesuai skenario.
-  - [ ] Jalankan `bun run test` dan `bun run typecheck`.
+- [x] **Verifikasi Akhir**
+  - [x] Cek manual via browser sesuai skenario.
+  - [x] Jalankan `bun run test` dan `bun run typecheck`.
 
 ## 4. Tabel dan Endpoint yang Disentuh
 - **Tabel**:
