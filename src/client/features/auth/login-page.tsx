@@ -38,9 +38,11 @@ export function LoginPage() {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-8 p-4">
       <div className="space-y-2 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-primary font-mono text-lg font-bold text-primary-foreground">
-          PD
-        </div>
+        <img
+          src="/pdevlog-icon.png"
+          alt="Personal Dev OS"
+          className="mx-auto size-12 rounded-xl"
+        />
         <h1 className="text-2xl font-semibold">Personal Dev OS</h1>
         <p className="text-sm text-muted-foreground">
           Log in to continue to your dev log.

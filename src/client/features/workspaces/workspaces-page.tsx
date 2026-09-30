@@ -1,25 +1,11 @@
-import {
-  AlertTriangle,
-  FolderPlus,
-  Loader2,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { AlertTriangle, FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { Button } from "@/client/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/client/components/ui/dialog";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 
-import { useDeleteWorkspaceMutation, useWorkspacesQuery } from "./api";
+import { useWorkspacesQuery } from "./api";
 import { WorkspaceFormDialog } from "./workspace-form-dialog";
 import { WorkspaceTypeBadge } from "./workspace-type-badge";
 
@@ -80,31 +66,26 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+function WorkspaceCard({ workspace }: { workspace: WorkspaceResponse }) {
+  return (
+    <Link
+      to={`/workspaces/${workspace.id}`}
+      className="flex flex-col gap-3 rounded-lg border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+    >
+      <div className="min-w-0 space-y-1">
+        <h2 className="truncate font-medium">{workspace.name}</h2>
+        <WorkspaceTypeBadge type={workspace.type} />
+      </div>
+      <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
+        {workspace.description || "No description"}
+      </p>
+    </Link>
+  );
+}
+
 export function WorkspacesPage() {
   const { data, isPending, isError, refetch } = useWorkspacesQuery();
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<WorkspaceResponse | null>(null);
-  const [deleting, setDeleting] = useState<WorkspaceResponse | null>(null);
-  const deleteMutation = useDeleteWorkspaceMutation();
-
-  const openCreate = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-
-  const openEdit = (workspace: WorkspaceResponse) => {
-    setEditing(workspace);
-    setFormOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (!deleting) {
-      return;
-    }
-    deleteMutation.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
-    });
-  };
 
   return (
     <div className="space-y-6">
@@ -115,7 +96,7 @@ export function WorkspacesPage() {
             Manage the workspaces that group your logs and notes.
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="size-4" />
           New workspace
         </Button>
@@ -126,91 +107,18 @@ export function WorkspacesPage() {
       {isError ? <ErrorState onRetry={() => void refetch()} /> : null}
 
       {!isPending && !isError && data && data.length === 0 ? (
-        <EmptyState onCreate={openCreate} />
+        <EmptyState onCreate={() => setFormOpen(true)} />
       ) : null}
 
       {!isPending && !isError && data && data.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">
           {data.map((workspace) => (
-            <div
-              key={workspace.id}
-              className="group flex flex-col gap-3 rounded-lg border bg-card p-5 transition-shadow hover:shadow-sm"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <h2 className="truncate font-medium">{workspace.name}</h2>
-                  <WorkspaceTypeBadge type={workspace.type} />
-                </div>
-                <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Edit ${workspace.name}`}
-                    onClick={() => openEdit(workspace)}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Delete ${workspace.name}`}
-                    onClick={() => setDeleting(workspace)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
-              <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
-                {workspace.description || "No description"}
-              </p>
-            </div>
+            <WorkspaceCard key={workspace.id} workspace={workspace} />
           ))}
         </div>
       ) : null}
 
-      <WorkspaceFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        workspace={editing}
-      />
-
-      <Dialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleting(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete workspace</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &ldquo;{deleting?.name}&rdquo;?
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleting(null)}
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <WorkspaceFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   index,
+  primaryKey,
   sqliteTable,
   text,
   integer,
@@ -62,9 +63,61 @@ export const tags = sqliteTable(
   ],
 );
 
+export const bragLogs = sqliteTable(
+  "brag_logs",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    situation: text("situation").notNull(),
+    task: text("task").notNull(),
+    action: text("action").notNull(),
+    result: text("result").notNull(),
+    occurredAt: text("occurred_at").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("brag_logs_user_id_workspace_id_idx").on(
+      table.userId,
+      table.workspaceId,
+    ),
+    index("brag_logs_user_id_occurred_at_idx").on(
+      table.userId,
+      table.occurredAt,
+    ),
+  ],
+);
+
+export const bragTags = sqliteTable(
+  "brag_tags",
+  {
+    bragLogId: text("brag_log_id")
+      .notNull()
+      .references(() => bragLogs.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.bragLogId, table.tagId] })],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
 export type NewWorkspaceRow = typeof workspaces.$inferInsert;
 export type TagRow = typeof tags.$inferSelect;
 export type NewTagRow = typeof tags.$inferInsert;
+export type BragLogRow = typeof bragLogs.$inferSelect;
+export type NewBragLogRow = typeof bragLogs.$inferInsert;
+export type BragTagRow = typeof bragTags.$inferSelect;
+export type NewBragTagRow = typeof bragTags.$inferInsert;
