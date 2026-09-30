@@ -1,5 +1,11 @@
 import { sql } from "drizzle-orm";
-import { index, sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  sqliteTable,
+  text,
+  integer,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -39,7 +45,26 @@ export const workspaces = sqliteTable(
   (table) => [index("workspaces_user_id_idx").on(table.userId)],
 );
 
+export const tags = sqliteTable(
+  "tags",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    uniqueIndex("tags_user_id_name_unique").on(table.userId, table.name),
+  ],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
 export type NewWorkspaceRow = typeof workspaces.$inferInsert;
+export type TagRow = typeof tags.$inferSelect;
+export type NewTagRow = typeof tags.$inferInsert;

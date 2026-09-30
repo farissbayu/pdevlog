@@ -20,64 +20,64 @@ Tidak ada — ini slice pertama.
 
 ### Setup Proyek
 
-- [ ] `bun create vite` dengan template React + TypeScript
-- [ ] Install semua dependency inti (hono, drizzle-orm, drizzle-kit, @hono/zod-validator, arctic, zod, tailwindcss, react-router, @tanstack/react-query, nanoid)
-- [ ] Konfigurasi `wrangler.jsonc` (D1 binding, Workers Static Assets dengan SPA fallback)
-- [ ] Konfigurasi `@cloudflare/vite-plugin` di `vite.config.ts`
-- [ ] Konfigurasi Tailwind CSS + shadcn/ui (CSS variables untuk tema)
-- [ ] Konfigurasi Drizzle (`drizzle.config.ts` untuk D1)
-- [ ] Konfigurasi Vitest + `@cloudflare/vitest-pool-workers`
-- [ ] Setup semua script di `package.json`: `dev`, `build`, `deploy`, `db:generate`, `db:migrate:local`, `db:migrate:remote`, `test`, `typecheck`
-- [ ] Buat `.dev.vars` template (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET)
-- [ ] Setup `.gitignore` (termasuk `.dev.vars`, `node_modules`, `.wrangler`)
+- [x] `bun create vite` dengan template React + TypeScript
+- [x] Install semua dependency inti (hono, drizzle-orm, drizzle-kit, @hono/zod-validator, arctic, zod, tailwindcss, react-router, @tanstack/react-query, nanoid)
+- [x] Konfigurasi `wrangler.jsonc` (D1 binding, Workers Static Assets dengan SPA fallback)
+- [x] Konfigurasi `@cloudflare/vite-plugin` di `vite.config.ts`
+- [x] Konfigurasi Tailwind CSS + shadcn/ui (CSS variables untuk tema)
+- [x] Konfigurasi Drizzle (`drizzle.config.ts` untuk D1)
+- [x] Konfigurasi Vitest + `@cloudflare/vitest-pool-workers`
+- [x] Setup semua script di `package.json`: `dev`, `build`, `deploy`, `db:generate`, `db:migrate:local`, `db:migrate:remote`, `test`, `typecheck`
+- [x] Buat `.dev.vars` template (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET)
+- [x] Setup `.gitignore` (termasuk `.dev.vars`, `node_modules`, `.wrangler`)
 
 ### Database
 
-- [ ] Definisi tabel `users` di Drizzle schema (id, google_sub unique, email, name, avatar_url, created_at, updated_at)
-- [ ] Generate migrasi dengan `bunx drizzle-kit generate`
-- [ ] Jalankan migrasi lokal dengan `bunx wrangler d1 migrations apply <db> --local`
+- [x] Definisi tabel `users` di Drizzle schema (id, google_sub unique, email, name, avatar_url, created_at, updated_at)
+- [x] Generate migrasi dengan `bunx drizzle-kit generate`
+- [x] Jalankan migrasi lokal dengan `bunx wrangler d1 migrations apply <db> --local`
 
 ### Skema Zod (shared)
 
-- [ ] `src/shared/schemas/auth.ts` — schema response untuk `/api/auth/me`
+- [x] `src/shared/schemas/auth.ts` — schema response untuk `/api/auth/me`
 
 ### Route Hono (worker)
 
-- [ ] `src/worker/index.ts` — entry point Hono, mount route auth
-- [ ] `src/worker/db/index.ts` — inisialisasi Drizzle dengan D1 binding
-- [ ] `src/worker/db/schema.ts` — re-export schema tabel users
-- [ ] `src/worker/features/auth/route.ts`:
+- [x] `src/worker/index.ts` — entry point Hono, mount route auth
+- [x] `src/worker/db/index.ts` — inisialisasi Drizzle dengan D1 binding
+- [x] `src/worker/db/schema.ts` — re-export schema tabel users
+- [x] `src/worker/features/auth/route.ts`:
   - `GET /api/auth/google` — buat state + code_verifier, simpan di cookie, redirect ke Google
   - `GET /api/auth/google/callback` — validasi state, tukar code, ambil profil, upsert user, buat JWT cookie
   - `POST /api/auth/logout` — hapus cookie sesi
   - `GET /api/auth/me` — kembalikan data user dari JWT
-- [ ] `src/worker/middleware/auth.ts` — verifikasi JWT, taruh `user_id` di context, proteksi semua `/api/*` kecuali `/api/auth/*`
+- [x] `src/worker/middleware/auth.ts` — verifikasi JWT, taruh `user_id` di context, proteksi semua `/api/*` kecuali `/api/auth/*`
 
 ### Frontend
 
-- [ ] `src/client/lib/api.ts` — inisialisasi Hono RPC client (`hc`)
-- [ ] `src/client/lib/utils.ts` — utility `cn` untuk shadcn
-- [ ] `src/client/app/router.tsx` — React Router v7 (mode library/SPA), definisi routes
-- [ ] `src/client/app/providers.tsx` — QueryClientProvider, tema
-- [ ] `src/client/app/auth-guard.tsx` — cek `/api/auth/me`, redirect ke login jika belum auth
-- [ ] `src/client/app/layout.tsx` — sidebar (navigasi, avatar/nama user, logout) + area konten, responsif
-- [ ] `src/client/features/auth/login-page.tsx` — tombol "Continue with Google" di tengah layar
-- [ ] Toggle tema (light/dark/system) di sidebar atau header
-- [ ] Install komponen shadcn yang dibutuhkan (button, avatar, dropdown-menu, dll.)
+- [x] `src/client/lib/api.ts` — inisialisasi Hono RPC client (`hc`)
+- [x] `src/client/lib/utils.ts` — utility `cn` untuk shadcn
+- [x] `src/client/app/router.tsx` — React Router v7 (mode library/SPA), definisi routes
+- [x] `src/client/app/providers.tsx` — QueryClientProvider, tema
+- [x] `src/client/app/auth-guard.tsx` — cek `/api/auth/me`, redirect ke login jika belum auth
+- [x] `src/client/app/layout.tsx` — sidebar (navigasi, avatar/nama user, logout) + area konten, responsif
+- [x] `src/client/features/auth/login-page.tsx` — tombol "Continue with Google" di tengah layar
+- [x] Toggle tema (light/dark/system) di sidebar atau header
+- [x] Install komponen shadcn yang dibutuhkan (button, avatar, dropdown-menu, dll.)
 
 ### Dokumentasi
 
-- [ ] Tulis panduan singkat setup Google Cloud Console (OAuth consent screen, OAuth client ID, redirect URI lokal + production)
+- [x] Tulis panduan singkat setup Google Cloud Console (OAuth consent screen, OAuth client ID, redirect URI lokal + production)
 
 ### Verifikasi
 
-- [ ] Jalankan `bun run dev`, buka browser
-- [ ] Akses halaman → redirect ke login
-- [ ] Klik "Continue with Google" → login berhasil → masuk layout
-- [ ] Refresh → tetap login
-- [ ] Toggle tema → persisten
-- [ ] Logout → kembali ke login
-- [ ] `bun run typecheck` tanpa error
+- [x] Jalankan `bun run dev`, buka browser
+- [x] Akses halaman → redirect ke login
+- [x] Klik "Continue with Google" → login berhasil → masuk layout
+- [x] Refresh → tetap login
+- [x] Toggle tema → persisten
+- [x] Logout → kembali ke login
+- [x] `bun run typecheck` tanpa error
 
 ## Tabel yang Disentuh
 

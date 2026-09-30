@@ -37,7 +37,7 @@ const navItems: {
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Brag Logs", icon: FileText },
   { label: "Learning Notes", icon: GraduationCap },
-  { label: "Tags", icon: Tags },
+  { label: "Tags", icon: Tags, to: "/tags" },
 ];
 
 function getInitials(user: UserResponse): string {

@@ -15,6 +15,20 @@
       "when": 1790781503266,
       "tag": "0001_glossy_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790784759526,
+      "tag": "0002_messy_pyro",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790784967448,
+      "tag": "0003_graceful_bullseye",
+      "breakpoints": true
     }
   ]
 }

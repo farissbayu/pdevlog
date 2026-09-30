@@ -1,0 +1,3 @@
+- add search and pagination for workspace and tasks
+- user management page, maybe need a new admin route
+- use markdown for note taking
