@@ -117,8 +117,10 @@ describe("dashboard summary", () => {
       .run();
 
     await createBragLog(tokenA, withLog);
+    await createLearningNote(tokenA, withLog);
 
-    await createWorkspace(tokenB, "Other user workspace");
+    const otherWorkspace = await createWorkspace(tokenB, "Other user workspace");
+    await createLearningNote(tokenB, otherWorkspace, "Other user note");
 
     const response = await request("/api/dashboard", tokenA);
     expect(response.status).toBe(200);
@@ -127,7 +129,7 @@ describe("dashboard summary", () => {
     expect(body.stats).toEqual({
       workspaces: 2,
       bragLogs: 1,
-      learningNotes: 0,
+      learningNotes: 1,
     });
     expect(body.recentWorkspaces).toHaveLength(2);
     expect(body.recentWorkspaces[0].id).toBe(withLog);
@@ -166,7 +168,7 @@ describe("dashboard summary", () => {
     ]);
   });
 
-  it("caps recent activity at ten items", async () => {
+  it("caps recent activity at five items", async () => {
     const token = await createUser("dash-recent-cap");
     const workspace = await createWorkspace(token, "Cap");
 
@@ -177,7 +179,7 @@ describe("dashboard summary", () => {
     const response = await request("/api/dashboard/recent", token);
     expect(response.status).toBe(200);
     const body = (await response.json()) as RecentActivityBody;
-    expect(body.items).toHaveLength(10);
+    expect(body.items).toHaveLength(5);
   });
 
   it("rejects unauthenticated access to recent activity", async () => {

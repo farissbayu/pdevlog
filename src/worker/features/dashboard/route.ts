@@ -21,7 +21,7 @@ import {
 import type { AppEnv } from "@/worker/env";
 
 const RECENT_WORKSPACES_LIMIT = 5;
-const RECENT_ACTIVITY_LIMIT = 10;
+const RECENT_ACTIVITY_LIMIT = 5;
 
 function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
   return {
@@ -90,28 +90,33 @@ const getDashboard = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
 
-  const [workspaceCount, bragLogCount, recent] = await Promise.all([
-    db
-      .select({ value: count() })
-      .from(workspaces)
-      .where(eq(workspaces.userId, userId)),
-    db
-      .select({ value: count() })
-      .from(bragLogs)
-      .where(eq(bragLogs.userId, userId)),
-    db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.userId, userId))
-      .orderBy(desc(workspaces.updatedAt))
-      .limit(RECENT_WORKSPACES_LIMIT),
-  ]);
+  const [workspaceCount, bragLogCount, learningNoteCount, recent] =
+    await Promise.all([
+      db
+        .select({ value: count() })
+        .from(workspaces)
+        .where(eq(workspaces.userId, userId)),
+      db
+        .select({ value: count() })
+        .from(bragLogs)
+        .where(eq(bragLogs.userId, userId)),
+      db
+        .select({ value: count() })
+        .from(learningNotes)
+        .where(eq(learningNotes.userId, userId)),
+      db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.userId, userId))
+        .orderBy(desc(workspaces.updatedAt))
+        .limit(RECENT_WORKSPACES_LIMIT),
+    ]);
 
   return c.json({
     stats: {
       workspaces: workspaceCount[0]?.value ?? 0,
       bragLogs: bragLogCount[0]?.value ?? 0,
-      learningNotes: 0,
+      learningNotes: learningNoteCount[0]?.value ?? 0,
     },
     recentWorkspaces: recent.map(toWorkspaceResponse),
   });

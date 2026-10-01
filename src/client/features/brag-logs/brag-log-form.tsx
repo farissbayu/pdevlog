@@ -1,6 +1,5 @@
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
-import { cn } from "cn";
 
 import { Button } from "@/client/components/ui/button";
 import {
@@ -13,6 +12,7 @@ import {
 } from "@/client/components/ui/dialog";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
+import { MultiSelect } from "@/client/components/ui/multi-select";
 import { Textarea } from "@/client/components/ui/textarea";
 import { useTagsQuery } from "@/client/features/tags/api";
 import {
@@ -71,14 +71,6 @@ export function BragLogFormDialog({
     setTagIds(bragLog?.tags.map((tag) => tag.id) ?? []);
     setError(null);
   }, [open, bragLog]);
-
-  const toggleTag = (tagId: string) => {
-    setTagIds((current) =>
-      current.includes(tagId)
-        ? current.filter((id) => id !== tagId)
-        : [...current, tagId],
-    );
-  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -198,30 +190,21 @@ export function BragLogFormDialog({
           ))}
 
           <div className="space-y-2">
-            <Label>Tags</Label>
+            <Label htmlFor="brag-tags">Tags</Label>
             {tags && tags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => {
-                  const selected = tagIds.includes(tag.id);
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      aria-pressed={selected}
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                        selected
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-input text-muted-foreground hover:bg-accent",
-                      )}
-                    >
-                      {selected ? <Check className="size-3" /> : null}
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
+              <MultiSelect
+                id="brag-tags"
+                aria-label="Tags"
+                options={tags.map((tag) => ({
+                  value: tag.id,
+                  label: tag.name,
+                }))}
+                value={tagIds}
+                onChange={setTagIds}
+                placeholder="Select tags"
+                searchPlaceholder="Search tags..."
+                emptyMessage="No tag found."
+              />
             ) : (
               <p className="text-xs text-muted-foreground">
                 No tags yet. Create tags to label this log.

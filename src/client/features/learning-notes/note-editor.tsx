@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, Check, Eye, Loader2, Pencil, Save } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Eye, Loader2, Pencil, Save } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { cn } from "cn";
@@ -8,6 +8,7 @@ import { AutoResizeTextarea } from "@/client/components/ui/auto-resize-textarea"
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
+import { MultiSelect } from "@/client/components/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -64,14 +65,6 @@ function NoteEditorForm({
       : presetWorkspaceId
         ? `/workspaces/${presetWorkspaceId}`
         : "/workspaces";
-
-  const toggleTag = (tagId: string) => {
-    setTagIds((current) =>
-      current.includes(tagId)
-        ? current.filter((id) => id !== tagId)
-        : [...current, tagId],
-    );
-  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -188,30 +181,21 @@ function NoteEditorForm({
           </div>
 
           <div className="space-y-2">
-            <Label>Tags</Label>
+            <Label htmlFor="note-tags">Tags</Label>
             {tags && tags.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => {
-                  const selected = tagIds.includes(tag.id);
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      aria-pressed={selected}
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                        selected
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-input text-muted-foreground hover:bg-accent",
-                      )}
-                    >
-                      {selected ? <Check className="size-3" /> : null}
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
+              <MultiSelect
+                id="note-tags"
+                aria-label="Tags"
+                options={tags.map((tag) => ({
+                  value: tag.id,
+                  label: tag.name,
+                }))}
+                value={tagIds}
+                onChange={setTagIds}
+                placeholder="Select tags"
+                searchPlaceholder="Search tags..."
+                emptyMessage="No tag found."
+              />
             ) : (
               <p className="text-xs text-muted-foreground">
                 No tags yet. Create tags to label this note.

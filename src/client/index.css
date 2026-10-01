@@ -124,6 +124,43 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  [data-slot="dialog-content"],
+  [data-slot="command-list"] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar,
+  [data-slot="command-list"]::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar-track,
+  [data-slot="command-list"]::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar-thumb,
+  [data-slot="command-list"]::-webkit-scrollbar-thumb {
+    background-color: color-mix(
+      in oklab,
+      var(--muted-foreground) 45%,
+      transparent
+    );
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar-thumb:hover,
+  [data-slot="command-list"]::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(
+      in oklab,
+      var(--muted-foreground) 70%,
+      transparent
+    );
+  }
+  [data-slot="dialog-content"]::-webkit-scrollbar-corner,
+  [data-slot="command-list"]::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 :root {
