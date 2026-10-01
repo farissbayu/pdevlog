@@ -71,7 +71,7 @@ export const bragLogs = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").references(() => workspaces.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     title: text("title").notNull(),
     situation: text("situation").notNull(),
@@ -119,7 +119,7 @@ export const learningNotes = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     workspaceId: text("workspace_id").references(() => workspaces.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     title: text("title").notNull(),
     content: text("content").notNull(),
