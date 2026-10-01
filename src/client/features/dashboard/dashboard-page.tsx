@@ -45,7 +45,6 @@ type StatCard = {
   icon: LucideIcon;
   to?: string;
   className: string;
-  soon?: boolean;
 };
 
 function StatCard({ stat }: { stat: StatCard }) {
@@ -58,14 +57,7 @@ function StatCard({ stat }: { stat: StatCard }) {
         <Icon className="size-5" />
       </div>
       <div className="min-w-0 space-y-0.5">
-        <div className="flex items-center gap-2">
-          <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
-          {stat.soon ? (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Soon
-            </span>
-          ) : null}
-        </div>
+        <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
         <p className="truncate text-sm text-muted-foreground">{stat.label}</p>
       </div>
     </div>
@@ -120,8 +112,8 @@ export function DashboardPage() {
           label: "Learning Notes",
           value: data.stats.learningNotes,
           icon: GraduationCap,
+          to: "/learning-notes",
           className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-          soon: true,
         },
       ]
     : [];

@@ -2,6 +2,7 @@ import { FileText, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
+import { FilterBar } from "@/client/components/filter-bar";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,
@@ -11,6 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/client/components/ui/dialog";
+import { useTagsQuery } from "@/client/features/tags/api";
+import { useWorkspacesQuery } from "@/client/features/workspaces/api";
+import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
 
 import { useBragLogsQuery, useDeleteBragLogMutation } from "./api";
@@ -22,7 +26,12 @@ import {
 } from "./brag-log-list";
 
 export function BragLogsPage() {
-  const { data, isPending, isError, refetch } = useBragLogsQuery();
+  const filterApi = useFilterParams();
+  const { data, isPending, isError, refetch } = useBragLogsQuery(
+    filterApi.filters,
+  );
+  const { data: tags = [] } = useTagsQuery();
+  const { data: workspaces = [] } = useWorkspacesQuery();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<BragLogResponse | null>(null);
   const [deleting, setDeleting] = useState<BragLogResponse | null>(null);
@@ -51,29 +60,56 @@ export function BragLogsPage() {
         </p>
       </div>
 
+      <FilterBar
+        api={filterApi}
+        tags={tags}
+        workspaces={workspaces}
+        searchPlaceholder="Search brag logs..."
+      />
+
       {isPending ? <BragLogListSkeleton /> : null}
 
       {isError ? <BragLogErrorState onRetry={() => void refetch()} /> : null}
 
       {!isPending && !isError && data && data.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-            <FileText className="size-6 text-muted-foreground" />
+        filterApi.hasActiveFilters ? (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+              <FileText className="size-6 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">
+                No matching brag logs
+              </h2>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                No brag logs match your filters. Try adjusting your search or
+                resetting the filters.
+              </p>
+            </div>
+            <Button variant="outline" onClick={filterApi.reset}>
+              Reset filters
+            </Button>
           </div>
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold">No brag logs yet</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Open a workspace and log your wins with the STAR framework so you
-              never forget them.
-            </p>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+              <FileText className="size-6 text-muted-foreground" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">No brag logs yet</h2>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                Open a workspace and log your wins with the STAR framework so
+                you never forget them.
+              </p>
+            </div>
+            <Button asChild>
+              <Link to="/workspaces">
+                <Plus className="size-4" />
+                Go to workspaces
+              </Link>
+            </Button>
           </div>
-          <Button asChild>
-            <Link to="/workspaces">
-              <Plus className="size-4" />
-              Go to workspaces
-            </Link>
-          </Button>
-        </div>
+        )
       ) : null}
 
       {!isPending && !isError && data && data.length > 0 ? (

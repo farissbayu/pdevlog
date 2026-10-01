@@ -14,8 +14,8 @@
 - **Slice 2 (Tags)**: Untuk pelabelan teknologi pada catatan.
 
 ## 3. Checklist Task
-- [ ] **Database & Migrasi**
-  - [ ] Tambahkan tabel `learning_notes` di Drizzle schema:
+- [x] **Database & Migrasi**
+  - [x] Tambahkan tabel `learning_notes` di Drizzle schema:
     - `id` (text nanoid, PK)
     - `user_id` (text, FK ke `users.id` ON DELETE CASCADE, NOT NULL)
     - `workspace_id` (text, FK ke `workspaces.id` ON DELETE SET NULL, NULLABLE)
@@ -23,49 +23,49 @@
     - `content` (text, Markdown string, NOT NULL)
     - `created_at` (integer timestamp / text ISO, NOT NULL)
     - `updated_at` (integer timestamp / text ISO, NOT NULL)
-  - [ ] Tambahkan index komposit: `(user_id, workspace_id)`.
-  - [ ] Tambahkan tabel junction `note_tags`:
+  - [x] Tambahkan index komposit: `(user_id, workspace_id)`.
+  - [x] Tambahkan tabel junction `note_tags`:
     - `learning_note_id` (text, FK ke `learning_notes.id` ON DELETE CASCADE, NOT NULL)
     - `tag_id` (text, FK ke `tags.id` ON DELETE CASCADE, NOT NULL)
     - Composite Primary Key: `(learning_note_id, tag_id)`
-  - [ ] Generate migrasi (`bunx drizzle-kit generate`).
-  - [ ] Terapkan migrasi ke D1 lokal (`bunx wrangler d1 migrations apply <db> --local`).
-- [ ] **Skema Zod (Shared)**
-  - [ ] Buat file `src/shared/schemas/learning-note.ts`:
+  - [x] Generate migrasi (`bunx drizzle-kit generate`).
+  - [x] Terapkan migrasi ke D1 lokal (`bunx wrangler d1 migrations apply <db> --local`).
+- [x] **Skema Zod (Shared)**
+  - [x] Buat file `src/shared/schemas/learning-note.ts`:
     - `createLearningNoteSchema`: title, content (Markdown text), workspace_id (opsional), tag_ids (array string, opsional).
     - `updateLearningNoteSchema`: partial / serupa create.
     - `learningNoteResponseSchema`: data note beserta array tags dan info workspace.
-- [ ] **Route Hono (Worker)**
-  - [ ] Buat `src/worker/features/learning-notes/route.ts`:
+- [x] **Route Hono (Worker)**
+  - [x] Buat `src/worker/features/learning-notes/route.ts`:
     - `GET /api/learning-notes` (list catatan milik user, include tags & workspace).
     - `POST /api/learning-notes` (validasi kepemilikan workspace & tags, insert ke `learning_notes` dan `note_tags`).
     - `GET /api/learning-notes/:id` (detail catatan, return 404 jika bukan milik user).
     - `PUT /api/learning-notes/:id` (update judul/konten/workspace, sync `note_tags`, return 404 jika bukan milik user).
     - `DELETE /api/learning-notes/:id` (hapus catatan, cascade hapus `note_tags`, return 404 jika tidak ditemukan).
-  - [ ] Mount route di `src/worker/index.ts`.
-- [ ] **API Client & Hooks (Frontend)**
-  - [ ] Definisikan query dan mutation hooks di `src/client/features/learning-notes/api.ts`:
+  - [x] Mount route di `src/worker/index.ts`.
+- [x] **API Client & Hooks (Frontend)**
+  - [x] Definisikan query dan mutation hooks di `src/client/features/learning-notes/api.ts`:
     - `useLearningNotesQuery`
     - `useLearningNoteDetailQuery(id)`
     - `useCreateLearningNoteMutation`
     - `useUpdateLearningNoteMutation`
     - `useDeleteLearningNoteMutation`
-- [ ] **Komponen & UI (Frontend)**
-  - [ ] Install library Markdown: `react-markdown`, `remark-gfm`, dan syntax highlighter yang ringan (misal `rehype-highlight` atau sejenisnya).
-  - [ ] Buat komponen renderer Markdown `src/client/components/markdown-renderer.tsx` dengan styling tipografi rapi untuk light & dark mode.
-  - [ ] Buat form editor `src/client/features/learning-notes/note-editor.tsx` dengan tab / toggle Edit vs Preview.
-  - [ ] Buat halaman list `src/client/features/learning-notes/learning-notes-page.tsx`.
-  - [ ] Buat halaman detail catatan dengan tampilan render Markdown lengkap.
-  - [ ] Sediakan 3 state: Loading skeleton, Empty state, dan Error state.
-  - [ ] Tambahkan link menu "Learning Notes" di sidebar navigasi.
-- [ ] **Test Isolasi & Keamanan Relasi**
-  - [ ] Buat test `tests/isolation/learning-notes.test.ts`:
+- [x] **Komponen & UI (Frontend)**
+  - [x] Install library Markdown: `react-markdown`, `remark-gfm`, dan syntax highlighter yang ringan (misal `rehype-highlight` atau sejenisnya).
+  - [x] Buat komponen renderer Markdown `src/client/components/markdown-renderer.tsx` dengan styling tipografi rapi untuk light & dark mode.
+  - [x] Buat form editor `src/client/features/learning-notes/note-editor.tsx` dengan tab / toggle Edit vs Preview.
+  - [x] Buat halaman list `src/client/features/learning-notes/learning-notes-page.tsx`.
+  - [x] Buat halaman detail catatan dengan tampilan render Markdown lengkap.
+  - [x] Sediakan 3 state: Loading skeleton, Empty state, dan Error state.
+  - [x] Tambahkan link menu "Learning Notes" di sidebar navigasi.
+- [x] **Test Isolasi & Keamanan Relasi**
+  - [x] Buat test `tests/isolation/learning-notes.test.ts`:
     - User A membuat note, User B mencoba membaca/mengubah/menghapus -> return 404.
     - User B mencoba menempelkan tag atau workspace milik User A pada note miliknya -> gagal (404).
-- [ ] **Verifikasi Akhir**
-  - [ ] Buat catatan dengan code block (misal TypeScript, Bash), list, tabel GFM.
-  - [ ] Verifikasi syntax highlighting tampil dengan styling yang serasi baik di light maupun dark mode.
-  - [ ] Jalankan `bun run test` dan `bun run typecheck`.
+- [x] **Verifikasi Akhir**
+  - [x] Buat catatan dengan code block (misal TypeScript, Bash), list, tabel GFM.
+  - [x] Verifikasi syntax highlighting tampil dengan styling yang serasi baik di light maupun dark mode.
+  - [x] Jalankan `bun run test` dan `bun run typecheck`.
 
 ## 4. Tabel dan Endpoint yang Disentuh
 - **Tabel**:

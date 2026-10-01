@@ -6,6 +6,11 @@ import {
 } from "@tanstack/react-query";
 
 import { client, parseApiError } from "@/client/lib/api";
+import {
+  EMPTY_FILTERS,
+  buildFilterQuery,
+  type FilterParams,
+} from "@/client/lib/use-filter-params";
 import type {
   CreateLearningNoteInput,
   LearningNoteDetailResponse,
@@ -16,8 +21,12 @@ import type {
 
 const LEARNING_NOTES_KEY = ["learning-notes"] as const;
 
-export async function fetchLearningNotes(): Promise<LearningNoteResponse[]> {
-  const response = await client.api["learning-notes"].$get();
+export async function fetchLearningNotes(
+  filters: FilterParams,
+): Promise<LearningNoteResponse[]> {
+  const response = await client.api["learning-notes"].$get({
+    query: buildFilterQuery(filters),
+  });
   if (!response.ok) {
     throw await parseApiError(response, "Failed to load learning notes");
   }
@@ -73,10 +82,14 @@ export async function deleteLearningNote(id: string): Promise<void> {
   }
 }
 
-export const learningNotesQueryOptions = queryOptions({
-  queryKey: LEARNING_NOTES_KEY,
-  queryFn: fetchLearningNotes,
-});
+export function learningNotesQueryOptions(
+  filters: FilterParams = EMPTY_FILTERS,
+) {
+  return queryOptions({
+    queryKey: [...LEARNING_NOTES_KEY, filters],
+    queryFn: () => fetchLearningNotes(filters),
+  });
+}
 
 export function learningNoteDetailQueryOptions(id: string) {
   return queryOptions({
@@ -86,8 +99,8 @@ export function learningNoteDetailQueryOptions(id: string) {
   });
 }
 
-export function useLearningNotesQuery() {
-  return useQuery(learningNotesQueryOptions);
+export function useLearningNotesQuery(filters: FilterParams = EMPTY_FILTERS) {
+  return useQuery(learningNotesQueryOptions(filters));
 }
 
 export function useLearningNoteDetailQuery(id: string) {

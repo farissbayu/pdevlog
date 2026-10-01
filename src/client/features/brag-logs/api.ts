@@ -6,6 +6,11 @@ import {
 } from "@tanstack/react-query";
 
 import { client, parseApiError } from "@/client/lib/api";
+import {
+  EMPTY_FILTERS,
+  buildFilterQuery,
+  type FilterParams,
+} from "@/client/lib/use-filter-params";
 import type {
   BragLogDetailResponse,
   BragLogListResponse,
@@ -16,8 +21,12 @@ import type {
 
 const BRAG_LOGS_KEY = ["brag-logs"] as const;
 
-export async function fetchBragLogs(): Promise<BragLogResponse[]> {
-  const response = await client.api["brag-logs"].$get();
+export async function fetchBragLogs(
+  filters: FilterParams,
+): Promise<BragLogResponse[]> {
+  const response = await client.api["brag-logs"].$get({
+    query: buildFilterQuery(filters),
+  });
   if (!response.ok) {
     throw await parseApiError(response, "Failed to load brag logs");
   }
@@ -71,10 +80,12 @@ export async function deleteBragLog(id: string): Promise<void> {
   }
 }
 
-export const bragLogsQueryOptions = queryOptions({
-  queryKey: BRAG_LOGS_KEY,
-  queryFn: fetchBragLogs,
-});
+export function bragLogsQueryOptions(filters: FilterParams = EMPTY_FILTERS) {
+  return queryOptions({
+    queryKey: [...BRAG_LOGS_KEY, filters],
+    queryFn: () => fetchBragLogs(filters),
+  });
+}
 
 export function bragLogDetailQueryOptions(id: string) {
   return queryOptions({
@@ -84,8 +95,8 @@ export function bragLogDetailQueryOptions(id: string) {
   });
 }
 
-export function useBragLogsQuery() {
-  return useQuery(bragLogsQueryOptions);
+export function useBragLogsQuery(filters: FilterParams = EMPTY_FILTERS) {
+  return useQuery(bragLogsQueryOptions(filters));
 }
 
 export function useBragLogDetailQuery(id: string) {

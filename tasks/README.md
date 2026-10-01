@@ -9,7 +9,7 @@
 | 2 | Tags | [02-tags.md](./02-tags.md) | `todo` | Slice 0 |
 | 3 | Brag Logs | [03-brag-logs.md](./03-brag-logs.md) | `todo` | Slice 1, 2 |
 | 4 | Learning Notes | [04-learning-notes.md](./04-learning-notes.md) | `todo` | Slice 1, 2 |
-| 5 | Cari & Filter | [05-search-filter.md](./05-search-filter.md) | `todo` | Slice 3, 4 |
+| 5 | Cari & Filter | [05-search-filter.md](./05-search-filter.md) | `done` | Slice 3, 4 |
 | 6 | Dashboard & Settings | [06-dashboard-settings.md](./06-dashboard-settings.md) | `todo` | Slice 3, 4 |
 | 7 | Hardening & Deploy | [07-hardening-deploy.md](./07-hardening-deploy.md) | `todo` | Slice 0–6 |
 

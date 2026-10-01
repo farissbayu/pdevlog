@@ -1,5 +1,15 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lte,
+  like,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
@@ -11,6 +21,11 @@ import {
   type CreateBragLogInput,
   type UpdateBragLogInput,
 } from "@/shared/schemas/brag-log";
+import {
+  logFilterSchema,
+  normalizeTagIds,
+  type LogFilterInput,
+} from "@/shared/schemas/filters";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
@@ -26,6 +41,7 @@ import {
 import type { AppEnv } from "@/worker/env";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
+type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
   return {
@@ -174,15 +190,59 @@ function touchWorkspaceStatement(
     .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)));
 }
 
-const listBragLogs = async (c: Context<AppEnv>) => {
+const listBragLogs = async (
+  c: Context<AppEnv, "/", QueryInput<LogFilterInput>>,
+) => {
   const userId = c.get("userId");
+  const filters = c.req.valid("query");
   const db = createDb(c.env.DB);
+
+  const conditions: SQL[] = [eq(bragLogs.userId, userId)];
+
+  if (filters.q) {
+    const pattern = `%${filters.q}%`;
+    const search = or(
+      like(bragLogs.title, pattern),
+      like(bragLogs.situation, pattern),
+      like(bragLogs.task, pattern),
+      like(bragLogs.action, pattern),
+      like(bragLogs.result, pattern),
+    );
+    if (search) {
+      conditions.push(search);
+    }
+  }
+
+  if (filters.workspace_id) {
+    conditions.push(eq(bragLogs.workspaceId, filters.workspace_id));
+  }
+
+  if (filters.from) {
+    conditions.push(gte(bragLogs.occurredAt, filters.from));
+  }
+
+  if (filters.to) {
+    conditions.push(lte(bragLogs.occurredAt, filters.to));
+  }
+
+  const tagIds = normalizeTagIds(filters.tag_id);
+  if (tagIds.length > 0) {
+    conditions.push(
+      inArray(
+        bragLogs.id,
+        db
+          .select({ id: bragTags.bragLogId })
+          .from(bragTags)
+          .where(inArray(bragTags.tagId, tagIds)),
+      ),
+    );
+  }
 
   const rows = await db
     .select({ log: bragLogs, workspace: workspaces })
     .from(bragLogs)
     .leftJoin(workspaces, eq(bragLogs.workspaceId, workspaces.id))
-    .where(eq(bragLogs.userId, userId))
+    .where(and(...conditions))
     .orderBy(desc(bragLogs.occurredAt), desc(bragLogs.createdAt));
 
   const tagsByLogId = await loadTagsByLogIds(
@@ -381,7 +441,7 @@ const deleteBragLogHandler = async (c: Context<AppEnv, "/:id">) => {
 };
 
 export const bragLogsRoute = new Hono<AppEnv>()
-  .get("/", listBragLogs)
+  .get("/", zValidator("query", logFilterSchema), listBragLogs)
   .post("/", zValidator("json", createBragLogSchema), createBragLogHandler)
   .get("/:id", getBragLog)
   .put("/:id", zValidator("json", updateBragLogSchema), updateBragLogHandler)

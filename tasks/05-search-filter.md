@@ -14,12 +14,12 @@
 - **Slice 4 (Learning Notes)**: Endpoint dan UI daftar Learning Notes yang akan dihubungkan dengan filter.
 
 ## 3. Checklist Task
-- [ ] **Skema Zod (Shared)**
-  - [ ] Tambahkan skema query filter di `src/shared/schemas/filters.ts`:
+- [x] **Skema Zod (Shared)**
+  - [x] Tambahkan skema query filter di `src/shared/schemas/filters.ts`:
     - `logFilterSchema`: `q` (string opsional), `workspace_id` (string opsional), `tag_id` (string opsional atau array), `from` (string date opsional), `to` (string date opsional).
     - `noteFilterSchema`: `q` (string opsional), `workspace_id` (string opsional), `tag_id` (string opsional atau array), `from` (string date opsional), `to` (string date opsional).
-- [ ] **Route Hono (Worker)**
-  - [ ] Perbarui `GET /api/brag-logs`:
+- [x] **Route Hono (Worker)**
+  - [x] Perbarui `GET /api/brag-logs`:
     - Validasi query string dengan `@hono/zod-validator`.
     - Susun kondisi WHERE Drizzle secara dinamis:
       - Selalu menyertakan `eq(brag_logs.userId, userId)`.
@@ -27,25 +27,25 @@
       - Filter `workspace_id` jika parameter ada.
       - Filter `occurred_at >= from` dan `occurred_at <= to` jika rentang tanggal diberikan.
       - Join/subquery ke `brag_tags` jika parameter filter tag diberikan.
-  - [ ] Perbarui `GET /api/learning-notes`:
+  - [x] Perbarui `GET /api/learning-notes`:
     - Susun kondisi WHERE dinamis serupa: `userId`, LIKE insensitive pada `title` dan `content`, filter `workspace_id`, filter `created_at`, dan tag filter.
-- [ ] **Komponen & UI (Frontend)**
-  - [ ] Buat hook sinkronisasi URL search params `src/client/lib/use-filter-params.ts`:
+- [x] **Komponen & UI (Frontend)**
+  - [x] Buat hook sinkronisasi URL search params `src/client/lib/use-filter-params.ts`:
     - Membaca dan memperbarui query params menggunakan React Router `useSearchParams`.
     - Debounce input ketik pencarian (300ms) agar tidak memicu re-render atau query berlebihan.
-  - [ ] Buat komponen filter bar `src/client/components/filter-bar.tsx`:
+  - [x] Buat komponen filter bar `src/client/components/filter-bar.tsx`:
     - Input teks pencarian.
     - Dropdown filter Workspace.
     - Selector filter Tag.
     - Date range picker atau input tanggal sederhana.
     - Tombol "Reset Filter" jika ada filter aktif.
-  - [ ] Pasang `FilterBar` pada halaman list Brag Logs dan halaman list Learning Notes.
-  - [ ] Tampilkan pesan empty state kontekstual ketika pencarian nihil.
-- [ ] **Verifikasi & Test**
-  - [ ] Uji pencarian LIKE dengan berbagai variasi huruf besar/kecil.
-  - [ ] Uji filter kombinasi (misal tag "Go" + workspace "Kerja" + keyword "API").
-  - [ ] Uji isolasi data tetap aman (tidak ada catatan milik user lain yang bocor lewat pencarian).
-  - [ ] Jalankan `bun run test` dan `bun run typecheck`.
+  - [x] Pasang `FilterBar` pada halaman list Brag Logs dan halaman list Learning Notes.
+  - [x] Tampilkan pesan empty state kontekstual ketika pencarian nihil.
+- [x] **Verifikasi & Test**
+  - [x] Uji pencarian LIKE dengan berbagai variasi huruf besar/kecil.
+  - [x] Uji filter kombinasi (misal tag "Go" + workspace "Kerja" + keyword "API").
+  - [x] Uji isolasi data tetap aman (tidak ada catatan milik user lain yang bocor lewat pencarian).
+  - [x] Jalankan `bun run test` dan `bun run typecheck`.
 
 ## 4. Tabel dan Endpoint yang Disentuh
 - **Tabel**:

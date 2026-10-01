@@ -1,9 +1,24 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  like,
+  lte,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
+import {
+  noteFilterSchema,
+  normalizeTagIds,
+  type NoteFilterInput,
+} from "@/shared/schemas/filters";
 import {
   createLearningNoteSchema,
   updateLearningNoteSchema,
@@ -26,6 +41,7 @@ import {
 import type { AppEnv } from "@/worker/env";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
+type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
   return {
@@ -167,15 +183,56 @@ function touchWorkspaceStatement(
     .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)));
 }
 
-const listLearningNotes = async (c: Context<AppEnv>) => {
+const listLearningNotes = async (
+  c: Context<AppEnv, "/", QueryInput<NoteFilterInput>>,
+) => {
   const userId = c.get("userId");
+  const filters = c.req.valid("query");
   const db = createDb(c.env.DB);
+
+  const conditions: SQL[] = [eq(learningNotes.userId, userId)];
+
+  if (filters.q) {
+    const pattern = `%${filters.q}%`;
+    const search = or(
+      like(learningNotes.title, pattern),
+      like(learningNotes.content, pattern),
+    );
+    if (search) {
+      conditions.push(search);
+    }
+  }
+
+  if (filters.workspace_id) {
+    conditions.push(eq(learningNotes.workspaceId, filters.workspace_id));
+  }
+
+  if (filters.from) {
+    conditions.push(gte(learningNotes.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
+  }
+
+  if (filters.to) {
+    conditions.push(lte(learningNotes.createdAt, new Date(`${filters.to}T23:59:59.999Z`)));
+  }
+
+  const tagIds = normalizeTagIds(filters.tag_id);
+  if (tagIds.length > 0) {
+    conditions.push(
+      inArray(
+        learningNotes.id,
+        db
+          .select({ id: noteTags.learningNoteId })
+          .from(noteTags)
+          .where(inArray(noteTags.tagId, tagIds)),
+      ),
+    );
+  }
 
   const rows = await db
     .select({ note: learningNotes, workspace: workspaces })
     .from(learningNotes)
     .leftJoin(workspaces, eq(learningNotes.workspaceId, workspaces.id))
-    .where(eq(learningNotes.userId, userId))
+    .where(and(...conditions))
     .orderBy(desc(learningNotes.updatedAt), desc(learningNotes.createdAt));
 
   const tagsByNoteId = await loadTagsByNoteIds(
@@ -375,7 +432,7 @@ const deleteLearningNoteHandler = async (c: Context<AppEnv, "/:id">) => {
 };
 
 export const learningNotesRoute = new Hono<AppEnv>()
-  .get("/", listLearningNotes)
+  .get("/", zValidator("query", noteFilterSchema), listLearningNotes)
   .post(
     "/",
     zValidator("json", createLearningNoteSchema),
