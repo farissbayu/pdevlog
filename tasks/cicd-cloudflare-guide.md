@@ -27,7 +27,7 @@ Google OAuth dibutuhkan agar autentikasi pengguna pada Slice 0 dapat diuji secar
    - Navigasi ke: **APIs & Services** > **OAuth consent screen**.
    - User Type: pilih **External** → klik **Create**.
    - Isi informasi dasar aplikasi:
-     - **App name**: `Personal Dev OS`
+     - **App name**: `Personal Dev Log`
      - **User support email**: pilih email Google Anda.
      - **Developer contact information**: masukkan email Google Anda.
    - Klik **Save and Continue**.

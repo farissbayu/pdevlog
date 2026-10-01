@@ -1,4 +1,4 @@
-# Personal Dev OS — Rencana Kerja
+# Personal Dev Log — Rencana Kerja
 
 ## Daftar Slice
 
@@ -11,7 +11,7 @@
 | 4 | Learning Notes | [04-learning-notes.md](./04-learning-notes.md) | `todo` | Slice 1, 2 |
 | 5 | Cari & Filter | [05-search-filter.md](./05-search-filter.md) | `done` | Slice 3, 4 |
 | 6 | Dashboard & Settings | [06-dashboard-settings.md](./06-dashboard-settings.md) | `done` | Slice 3, 4 |
-| 7 | Hardening & Deploy | [07-hardening-deploy.md](./07-hardening-deploy.md) | `todo` | Slice 0–6 |
+| 7 | Hardening & Deploy | [07-hardening-deploy.md](./07-hardening-deploy.md) | `done` | Slice 0–6 |
 
 ## Panduan Infrastruktur & CI/CD
 - [Panduan Setup Cloudflare, Google OAuth, & CI/CD](./cicd-cloudflare-guide.md)

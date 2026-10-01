@@ -13,33 +13,33 @@
 - **Slice 0 sampai Slice 6**: Seluruh fitur fungsional telah selesai diimplementasikan.
 
 ## 3. Checklist Task
-- [ ] **Rate Limiting & Proteksi Auth**
-  - [ ] Implementasi rate limiter ringan pada route auth (misal batasan 10 request per menit per client IP).
-  - [ ] Kembalikan respons HTTP `429 Too Many Requests` ketika ambang batas terlampaui.
-- [ ] **Audit Isolasi Data Menyeluruh**
-  - [ ] Lakukan peninjauan menyeluruh terhadap seluruh kode query database di `src/worker/features/*`:
+- [x] **Rate Limiting & Proteksi Auth**
+  - [x] Implementasi rate limiter ringan pada route auth (misal batasan 10 request per menit per client IP).
+  - [x] Kembalikan respons HTTP `429 Too Many Requests` ketika ambang batas terlampaui.
+- [x] **Audit Isolasi Data Menyeluruh**
+  - [x] Lakukan peninjauan menyeluruh terhadap seluruh kode query database di `src/worker/features/*`:
     - Pastikan TIDAK ADA query mutasi atau fetch yang tidak memiliki filter eksplisit `eq(table.userId, userId)`.
     - Pastikan semua relasi yang dipasang (tag_ids, workspace_id) diverifikasi kepemilikannya sebelum disimpan.
     - Pastikan semua penolakan akses data milik user lain mengembalikan status `404 Not Found` (bukan 403).
-  - [ ] Jalankan seluruh skenario test isolasi: `bun run test`.
-- [ ] **Konfigurasi Produksi & Build**
-  - [ ] Periksa file `wrangler.jsonc`:
+  - [x] Jalankan seluruh skenario test isolasi: `bun run test`.
+- [x] **Konfigurasi Produksi & Build**
+  - [x] Periksa file `wrangler.jsonc`:
     - Binding database D1 untuk environment production.
     - Konfigurasi Workers Static Assets: directori `assets` mengarah ke hasil build client (`dist/client` atau `dist`), dengan pengaturan SPA fallback (`not_found_handling = "single-page-application"`).
-  - [ ] Periksa pengaturan cookie sesi:
+  - [x] Periksa pengaturan cookie sesi:
     - Di environment produksi (`NODE_ENV === 'production'`), aktifkan opsi `secure: true`, `sameSite: 'lax'`, dan `httpOnly: true`.
-  - [ ] Jalankan pengujian tipe ketat: `bun run typecheck`.
-  - [ ] Jalankan script build: `bun run build`.
-- [ ] **Panduan & Dokumentasi Deployment**
-  - [ ] Buat berkas panduan deployment `docs/DEPLOYMENT.md` atau cantumkan di README:
+  - [x] Jalankan pengujian tipe ketat: `bun run typecheck`.
+  - [x] Jalankan script build: `bun run build`.
+- [x] **Panduan & Dokumentasi Deployment**
+  - [x] Buat berkas panduan deployment `docs/DEPLOYMENT.md` atau cantumkan di README:
     - Langkah pembuatan Google Cloud OAuth Client ID (Authorized JavaScript origins & Authorized redirect URIs untuk domain produksi).
     - Perintah membuat database D1 Cloudflare (`bunx wrangler d1 create pdevlog-db`).
     - Perintah mendaftarkan secrets ke Worker (`bunx wrangler secret put GOOGLE_CLIENT_ID`, dll).
     - Perintah migrasi database produksi (`bun run db:migrate:remote`).
     - Perintah deployment Worker (`bun run deploy`).
-- [ ] **Verifikasi Akhir**
-  - [ ] Uji coba deployment dry-run atau simulasi environment lokal mendekati produksi.
-  - [ ] Seluruh skrip `package.json` terverifikasi berfungsi dengan baik menggunakan runtime Bun.
+- [x] **Verifikasi Akhir**
+  - [x] Uji coba deployment dry-run atau simulasi environment lokal mendekati produksi.
+  - [x] Seluruh skrip `package.json` terverifikasi berfungsi dengan baik menggunakan runtime Bun.
 
 ## 4. Tabel dan Endpoint yang Disentuh
 - **Tabel**:

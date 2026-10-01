@@ -23,6 +23,7 @@ const EMPTY_VALUE = "—";
 async function loadTagsByLogIds(
   db: Database,
   logIds: string[],
+  userId: string,
 ): Promise<Map<string, TagRow[]>> {
   const map = new Map<string, TagRow[]>();
   if (logIds.length === 0) {
@@ -33,7 +34,7 @@ async function loadTagsByLogIds(
     .select({ bragLogId: bragTags.bragLogId, tag: tags })
     .from(bragTags)
     .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(inArray(bragTags.bragLogId, logIds));
+    .where(and(inArray(bragTags.bragLogId, logIds), eq(tags.userId, userId)));
 
   for (const row of rows) {
     const list = map.get(row.bragLogId) ?? [];
@@ -68,20 +69,27 @@ const exportBragLogs = async (
   const rows = await db
     .select({ log: bragLogs, workspace: workspaces })
     .from(bragLogs)
-    .leftJoin(workspaces, eq(bragLogs.workspaceId, workspaces.id))
+    .leftJoin(
+      workspaces,
+      and(
+        eq(bragLogs.workspaceId, workspaces.id),
+        eq(workspaces.userId, userId),
+      ),
+    )
     .where(and(...conditions))
     .orderBy(desc(bragLogs.occurredAt), desc(bragLogs.createdAt));
 
   const tagsByLogId = await loadTagsByLogIds(
     db,
     rows.map((row) => row.log.id),
+    userId,
   );
 
   const lines: string[] = [];
   lines.push("# Brag Logs");
   lines.push("");
   lines.push(
-    `> Exported from Personal Dev OS on ${new Date().toISOString().slice(0, 10)}`,
+    `> Exported from Personal Dev Log on ${new Date().toISOString().slice(0, 10)}`,
   );
   if (from || to) {
     lines.push(

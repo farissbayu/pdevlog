@@ -99,18 +99,20 @@ async function findOwnedLog(
 async function loadTagsForLog(
   db: Database,
   logId: string,
+  userId: string,
 ): Promise<TagRow[]> {
   const rows = await db
     .select({ tag: tags })
     .from(bragTags)
     .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(eq(bragTags.bragLogId, logId));
+    .where(and(eq(bragTags.bragLogId, logId), eq(tags.userId, userId)));
   return rows.map((row) => row.tag);
 }
 
 async function loadTagsByLogIds(
   db: Database,
   logIds: string[],
+  userId: string,
 ): Promise<Map<string, TagRow[]>> {
   const map = new Map<string, TagRow[]>();
   if (logIds.length === 0) {
@@ -121,7 +123,7 @@ async function loadTagsByLogIds(
     .select({ bragLogId: bragTags.bragLogId, tag: tags })
     .from(bragTags)
     .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(inArray(bragTags.bragLogId, logIds));
+    .where(and(inArray(bragTags.bragLogId, logIds), eq(tags.userId, userId)));
 
   for (const row of rows) {
     const list = map.get(row.bragLogId) ?? [];
@@ -134,6 +136,7 @@ async function loadTagsByLogIds(
 async function loadWorkspace(
   db: Database,
   workspaceId: string | null,
+  userId: string,
 ): Promise<WorkspaceRow | null> {
   if (!workspaceId) {
     return null;
@@ -141,7 +144,7 @@ async function loadWorkspace(
   const [workspace] = await db
     .select()
     .from(workspaces)
-    .where(eq(workspaces.id, workspaceId))
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
     .limit(1);
   return workspace ?? null;
 }
@@ -241,13 +244,20 @@ const listBragLogs = async (
   const rows = await db
     .select({ log: bragLogs, workspace: workspaces })
     .from(bragLogs)
-    .leftJoin(workspaces, eq(bragLogs.workspaceId, workspaces.id))
+    .leftJoin(
+      workspaces,
+      and(
+        eq(bragLogs.workspaceId, workspaces.id),
+        eq(workspaces.userId, userId),
+      ),
+    )
     .where(and(...conditions))
     .orderBy(desc(bragLogs.occurredAt), desc(bragLogs.createdAt));
 
   const tagsByLogId = await loadTagsByLogIds(
     db,
     rows.map((row) => row.log.id),
+    userId,
   );
 
   return c.json({
@@ -309,11 +319,11 @@ const createBragLogHandler = async (
   const [created] = await db
     .select()
     .from(bragLogs)
-    .where(eq(bragLogs.id, logId))
+    .where(and(eq(bragLogs.id, logId), eq(bragLogs.userId, userId)))
     .limit(1);
 
-  const workspace = await loadWorkspace(db, created.workspaceId);
-  const createdTags = await loadTagsForLog(db, created.id);
+  const workspace = await loadWorkspace(db, created.workspaceId, userId);
+  const createdTags = await loadTagsForLog(db, created.id, userId);
 
   return c.json({ bragLog: toBragLogResponse(created, workspace, createdTags) }, 201);
 };
@@ -328,8 +338,8 @@ const getBragLog = async (c: Context<AppEnv, "/:id">) => {
     return c.json({ error: "Brag log not found" }, 404);
   }
 
-  const workspace = await loadWorkspace(db, log.workspaceId);
-  const logTags = await loadTagsForLog(db, log.id);
+  const workspace = await loadWorkspace(db, log.workspaceId, userId);
+  const logTags = await loadTagsForLog(db, log.id, userId);
 
   return c.json({ bragLog: toBragLogResponse(log, workspace, logTags) });
 };
@@ -403,11 +413,11 @@ const updateBragLogHandler = async (
   const [updated] = await db
     .select()
     .from(bragLogs)
-    .where(eq(bragLogs.id, id))
+    .where(and(eq(bragLogs.id, id), eq(bragLogs.userId, userId)))
     .limit(1);
 
-  const workspace = await loadWorkspace(db, updated.workspaceId);
-  const updatedTags = await loadTagsForLog(db, updated.id);
+  const workspace = await loadWorkspace(db, updated.workspaceId, userId);
+  const updatedTags = await loadTagsForLog(db, updated.id, userId);
 
   return c.json({ bragLog: toBragLogResponse(updated, workspace, updatedTags) });
 };

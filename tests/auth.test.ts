@@ -30,3 +30,29 @@ describe("auth API", () => {
     expect(location).toContain("code_challenge=");
   });
 });
+
+describe("auth rate limiting", () => {
+  it("returns 429 after exceeding the limit for a client IP", async () => {
+    const headers = { "CF-Connecting-IP": "198.51.100.24" };
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await request("/api/auth/google", { headers });
+      expect(response.status).toBe(302);
+    }
+
+    const blocked = await request("/api/auth/google", { headers });
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("retry-after")).toBeTruthy();
+    await expect(blocked.json()).resolves.toEqual({
+      error: "Too many requests",
+    });
+  });
+
+  it("does not throttle a different client IP", async () => {
+    const response = await request("/api/auth/google", {
+      headers: { "CF-Connecting-IP": "198.51.100.25" },
+    });
+
+    expect(response.status).toBe(302);
+  });
+});

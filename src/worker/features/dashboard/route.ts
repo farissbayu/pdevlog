@@ -1,4 +1,4 @@
-import { count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
 import type {
@@ -57,6 +57,7 @@ function groupTags<Key extends string>(
 async function loadBragTags(
   db: Database,
   ids: string[],
+  userId: string,
 ): Promise<Map<string, TagRow[]>> {
   if (ids.length === 0) {
     return new Map();
@@ -65,13 +66,14 @@ async function loadBragTags(
     .select({ key: bragTags.bragLogId, tag: tags })
     .from(bragTags)
     .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(inArray(bragTags.bragLogId, ids));
+    .where(and(inArray(bragTags.bragLogId, ids), eq(tags.userId, userId)));
   return groupTags(rows);
 }
 
 async function loadNoteTags(
   db: Database,
   ids: string[],
+  userId: string,
 ): Promise<Map<string, TagRow[]>> {
   if (ids.length === 0) {
     return new Map();
@@ -80,7 +82,7 @@ async function loadNoteTags(
     .select({ key: noteTags.learningNoteId, tag: tags })
     .from(noteTags)
     .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(inArray(noteTags.learningNoteId, ids));
+    .where(and(inArray(noteTags.learningNoteId, ids), eq(tags.userId, userId)));
   return groupTags(rows);
 }
 
@@ -123,14 +125,26 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
     db
       .select({ log: bragLogs, workspace: workspaces })
       .from(bragLogs)
-      .leftJoin(workspaces, eq(bragLogs.workspaceId, workspaces.id))
+      .leftJoin(
+        workspaces,
+        and(
+          eq(bragLogs.workspaceId, workspaces.id),
+          eq(workspaces.userId, userId),
+        ),
+      )
       .where(eq(bragLogs.userId, userId))
       .orderBy(desc(bragLogs.createdAt))
       .limit(RECENT_ACTIVITY_LIMIT),
     db
       .select({ note: learningNotes, workspace: workspaces })
       .from(learningNotes)
-      .leftJoin(workspaces, eq(learningNotes.workspaceId, workspaces.id))
+      .leftJoin(
+        workspaces,
+        and(
+          eq(learningNotes.workspaceId, workspaces.id),
+          eq(workspaces.userId, userId),
+        ),
+      )
       .where(eq(learningNotes.userId, userId))
       .orderBy(desc(learningNotes.createdAt))
       .limit(RECENT_ACTIVITY_LIMIT),
@@ -140,10 +154,12 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
     loadBragTags(
       db,
       logRows.map((row) => row.log.id),
+      userId,
     ),
     loadNoteTags(
       db,
       noteRows.map((row) => row.note.id),
+      userId,
     ),
   ]);
 

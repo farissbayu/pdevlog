@@ -13,7 +13,7 @@ Slice 0 membutuhkan OAuth Client ID agar login "Continue with Google" bisa diuji
 1. **APIs & Services** → **OAuth consent screen**.
 2. User Type: **External** → **Create**.
 3. Isi:
-   - **App name**: `Personal Dev OS`
+   - **App name**: `Personal Dev Log`
    - **User support email**: email Google Anda
    - **Developer contact information**: email Google Anda
 4. **Save and Continue**.

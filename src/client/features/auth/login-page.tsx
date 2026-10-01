@@ -40,10 +40,10 @@ export function LoginPage() {
       <div className="space-y-2 text-center">
         <img
           src="/pdevlog-icon.png"
-          alt="Personal Dev OS"
+          alt="Personal Dev Log"
           className="mx-auto size-12 rounded-xl"
         />
-        <h1 className="text-2xl font-semibold">Personal Dev OS</h1>
+        <h1 className="text-2xl font-semibold">Personal Dev Log</h1>
         <p className="text-sm text-muted-foreground">
           Log in to continue to your dev log.
         </p>

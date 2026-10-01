@@ -173,11 +173,11 @@ export function AppLayout() {
         <div className="flex items-center gap-2">
           <img
             src="/pdevlog-icon.png"
-            alt="Personal Dev OS"
+            alt="Personal Dev Log"
             className="size-7 shrink-0 rounded-md"
           />
           <span className="font-mono font-semibold tracking-tight">
-            Personal Dev OS
+            Personal Dev Log
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -201,13 +201,13 @@ export function AppLayout() {
           <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary">
             <img
               src="/pdevlog-icon.png"
-              alt="Personal Dev OS"
+              alt="Personal Dev Log"
               className="size-full object-cover"
             />
           </div>
           {!collapsed ? (
             <span className="truncate font-mono font-semibold tracking-tight">
-              Personal Dev OS
+              Personal Dev Log
             </span>
           ) : null}
         </div>

@@ -8,6 +8,7 @@ import type { UserResponse } from "@/shared/schemas/auth";
 import { createDb, type Database } from "@/worker/db";
 import { users, type UserRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { authRateLimit } from "@/worker/middleware/rate-limit";
 
 import {
   OAUTH_CODE_VERIFIER_COOKIE,
@@ -204,8 +205,8 @@ const meHandler = async (c: Context<AppEnv>) => {
 };
 
 export const authRoute = new Hono<AppEnv>()
-  .get("/google", googleHandler)
-  .get("/google/callback", googleCallbackHandler)
+  .get("/google", authRateLimit, googleHandler)
+  .get("/google/callback", authRateLimit, googleCallbackHandler)
   .post("/logout", logoutHandler)
   .get("/me", meHandler)
   .delete("/account", deleteAccountHandler);

@@ -92,18 +92,25 @@ async function findOwnedNote(
   return note;
 }
 
-async function loadTagsForNote(db: Database, noteId: string): Promise<TagRow[]> {
+async function loadTagsForNote(
+  db: Database,
+  noteId: string,
+  userId: string,
+): Promise<TagRow[]> {
   const rows = await db
     .select({ tag: tags })
     .from(noteTags)
     .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(eq(noteTags.learningNoteId, noteId));
+    .where(
+      and(eq(noteTags.learningNoteId, noteId), eq(tags.userId, userId)),
+    );
   return rows.map((row) => row.tag);
 }
 
 async function loadTagsByNoteIds(
   db: Database,
   noteIds: string[],
+  userId: string,
 ): Promise<Map<string, TagRow[]>> {
   const map = new Map<string, TagRow[]>();
   if (noteIds.length === 0) {
@@ -114,7 +121,9 @@ async function loadTagsByNoteIds(
     .select({ learningNoteId: noteTags.learningNoteId, tag: tags })
     .from(noteTags)
     .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(inArray(noteTags.learningNoteId, noteIds));
+    .where(
+      and(inArray(noteTags.learningNoteId, noteIds), eq(tags.userId, userId)),
+    );
 
   for (const row of rows) {
     const list = map.get(row.learningNoteId) ?? [];
@@ -127,6 +136,7 @@ async function loadTagsByNoteIds(
 async function loadWorkspace(
   db: Database,
   workspaceId: string | null,
+  userId: string,
 ): Promise<WorkspaceRow | null> {
   if (!workspaceId) {
     return null;
@@ -134,7 +144,7 @@ async function loadWorkspace(
   const [workspace] = await db
     .select()
     .from(workspaces)
-    .where(eq(workspaces.id, workspaceId))
+    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
     .limit(1);
   return workspace ?? null;
 }
@@ -231,13 +241,20 @@ const listLearningNotes = async (
   const rows = await db
     .select({ note: learningNotes, workspace: workspaces })
     .from(learningNotes)
-    .leftJoin(workspaces, eq(learningNotes.workspaceId, workspaces.id))
+    .leftJoin(
+      workspaces,
+      and(
+        eq(learningNotes.workspaceId, workspaces.id),
+        eq(workspaces.userId, userId),
+      ),
+    )
     .where(and(...conditions))
     .orderBy(desc(learningNotes.updatedAt), desc(learningNotes.createdAt));
 
   const tagsByNoteId = await loadTagsByNoteIds(
     db,
     rows.map((row) => row.note.id),
+    userId,
   );
 
   return c.json({
@@ -295,11 +312,11 @@ const createLearningNoteHandler = async (
   const [created] = await db
     .select()
     .from(learningNotes)
-    .where(eq(learningNotes.id, noteId))
+    .where(and(eq(learningNotes.id, noteId), eq(learningNotes.userId, userId)))
     .limit(1);
 
-  const workspace = await loadWorkspace(db, created.workspaceId);
-  const createdTags = await loadTagsForNote(db, created.id);
+  const workspace = await loadWorkspace(db, created.workspaceId, userId);
+  const createdTags = await loadTagsForNote(db, created.id, userId);
 
   return c.json(
     { learningNote: toLearningNoteResponse(created, workspace, createdTags) },
@@ -317,8 +334,8 @@ const getLearningNote = async (c: Context<AppEnv, "/:id">) => {
     return c.json({ error: "Learning note not found" }, 404);
   }
 
-  const workspace = await loadWorkspace(db, note.workspaceId);
-  const noteTagsList = await loadTagsForNote(db, note.id);
+  const workspace = await loadWorkspace(db, note.workspaceId, userId);
+  const noteTagsList = await loadTagsForNote(db, note.id, userId);
 
   return c.json({
     learningNote: toLearningNoteResponse(note, workspace, noteTagsList),
@@ -392,11 +409,11 @@ const updateLearningNoteHandler = async (
   const [updated] = await db
     .select()
     .from(learningNotes)
-    .where(eq(learningNotes.id, id))
+    .where(and(eq(learningNotes.id, id), eq(learningNotes.userId, userId)))
     .limit(1);
 
-  const workspace = await loadWorkspace(db, updated.workspaceId);
-  const updatedTags = await loadTagsForNote(db, updated.id);
+  const workspace = await loadWorkspace(db, updated.workspaceId, userId);
+  const updatedTags = await loadTagsForNote(db, updated.id, userId);
 
   return c.json({
     learningNote: toLearningNoteResponse(updated, workspace, updatedTags),
