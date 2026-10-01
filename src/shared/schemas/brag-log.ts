@@ -19,6 +19,57 @@ const bragLogFieldsSchema = z.object({
   tag_ids: z.array(z.string().min(1)).optional(),
 });
 
+export const starBreakdownInputSchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(20, "Add a bit more detail before generating")
+    .max(5000),
+});
+
+export const starBreakdownSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .describe(
+      "A short, specific headline under 120 characters summarising the achievement.",
+    ),
+  situation: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000)
+    .describe("The context or background leading up to the work."),
+  task: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000)
+    .describe("The goal or challenge that needed to be addressed."),
+  action: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000)
+    .describe("The concrete steps taken to address the task."),
+  result: z
+    .string()
+    .trim()
+    .min(1)
+    .max(5000)
+    .describe("The outcome or impact of the action."),
+  tag_ids: z
+    .array(z.string().min(1))
+    .max(20)
+    .describe("IDs of the applicable tags from the provided list."),
+});
+
+export const starBreakdownResponseSchema = z.object({
+  breakdown: starBreakdownSchema,
+});
+
 export const createBragLogSchema = bragLogFieldsSchema;
 
 export const updateBragLogSchema = bragLogFieldsSchema.partial();
@@ -52,3 +103,6 @@ export type UpdateBragLogInput = z.infer<typeof updateBragLogSchema>;
 export type BragLogResponse = z.infer<typeof bragLogResponseSchema>;
 export type BragLogListResponse = z.infer<typeof bragLogListResponseSchema>;
 export type BragLogDetailResponse = z.infer<typeof bragLogDetailResponseSchema>;
+export type StarBreakdownInput = z.infer<typeof starBreakdownInputSchema>;
+export type StarBreakdown = z.infer<typeof starBreakdownSchema>;
+export type StarBreakdownResponse = z.infer<typeof starBreakdownResponseSchema>;

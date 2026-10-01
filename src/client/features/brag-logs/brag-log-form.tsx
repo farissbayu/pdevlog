@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/client/components/ui/button";
@@ -21,7 +21,11 @@ import {
   type BragLogResponse,
 } from "@/shared/schemas/brag-log";
 
-import { useCreateBragLogMutation, useUpdateBragLogMutation } from "./api";
+import {
+  useCreateBragLogMutation,
+  useGenerateStarBreakdownMutation,
+  useUpdateBragLogMutation,
+} from "./api";
 
 function todayIso(): string {
   const now = new Date();
@@ -50,27 +54,57 @@ export function BragLogFormDialog({
   const mutation = isEditing ? updateMutation : createMutation;
 
   const { data: tags } = useTagsQuery();
+  const generateMutation = useGenerateStarBreakdownMutation();
 
+  const [sourceContent, setSourceContent] = useState("");
   const [title, setTitle] = useState("");
   const [situation, setSituation] = useState("");
   const [task, setTask] = useState("");
   const [action, setAction] = useState("");
   const [result, setResult] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
+    setSourceContent("");
     setTitle(bragLog?.title ?? "");
     setSituation(bragLog?.situation ?? "");
     setTask(bragLog?.task ?? "");
     setAction(bragLog?.action ?? "");
     setResult(bragLog?.result ?? "");
     setTagIds(bragLog?.tags.map((tag) => tag.id) ?? []);
+    setShowDetails(Boolean(bragLog));
     setError(null);
+    setAiError(null);
   }, [open, bragLog]);
+
+  const handleGenerate = () => {
+    setAiError(null);
+    generateMutation.mutate(
+      { content: sourceContent.trim() },
+      {
+        onSuccess: (breakdown) => {
+          setTitle(breakdown.title);
+          setSituation(breakdown.situation);
+          setTask(breakdown.task);
+          setAction(breakdown.action);
+          setResult(breakdown.result);
+          if (breakdown.tag_ids.length > 0) {
+            setTagIds((current) => [
+              ...new Set([...current, ...breakdown.tag_ids]),
+            ]);
+          }
+          setShowDetails(true);
+        },
+        onError: (mutationError) => setAiError(mutationError.message),
+      },
+    );
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -92,6 +126,7 @@ export function BragLogFormDialog({
       const parsed = updateBragLogSchema.safeParse(payload);
       if (!parsed.success) {
         setError(parsed.error.issues[0]?.message ?? "Invalid input");
+        setShowDetails(true);
         return;
       }
       updateMutation.mutate(
@@ -163,31 +198,90 @@ export function BragLogFormDialog({
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="brag-title">Title</Label>
-            <Input
-              id="brag-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="e.g. Cut API p95 latency by 40%"
-              maxLength={200}
+          <div className="space-y-3 rounded-lg border border-dashed bg-muted/30 p-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" />
+              <Label htmlFor="brag-source">Quick capture</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Paste rough notes about what you did and let AI draft the STAR
+              fields. Review them before saving.
+            </p>
+            <Textarea
+              id="brag-source"
+              value={sourceContent}
+              onChange={(event) => setSourceContent(event.target.value)}
+              placeholder="e.g. Reworked the checkout retry logic after intermittent payment failures cut support tickets and recovered failed orders..."
+              rows={4}
+              maxLength={5000}
               autoFocus
             />
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">
+                {sourceContent.trim().length}/5000
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={
+                  generateMutation.isPending ||
+                  sourceContent.trim().length < 20
+                }
+              >
+                {generateMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                {generateMutation.isPending ? "Generating..." : "Generate with AI"}
+              </Button>
+            </div>
+            {aiError ? (
+              <p className="text-sm text-destructive">{aiError}</p>
+            ) : null}
           </div>
 
-          {starFields.map((field) => (
-            <div key={field.id} className="space-y-2">
-              <Label htmlFor={field.id}>{field.label}</Label>
-              <Textarea
-                id={field.id}
-                value={field.value}
-                onChange={(event) => field.onChange(event.target.value)}
-                placeholder={field.placeholder}
-                rows={3}
-                maxLength={5000}
-              />
-            </div>
-          ))}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDetails((value) => !value)}
+            >
+              {showDetails ? "Hide fields" : "Fill fields manually"}
+            </Button>
+          </div>
+
+          {showDetails ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="brag-title">Title</Label>
+                <Input
+                  id="brag-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="e.g. Cut API p95 latency by 40%"
+                  maxLength={200}
+                />
+              </div>
+
+              {starFields.map((field) => (
+                <div key={field.id} className="space-y-2">
+                  <Label htmlFor={field.id}>{field.label}</Label>
+                  <Textarea
+                    id={field.id}
+                    value={field.value}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    placeholder={field.placeholder}
+                    rows={3}
+                    maxLength={5000}
+                  />
+                </div>
+              ))}
+            </>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="brag-tags">Tags</Label>

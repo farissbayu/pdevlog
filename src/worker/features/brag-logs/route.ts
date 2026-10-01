@@ -17,9 +17,11 @@ import { nanoid } from "nanoid";
 
 import {
   createBragLogSchema,
+  starBreakdownInputSchema,
   updateBragLogSchema,
   type BragLogResponse,
   type CreateBragLogInput,
+  type StarBreakdownInput,
   type UpdateBragLogInput,
 } from "@/shared/schemas/brag-log";
 import {
@@ -44,6 +46,11 @@ import {
   type WorkspaceRow,
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import {
+  generateStarBreakdown,
+  StarBreakdownError,
+} from "@/worker/lib/openrouter";
+import { rateLimit } from "@/worker/middleware/rate-limit";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
@@ -469,9 +476,44 @@ const deleteBragLogHandler = async (c: Context<AppEnv, "/:id">) => {
   return c.json({ success: true });
 };
 
+const starBreakdownRateLimit = rateLimit({ limit: 10, windowMs: 60_000 });
+
+const generateStarBreakdownHandler = async (
+  c: Context<AppEnv, "/star-breakdown", JsonInput<StarBreakdownInput>>,
+) => {
+  const userId = c.get("userId");
+  const input = c.req.valid("json");
+  const db = createDb(c.env.DB);
+
+  const tagOptions = await db
+    .select({ id: tags.id, name: tags.name })
+    .from(tags)
+    .where(eq(tags.userId, userId));
+
+  try {
+    const breakdown = await generateStarBreakdown(
+      c.env,
+      input.content,
+      tagOptions,
+    );
+    return c.json({ breakdown });
+  } catch (error) {
+    if (error instanceof StarBreakdownError) {
+      return c.json({ error: error.message }, 502);
+    }
+    throw error;
+  }
+};
+
 export const bragLogsRoute = new Hono<AppEnv>()
   .get("/", zValidator("query", logFilterSchema), listBragLogs)
   .post("/", zValidator("json", createBragLogSchema), createBragLogHandler)
+  .post(
+    "/star-breakdown",
+    starBreakdownRateLimit,
+    zValidator("json", starBreakdownInputSchema),
+    generateStarBreakdownHandler,
+  )
   .get("/:id", getBragLog)
   .put("/:id", zValidator("json", updateBragLogSchema), updateBragLogHandler)
   .delete("/:id", deleteBragLogHandler);

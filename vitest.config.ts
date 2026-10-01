@@ -18,6 +18,8 @@ export default defineConfig(async () => {
             GOOGLE_CLIENT_ID: "test-google-client-id",
             GOOGLE_CLIENT_SECRET: "test-google-client-secret",
             JWT_SECRET: "test-jwt-secret-value-at-least-32-characters",
+            OPENROUTER_API_KEY: "test-openrouter-api-key",
+            OPENROUTER_MODEL: "test/openrouter-model",
             TEST_MIGRATIONS: migrations,
           },
         },

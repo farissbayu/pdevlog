@@ -16,6 +16,9 @@ import type {
   BragLogListResponse,
   BragLogResponse,
   CreateBragLogInput,
+  StarBreakdown,
+  StarBreakdownInput,
+  StarBreakdownResponse,
   UpdateBragLogInput,
 } from "@/shared/schemas/brag-log";
 import type { PaginationMeta } from "@/shared/schemas/pagination";
@@ -86,6 +89,19 @@ export async function deleteBragLog(id: string): Promise<void> {
   }
 }
 
+export async function generateStarBreakdown(
+  input: StarBreakdownInput,
+): Promise<StarBreakdown> {
+  const response = await client.api["brag-logs"]["star-breakdown"].$post({
+    json: input,
+  });
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to generate STAR breakdown");
+  }
+  const data = (await response.json()) as StarBreakdownResponse;
+  return data.breakdown;
+}
+
 export function bragLogsQueryOptions(filters: FilterParams = EMPTY_FILTERS) {
   return queryOptions({
     queryKey: [...BRAG_LOGS_KEY, filters],
@@ -143,5 +159,11 @@ export function useDeleteBragLogMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BRAG_LOGS_KEY });
     },
+  });
+}
+
+export function useGenerateStarBreakdownMutation() {
+  return useMutation({
+    mutationFn: generateStarBreakdown,
   });
 }
