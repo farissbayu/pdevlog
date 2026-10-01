@@ -6,6 +6,7 @@ import { LoginPage } from "@/client/features/auth/login-page";
 import { BragLogDetailPage } from "@/client/features/brag-logs/brag-log-detail-page";
 import { BragLogsPage } from "@/client/features/brag-logs/brag-logs-page";
 import { DashboardPage } from "@/client/features/dashboard/dashboard-page";
+import { LandingPage } from "@/client/features/landing/landing-page";
 import { LearningNoteDetailPage } from "@/client/features/learning-notes/learning-note-detail-page";
 import { LearningNotesPage } from "@/client/features/learning-notes/learning-notes-page";
 import { NoteEditorPage } from "@/client/features/learning-notes/note-editor";
@@ -16,18 +17,21 @@ import { WorkspacesPage } from "@/client/features/workspaces/workspaces-page";
 
 export const router = createBrowserRouter([
   {
+    path: "/",
+    element: <LandingPage />,
+  },
+  {
     path: "/login",
     element: <LoginPage />,
   },
   {
-    path: "/",
     element: (
       <AuthGuard>
         <AppLayout />
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      { path: "dashboard", element: <DashboardPage /> },
       { path: "workspaces", element: <WorkspacesPage /> },
       { path: "workspaces/:id", element: <WorkspaceDetailPage /> },
       { path: "brag-logs", element: <BragLogsPage /> },

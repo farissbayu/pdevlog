@@ -158,7 +158,7 @@ const googleCallbackHandler = async (c: Context<AppEnv>) => {
 
     setSessionCookie(c, sessionToken, isSecureRequest(c));
 
-    return c.redirect("/");
+    return c.redirect("/dashboard");
   } catch (error) {
     console.error("Google OAuth callback failed", error);
     return c.json({ error: "Authentication failed" }, 400);

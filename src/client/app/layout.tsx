@@ -34,7 +34,7 @@ const navItems: {
   icon: typeof LayoutDashboard;
   to?: string;
 }[] = [
-  { label: "Dashboard", icon: LayoutDashboard, to: "/" },
+  { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Tags", icon: Tags, to: "/tags" },
   { label: "Settings", icon: Settings, to: "/settings" },
@@ -106,7 +106,7 @@ function SidebarNav({ collapsed }: { collapsed: boolean }) {
           <NavLink
             key={item.label}
             to={item.to}
-            end={item.to === "/"}
+            end={item.to === "/dashboard"}
             title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
               cn(
