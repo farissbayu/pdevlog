@@ -111,6 +111,46 @@ export const bragTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.bragLogId, table.tagId] })],
 );
 
+export const learningNotes = sqliteTable(
+  "learning_notes",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("learning_notes_user_id_workspace_id_idx").on(
+      table.userId,
+      table.workspaceId,
+    ),
+  ],
+);
+
+export const noteTags = sqliteTable(
+  "note_tags",
+  {
+    learningNoteId: text("learning_note_id")
+      .notNull()
+      .references(() => learningNotes.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.learningNoteId, table.tagId] })],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
@@ -121,3 +161,7 @@ export type BragLogRow = typeof bragLogs.$inferSelect;
 export type NewBragLogRow = typeof bragLogs.$inferInsert;
 export type BragTagRow = typeof bragTags.$inferSelect;
 export type NewBragTagRow = typeof bragTags.$inferInsert;
+export type LearningNoteRow = typeof learningNotes.$inferSelect;
+export type NewLearningNoteRow = typeof learningNotes.$inferInsert;
+export type NoteTagRow = typeof noteTags.$inferSelect;
+export type NewNoteTagRow = typeof noteTags.$inferInsert;

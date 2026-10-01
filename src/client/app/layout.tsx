@@ -3,7 +3,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   FolderKanban,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -36,7 +35,6 @@ const navItems: {
 }[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/" },
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
-  { label: "Learning Notes", icon: GraduationCap },
   { label: "Tags", icon: Tags, to: "/tags" },
 ];
 
