@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Settings,
   Tags,
 } from "lucide-react";
 import { useState } from "react";
@@ -36,6 +37,7 @@ const navItems: {
   { label: "Dashboard", icon: LayoutDashboard, to: "/" },
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Tags", icon: Tags, to: "/tags" },
+  { label: "Settings", icon: Settings, to: "/settings" },
 ];
 
 function getInitials(user: UserResponse): string {

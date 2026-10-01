@@ -4,6 +4,7 @@ import type { AppEnv } from "@/worker/env";
 import { authRoute } from "@/worker/features/auth/route";
 import { bragLogsRoute } from "@/worker/features/brag-logs/route";
 import { dashboardRoute } from "@/worker/features/dashboard/route";
+import { exportRoute } from "@/worker/features/export/route";
 import { learningNotesRoute } from "@/worker/features/learning-notes/route";
 import { tagsRoute } from "@/worker/features/tags/route";
 import { workspacesRoute } from "@/worker/features/workspaces/route";
@@ -17,6 +18,7 @@ const app = new Hono<AppEnv>()
   .route("/api/brag-logs", bragLogsRoute)
   .route("/api/learning-notes", learningNotesRoute)
   .route("/api/dashboard", dashboardRoute)
+  .route("/api/export", exportRoute)
   .get("/api/health", (c) => c.json({ status: "ok" }))
   .notFound((c) => {
     if (c.req.path.startsWith("/api/")) {

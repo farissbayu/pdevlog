@@ -1,38 +1,27 @@
 import {
   AlertTriangle,
+  BookOpen,
   FileText,
   FolderKanban,
   GraduationCap,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
+import { cn } from "cn";
 import { Link } from "react-router";
 
 import { Button } from "@/client/components/ui/button";
+import { TagChip } from "@/client/features/brag-logs/tag-chip";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
-import { useDashboardQuery } from "./api";
+import type { ActivityItem } from "@/shared/schemas/dashboard";
+import { useDashboardQuery, useRecentActivityQuery } from "./api";
 
-function formatRelativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) {
-    return "unknown";
+function formatActivityDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
   }
-  const diff = Date.now() - then;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) {
-    return "just now";
-  }
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-  const days = Math.floor(hours / 24);
-  if (days < 7) {
-    return `${days}d ago`;
-  }
-  return new Date(iso).toLocaleDateString(undefined, {
+  return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -73,6 +62,76 @@ function StatCard({ stat }: { stat: StatCard }) {
   return content;
 }
 
+function ActivityRow({ item }: { item: ActivityItem }) {
+  const isBragLog = item.type === "brag-log";
+  const Icon = isBragLog ? Trophy : BookOpen;
+  const href = isBragLog
+    ? `/brag-logs/${item.id}`
+    : `/learning-notes/${item.id}`;
+
+  return (
+    <li>
+      <Link
+        to={href}
+        className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-accent"
+      >
+        <span
+          className={cn(
+            "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full",
+            isBragLog
+              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          )}
+        >
+          <Icon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="truncate text-sm font-medium">{item.title}</p>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {formatActivityDate(item.date)}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-mono uppercase tracking-wide">
+              {isBragLog ? "Brag Log" : "Learning Note"}
+            </span>
+            {item.workspace ? (
+              <>
+                <WorkspaceTypeBadge type={item.workspace.type} />
+                <span className="truncate">{item.workspace.name}</span>
+              </>
+            ) : null}
+          </div>
+          {item.tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {item.tags.map((tag) => (
+                <TagChip key={tag.id} tag={tag} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+function ActivitySkeleton() {
+  return (
+    <ul className="divide-y">
+      {[0, 1, 2].map((index) => (
+        <li key={index} className="flex items-start gap-4 px-5 py-4">
+          <div className="size-9 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
@@ -84,33 +143,39 @@ function DashboardSkeleton() {
           />
         ))}
       </div>
-      <div className="h-48 animate-pulse rounded-lg border bg-card" />
+      <div className="overflow-hidden rounded-lg border bg-card">
+        <div className="border-b px-5 py-4">
+          <div className="h-5 w-32 animate-pulse rounded bg-muted" />
+        </div>
+        <ActivitySkeleton />
+      </div>
     </div>
   );
 }
 
 export function DashboardPage() {
-  const { data, isPending, isError, refetch } = useDashboardQuery();
+  const dashboard = useDashboardQuery();
+  const activity = useRecentActivityQuery();
 
-  const stats: StatCard[] = data
+  const stats: StatCard[] = dashboard.data
     ? [
         {
           label: "Workspaces",
-          value: data.stats.workspaces,
+          value: dashboard.data.stats.workspaces,
           icon: FolderKanban,
           to: "/workspaces",
           className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
         },
         {
           label: "Brag Logs",
-          value: data.stats.bragLogs,
+          value: dashboard.data.stats.bragLogs,
           icon: FileText,
           to: "/brag-logs",
           className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
         },
         {
           label: "Learning Notes",
-          value: data.stats.learningNotes,
+          value: dashboard.data.stats.learningNotes,
           icon: GraduationCap,
           to: "/learning-notes",
           className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -118,18 +183,20 @@ export function DashboardPage() {
       ]
     : [];
 
+  const isPending = dashboard.isPending || activity.isPending;
+
   return (
     <div className="space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Your activity at a glance.
+          Your latest activity at a glance.
         </p>
       </div>
 
       {isPending ? <DashboardSkeleton /> : null}
 
-      {isError ? (
+      {activity.isError ? (
         <div className="flex flex-col items-center justify-center gap-4 rounded-lg border bg-card px-6 py-16 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertTriangle className="size-6 text-destructive" />
@@ -137,16 +204,22 @@ export function DashboardPage() {
           <div className="space-y-1">
             <h2 className="text-lg font-semibold">Failed to load dashboard</h2>
             <p className="text-sm text-muted-foreground">
-              Something went wrong while loading your summary.
+              Something went wrong while loading your activity.
             </p>
           </div>
-          <Button variant="outline" onClick={() => void refetch()}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void dashboard.refetch();
+              void activity.refetch();
+            }}
+          >
             Try again
           </Button>
         </div>
       ) : null}
 
-      {!isPending && !isError && data ? (
+      {!isPending && !activity.isError ? (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             {stats.map((stat) => (
@@ -154,45 +227,39 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="rounded-lg border bg-card">
+          <div className="overflow-hidden rounded-lg border bg-card">
             <div className="border-b px-5 py-4">
-              <h2 className="font-medium">Recently edited</h2>
+              <h2 className="font-medium">Recent activity</h2>
               <p className="text-sm text-muted-foreground">
-                Workspaces you touched most recently.
+                Your latest brag logs and learning notes.
               </p>
             </div>
 
-            {data.recentWorkspaces.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+            {activity.data && activity.data.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
                 <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-                  <FolderKanban className="size-5 text-muted-foreground" />
+                  <Trophy className="size-5 text-muted-foreground" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  No workspaces yet. Create one to get started.
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  No activity yet. Start by logging a brag log or a learning
+                  note!
                 </p>
-                <Button asChild size="sm">
-                  <Link to="/workspaces">Go to workspaces</Link>
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button asChild size="sm">
+                    <Link to="/brag-logs">Log a brag</Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/learning-notes">Write a note</Link>
+                  </Button>
+                </div>
               </div>
             ) : (
               <ul className="divide-y">
-                {data.recentWorkspaces.map((workspace) => (
-                  <li key={workspace.id}>
-                    <Link
-                      to={`/workspaces/${workspace.id}`}
-                      className="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-accent"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="truncate text-sm font-medium">
-                          {workspace.name}
-                        </span>
-                        <WorkspaceTypeBadge type={workspace.type} />
-                      </div>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {formatRelativeTime(workspace.updatedAt)}
-                      </span>
-                    </Link>
-                  </li>
+                {activity.data?.map((item) => (
+                  <ActivityRow
+                    key={`${item.type}-${item.id}`}
+                    item={item}
+                  />
                 ))}
               </ul>
             )}

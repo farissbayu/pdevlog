@@ -1,6 +1,7 @@
 import { CalendarDays, Check, ChevronDown, Search, X } from "lucide-react";
 import { cn } from "cn";
 
+import { DatePicker } from "@/client/components/date-picker";
 import { Button } from "@/client/components/ui/button";
 import {
   DropdownMenu,
@@ -121,19 +122,17 @@ export function FilterBar({
           <CalendarDays className="size-4" />
           Date range
         </span>
-        <Input
-          type="date"
+        <DatePicker
           value={filters.from}
-          onChange={(event) => api.setFrom(event.target.value)}
-          aria-label="From date"
+          onChange={api.setFrom}
+          placeholder="From date"
           className="h-8 w-40"
         />
         <span className="text-muted-foreground">to</span>
-        <Input
-          type="date"
+        <DatePicker
           value={filters.to}
-          onChange={(event) => api.setTo(event.target.value)}
-          aria-label="To date"
+          onChange={api.setTo}
+          placeholder="To date"
           className="h-8 w-40"
         />
       </div>

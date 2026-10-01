@@ -169,6 +169,19 @@ const logoutHandler = (c: Context<AppEnv>) => {
   return c.json({ success: true });
 };
 
+const deleteAccountHandler = async (c: Context<AppEnv>) => {
+  const userId = await getSessionUserId(c);
+  if (!userId) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const db = createDb(c.env.DB);
+  await db.delete(users).where(eq(users.id, userId));
+
+  clearSessionCookie(c);
+  return c.json({ success: true });
+};
+
 const meHandler = async (c: Context<AppEnv>) => {
   const userId = await getSessionUserId(c);
   if (!userId) {
@@ -194,4 +207,5 @@ export const authRoute = new Hono<AppEnv>()
   .get("/google", googleHandler)
   .get("/google/callback", googleCallbackHandler)
   .post("/logout", logoutHandler)
-  .get("/me", meHandler);
+  .get("/me", meHandler)
+  .delete("/account", deleteAccountHandler);
