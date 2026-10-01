@@ -30,10 +30,7 @@ import {
   BragLogList,
   BragLogListSkeleton,
 } from "@/client/features/brag-logs/brag-log-list";
-import {
-  useDeleteLearningNoteMutation,
-  useLearningNotesQuery,
-} from "@/client/features/learning-notes/api";
+import { useLearningNotesQuery } from "@/client/features/learning-notes/api";
 import {
   LearningNoteErrorState,
   LearningNoteList,
@@ -41,7 +38,6 @@ import {
 } from "@/client/features/learning-notes/learning-note-list";
 import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
-import type { LearningNoteResponse } from "@/shared/schemas/learning-note";
 
 import { useDeleteWorkspaceMutation, useWorkspaceDetailQuery } from "./api";
 import { WorkspaceFormDialog } from "./workspace-form-dialog";
@@ -166,14 +162,11 @@ export function WorkspaceDetailPage() {
   } = useLearningNotesQuery({ ...filterApi.filters, workspaceId: id });
 
   const deleteMutation = useDeleteBragLogMutation();
-  const noteDeleteMutation = useDeleteLearningNoteMutation();
   const workspaceDeleteMutation = useDeleteWorkspaceMutation();
   const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<BragLogResponse | null>(null);
   const [deleting, setDeleting] = useState<BragLogResponse | null>(null);
-  const [deletingNote, setDeletingNote] =
-    useState<LearningNoteResponse | null>(null);
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
   const [deleteWorkspaceOpen, setDeleteWorkspaceOpen] = useState(false);
 
@@ -191,25 +184,12 @@ export function WorkspaceDetailPage() {
     navigate(`/learning-notes/new?workspace=${id}`);
   };
 
-  const openEditNote = (note: LearningNoteResponse) => {
-    navigate(`/learning-notes/${note.id}/edit`);
-  };
-
   const confirmDelete = () => {
     if (!deleting) {
       return;
     }
     deleteMutation.mutate(deleting.id, {
       onSuccess: () => setDeleting(null),
-    });
-  };
-
-  const confirmDeleteNote = () => {
-    if (!deletingNote) {
-      return;
-    }
-    noteDeleteMutation.mutate(deletingNote.id, {
-      onSuccess: () => setDeletingNote(null),
     });
   };
 
@@ -402,11 +382,7 @@ export function WorkspaceDetailPage() {
 
           {!isNotesPending && !isNotesError && workspaceNotes.length > 0 ? (
             <>
-              <LearningNoteList
-                notes={workspaceNotes}
-                onEdit={openEditNote}
-                onDelete={setDeletingNote}
-              />
+              <LearningNoteList notes={workspaceNotes} />
               {notesPagination ? (
                 <PaginationControls
                   page={notesPagination.page}
@@ -456,44 +432,6 @@ export function WorkspaceDetailPage() {
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(deletingNote)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeletingNote(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete note</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &ldquo;{deletingNote?.title}
-              &rdquo;? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeletingNote(null)}
-              disabled={noteDeleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteNote}
-              disabled={noteDeleteMutation.isPending}
-            >
-              {noteDeleteMutation.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : null}
               Delete

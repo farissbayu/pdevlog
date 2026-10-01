@@ -1,4 +1,4 @@
-import { AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Link } from "react-router";
 
 import { Button } from "@/client/components/ui/button";
@@ -39,7 +39,7 @@ function NoteTagChip({ tag }: { tag: TagResponse }) {
 
 export function LearningNoteListSkeleton() {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((index) => (
         <li key={index} className="space-y-3 rounded-lg border bg-card p-5">
           <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
@@ -72,66 +72,40 @@ export function LearningNoteErrorState({ onRetry }: { onRetry: () => void }) {
 
 type LearningNoteListProps = {
   notes: LearningNoteResponse[];
-  onEdit: (note: LearningNoteResponse) => void;
-  onDelete: (note: LearningNoteResponse) => void;
 };
 
-export function LearningNoteList({
-  notes,
-  onEdit,
-  onDelete,
-}: LearningNoteListProps) {
+export function LearningNoteList({ notes }: LearningNoteListProps) {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {notes.map((note) => (
         <li
           key={note.id}
-          className="group rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+          className="rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2">
-              <Link
-                to={`/learning-notes/${note.id}`}
-                className="block truncate font-medium hover:underline"
-              >
-                {note.title}
-              </Link>
-              <p className="line-clamp-2 text-sm text-muted-foreground">
-                {noteExcerpt(note.content) || "Empty note"}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>Updated {formatNoteDate(note.updatedAt)}</span>
-                {note.workspace ? (
-                  <WorkspaceTypeBadge type={note.workspace.type} />
-                ) : null}
-                {note.workspace ? <span>{note.workspace.name}</span> : null}
-              </div>
-              {note.tags.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {note.tags.map((tag) => (
-                    <NoteTagChip key={tag.id} tag={tag} />
-                  ))}
-                </div>
+          <div className="min-w-0 space-y-2">
+            <Link
+              to={`/learning-notes/${note.id}`}
+              className="block truncate font-medium hover:underline"
+            >
+              {note.title}
+            </Link>
+            <p className="line-clamp-2 text-sm text-muted-foreground">
+              {noteExcerpt(note.content) || "Empty note"}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Updated {formatNoteDate(note.updatedAt)}</span>
+              {note.workspace ? (
+                <WorkspaceTypeBadge type={note.workspace.type} />
               ) : null}
+              {note.workspace ? <span>{note.workspace.name}</span> : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Edit ${note.title}`}
-                onClick={() => onEdit(note)}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${note.title}`}
-                onClick={() => onDelete(note)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
+            {note.tags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {note.tags.map((tag) => (
+                  <NoteTagChip key={tag.id} tag={tag} />
+                ))}
+              </div>
+            ) : null}
           </div>
         </li>
       ))}

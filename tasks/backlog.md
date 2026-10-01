@@ -1,4 +1,3 @@
-- add search and pagination for workspace, tasks and brag logs
 - user management page, maybe need a new admin route
 - change select option to use shadcn select or async select
 - modal scroll overflow need to styled

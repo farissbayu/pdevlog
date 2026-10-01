@@ -1,24 +1,14 @@
-import { Loader2, NotebookPen } from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { NotebookPen } from "lucide-react";
+import { Link } from "react-router";
 
 import { FilterBar } from "@/client/components/filter-bar";
 import { PaginationControls } from "@/client/components/pagination";
 import { Button } from "@/client/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/client/components/ui/dialog";
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import { useFilterParams } from "@/client/lib/use-filter-params";
-import type { LearningNoteResponse } from "@/shared/schemas/learning-note";
 
-import { useDeleteLearningNoteMutation, useLearningNotesQuery } from "./api";
+import { useLearningNotesQuery } from "./api";
 import {
   LearningNoteErrorState,
   LearningNoteList,
@@ -34,22 +24,6 @@ export function LearningNotesPage() {
   const pagination = data?.pagination;
   const { data: tags = [] } = useTagsQuery();
   const { data: workspaces = [] } = useWorkspacesQuery();
-  const navigate = useNavigate();
-  const [deleting, setDeleting] = useState<LearningNoteResponse | null>(null);
-  const deleteMutation = useDeleteLearningNoteMutation();
-
-  const openEdit = (note: LearningNoteResponse) => {
-    navigate(`/learning-notes/${note.id}/edit`);
-  };
-
-  const confirmDelete = () => {
-    if (!deleting) {
-      return;
-    }
-    deleteMutation.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
-    });
-  };
 
   return (
     <div className="space-y-6">
@@ -115,11 +89,7 @@ export function LearningNotesPage() {
 
       {!isPending && !isError && notes.length > 0 ? (
         <>
-          <LearningNoteList
-            notes={notes}
-            onEdit={openEdit}
-            onDelete={setDeleting}
-          />
+          <LearningNoteList notes={notes} />
           {pagination ? (
             <PaginationControls
               page={pagination.page}
@@ -129,44 +99,6 @@ export function LearningNotesPage() {
           ) : null}
         </>
       ) : null}
-
-      <Dialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleting(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete note</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &ldquo;{deleting?.title}&rdquo;?
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleting(null)}
-              disabled={deleteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

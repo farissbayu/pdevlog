@@ -4,10 +4,17 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { cn } from "cn";
 
 import { MarkdownRenderer } from "@/client/components/markdown-renderer";
+import { AutoResizeTextarea } from "@/client/components/ui/auto-resize-textarea";
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
-import { Textarea } from "@/client/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/client/components/ui/select";
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
@@ -105,7 +112,7 @@ function NoteEditorForm({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="sticky top-14 z-20 -mx-6 -mt-6 flex flex-wrap items-center justify-between gap-4 border-b bg-background/95 px-6 py-3 backdrop-blur md:top-0">
         <Link
           to={backTo}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -154,25 +161,30 @@ function NoteEditorForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="note-workspace">Workspace</Label>
-            <select
-              id="note-workspace"
-              value={workspaceId}
-              onChange={(event) => setWorkspaceId(event.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            <Select
+              value={workspaceId || "none"}
+              onValueChange={(value) =>
+                setWorkspaceId(value === "none" ? "" : value)
+              }
             >
-              <option value="">No workspace</option>
-              {(workspaces ?? [])
-                .filter(
-                  (workspace) =>
-                    workspace.type === "learning" ||
-                    workspace.id === workspaceId,
-                )
-                .map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </option>
-                ))}
-            </select>
+              <SelectTrigger id="note-workspace" className="w-full">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No workspace</SelectItem>
+                {(workspaces ?? [])
+                  .filter(
+                    (workspace) =>
+                      workspace.type === "learning" ||
+                      workspace.id === workspaceId,
+                  )
+                  .map((workspace) => (
+                    <SelectItem key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -244,7 +256,7 @@ function NoteEditorForm({
           </div>
 
           {mode === "edit" ? (
-            <Textarea
+            <AutoResizeTextarea
               id="note-content"
               value={content}
               onChange={(event) => setContent(event.target.value)}
