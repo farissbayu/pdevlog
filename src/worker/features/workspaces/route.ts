@@ -1,8 +1,16 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, like, or, type SQL } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
+import {
+  workspaceFilterSchema,
+  type WorkspaceFilterInput,
+} from "@/shared/schemas/filters";
+import {
+  buildPaginationMeta,
+  parsePagination,
+} from "@/shared/schemas/pagination";
 import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
@@ -15,6 +23,7 @@ import { workspaces, type WorkspaceRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
+type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
   return {
@@ -39,17 +48,50 @@ function findOwnedWorkspace(
     .limit(1);
 }
 
-const listWorkspaces = async (c: Context<AppEnv>) => {
+const listWorkspaces = async (
+  c: Context<AppEnv, "/", QueryInput<WorkspaceFilterInput>>,
+) => {
   const userId = c.get("userId");
+  const filters = c.req.valid("query");
   const db = createDb(c.env.DB);
 
-  const rows = await db
+  const conditions: SQL[] = [eq(workspaces.userId, userId)];
+
+  if (filters.q) {
+    const pattern = `%${filters.q}%`;
+    const search = or(
+      like(workspaces.name, pattern),
+      like(workspaces.description, pattern),
+    );
+    if (search) {
+      conditions.push(search);
+    }
+  }
+
+  const where = and(...conditions);
+  const { page, pageSize } = parsePagination(filters);
+
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(workspaces)
+    .where(where);
+  const total = totalRow?.value ?? 0;
+
+  const query = db
     .select()
     .from(workspaces)
-    .where(eq(workspaces.userId, userId))
-    .orderBy(desc(workspaces.createdAt));
+    .where(where)
+    .orderBy(desc(workspaces.createdAt), desc(workspaces.id));
 
-  return c.json({ workspaces: rows.map(toWorkspaceResponse) });
+  const rows =
+    page === null
+      ? await query
+      : await query.limit(pageSize).offset((page - 1) * pageSize);
+
+  return c.json({
+    workspaces: rows.map(toWorkspaceResponse),
+    pagination: buildPaginationMeta(total, page, pageSize),
+  });
 };
 
 const createWorkspaceHandler = async (
@@ -134,7 +176,7 @@ const deleteWorkspaceHandler = async (c: Context<AppEnv, "/:id">) => {
 };
 
 export const workspacesRoute = new Hono<AppEnv>()
-  .get("/", listWorkspaces)
+  .get("/", zValidator("query", workspaceFilterSchema), listWorkspaces)
   .post("/", zValidator("json", createWorkspaceSchema), createWorkspaceHandler)
   .get("/:id", getWorkspace)
   .put(

@@ -18,12 +18,18 @@ import type {
   LearningNoteResponse,
   UpdateLearningNoteInput,
 } from "@/shared/schemas/learning-note";
+import type { PaginationMeta } from "@/shared/schemas/pagination";
 
 const LEARNING_NOTES_KEY = ["learning-notes"] as const;
 
+export type LearningNoteListResult = {
+  learningNotes: LearningNoteResponse[];
+  pagination: PaginationMeta;
+};
+
 export async function fetchLearningNotes(
   filters: FilterParams,
-): Promise<LearningNoteResponse[]> {
+): Promise<LearningNoteListResult> {
   const response = await client.api["learning-notes"].$get({
     query: buildFilterQuery(filters),
   });
@@ -31,7 +37,7 @@ export async function fetchLearningNotes(
     throw await parseApiError(response, "Failed to load learning notes");
   }
   const data = (await response.json()) as LearningNoteListResponse;
-  return data.learningNotes;
+  return { learningNotes: data.learningNotes, pagination: data.pagination };
 }
 
 export async function fetchLearningNote(

@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   and,
+  count,
   desc,
   eq,
   gte,
@@ -26,6 +27,10 @@ import {
   normalizeTagIds,
   type LogFilterInput,
 } from "@/shared/schemas/filters";
+import {
+  buildPaginationMeta,
+  parsePagination,
+} from "@/shared/schemas/pagination";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
@@ -241,7 +246,10 @@ const listBragLogs = async (
     );
   }
 
-  const rows = await db
+  const where = and(...conditions);
+  const { page, pageSize } = parsePagination(filters);
+
+  const query = db
     .select({ log: bragLogs, workspace: workspaces })
     .from(bragLogs)
     .leftJoin(
@@ -251,8 +259,18 @@ const listBragLogs = async (
         eq(workspaces.userId, userId),
       ),
     )
-    .where(and(...conditions))
-    .orderBy(desc(bragLogs.occurredAt), desc(bragLogs.createdAt));
+    .where(where)
+    .orderBy(
+      desc(bragLogs.occurredAt),
+      desc(bragLogs.createdAt),
+      desc(bragLogs.id),
+    );
+
+  const [rows, totalRows] = await Promise.all([
+    page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
+    db.select({ value: count() }).from(bragLogs).where(where),
+  ]);
+  const total = totalRows[0]?.value ?? 0;
 
   const tagsByLogId = await loadTagsByLogIds(
     db,
@@ -268,6 +286,7 @@ const listBragLogs = async (
         tagsByLogId.get(row.log.id) ?? [],
       ),
     ),
+    pagination: buildPaginationMeta(total, page, pageSize),
   });
 };
 

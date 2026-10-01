@@ -1,11 +1,14 @@
-import { AlertTriangle, FolderPlus, Plus } from "lucide-react";
+import { AlertTriangle, FolderPlus, Plus, SearchX } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
+import { PaginationControls } from "@/client/components/pagination";
+import { SearchInput } from "@/client/components/search-input";
 import { Button } from "@/client/components/ui/button";
+import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 
-import { useWorkspacesQuery } from "./api";
+import { useWorkspacesListQuery } from "./api";
 import { WorkspaceFormDialog } from "./workspace-form-dialog";
 import { WorkspaceTypeBadge } from "./workspace-type-badge";
 
@@ -42,6 +45,25 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <Button onClick={onCreate}>
         <Plus className="size-4" />
         New workspace
+      </Button>
+    </div>
+  );
+}
+
+function NoMatchesState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+        <SearchX className="size-6 text-muted-foreground" />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">No matching workspaces</h2>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          No workspaces match your search. Try a different keyword.
+        </p>
+      </div>
+      <Button variant="outline" onClick={onReset}>
+        Clear search
       </Button>
     </div>
   );
@@ -84,8 +106,16 @@ function WorkspaceCard({ workspace }: { workspace: WorkspaceResponse }) {
 }
 
 export function WorkspacesPage() {
-  const { data, isPending, isError, refetch } = useWorkspacesQuery();
+  const filterApi = useFilterParams();
+  const { data, isPending, isError, refetch } = useWorkspacesListQuery({
+    q: filterApi.filters.q,
+    page: filterApi.filters.page,
+  });
   const [formOpen, setFormOpen] = useState(false);
+
+  const workspaces = data?.workspaces ?? [];
+  const pagination = data?.pagination;
+  const hasQuery = filterApi.filters.q.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -102,20 +132,41 @@ export function WorkspacesPage() {
         </Button>
       </div>
 
+      <SearchInput
+        value={filterApi.query}
+        onChange={(event) => filterApi.setQuery(event.target.value)}
+        placeholder="Search workspaces..."
+        aria-label="Search workspaces"
+        className="max-w-sm"
+      />
+
       {isPending ? <WorkspaceListSkeleton /> : null}
 
       {isError ? <ErrorState onRetry={() => void refetch()} /> : null}
 
-      {!isPending && !isError && data && data.length === 0 ? (
-        <EmptyState onCreate={() => setFormOpen(true)} />
+      {!isPending && !isError && data && workspaces.length === 0 ? (
+        hasQuery ? (
+          <NoMatchesState onReset={filterApi.reset} />
+        ) : (
+          <EmptyState onCreate={() => setFormOpen(true)} />
+        )
       ) : null}
 
-      {!isPending && !isError && data && data.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {data.map((workspace) => (
-            <WorkspaceCard key={workspace.id} workspace={workspace} />
-          ))}
-        </div>
+      {!isPending && !isError && workspaces.length > 0 ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {workspaces.map((workspace) => (
+              <WorkspaceCard key={workspace.id} workspace={workspace} />
+            ))}
+          </div>
+          {pagination ? (
+            <PaginationControls
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={filterApi.setPage}
+            />
+          ) : null}
+        </>
       ) : null}
 
       <WorkspaceFormDialog open={formOpen} onOpenChange={setFormOpen} />

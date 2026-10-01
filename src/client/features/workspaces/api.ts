@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 
 import { client } from "@/client/lib/api";
+import type { PaginationMeta } from "@/shared/schemas/pagination";
 import type {
   CreateWorkspaceInput,
   UpdateWorkspaceInput,
@@ -16,13 +17,40 @@ import type {
 
 const WORKSPACES_KEY = ["workspaces"] as const;
 
-export async function fetchWorkspaces(): Promise<WorkspaceResponse[]> {
-  const response = await client.api.workspaces.$get();
+export type WorkspaceListParams = {
+  q?: string;
+  page?: number;
+};
+
+export type WorkspaceListResult = {
+  workspaces: WorkspaceResponse[];
+  pagination: PaginationMeta;
+};
+
+function buildWorkspaceQuery(
+  params: WorkspaceListParams,
+): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (params.q) {
+    query.q = params.q;
+  }
+  if (params.page !== undefined) {
+    query.page = String(params.page);
+  }
+  return query;
+}
+
+export async function fetchWorkspaces(
+  params: WorkspaceListParams = {},
+): Promise<WorkspaceListResult> {
+  const response = await client.api.workspaces.$get({
+    query: buildWorkspaceQuery(params),
+  });
   if (!response.ok) {
     throw new Error("Failed to load workspaces");
   }
   const data = (await response.json()) as WorkspaceListResponse;
-  return data.workspaces;
+  return { workspaces: data.workspaces, pagination: data.pagination };
 }
 
 export async function fetchWorkspace(id: string): Promise<WorkspaceResponse> {
@@ -70,9 +98,17 @@ export async function deleteWorkspace(id: string): Promise<void> {
 }
 
 export const workspacesQueryOptions = queryOptions({
-  queryKey: WORKSPACES_KEY,
-  queryFn: fetchWorkspaces,
+  queryKey: [...WORKSPACES_KEY, "options"],
+  queryFn: () => fetchWorkspaces(),
+  select: (data) => data.workspaces,
 });
+
+export function workspacesListQueryOptions(params: WorkspaceListParams) {
+  return queryOptions({
+    queryKey: [...WORKSPACES_KEY, "list", params],
+    queryFn: () => fetchWorkspaces(params),
+  });
+}
 
 export function workspacesDetailQueryOptions(id: string) {
   return queryOptions({
@@ -84,6 +120,10 @@ export function workspacesDetailQueryOptions(id: string) {
 
 export function useWorkspacesQuery() {
   return useQuery(workspacesQueryOptions);
+}
+
+export function useWorkspacesListQuery(params: WorkspaceListParams) {
+  return useQuery(workspacesListQueryOptions(params));
 }
 
 export function useWorkspaceDetailQuery(id: string) {

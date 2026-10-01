@@ -1,7 +1,8 @@
-import { CalendarDays, Check, ChevronDown, Search, X } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, X } from "lucide-react";
 import { cn } from "cn";
 
 import { DatePicker } from "@/client/components/date-picker";
+import { SearchInput } from "@/client/components/search-input";
 import { Button } from "@/client/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/client/components/ui/dropdown-menu";
-import { Input } from "@/client/components/ui/input";
 import type { FilterParamsApi } from "@/client/lib/use-filter-params";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
@@ -37,16 +37,13 @@ export function FilterBar({
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={filters.q}
-            onChange={(event) => api.setQuery(event.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label="Search"
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          value={api.query}
+          onChange={(event) => api.setQuery(event.target.value)}
+          placeholder={searchPlaceholder}
+          aria-label="Search"
+          className="min-w-[200px] flex-1"
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

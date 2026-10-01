@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   and,
+  count,
   desc,
   eq,
   gte,
@@ -19,6 +20,10 @@ import {
   normalizeTagIds,
   type NoteFilterInput,
 } from "@/shared/schemas/filters";
+import {
+  buildPaginationMeta,
+  parsePagination,
+} from "@/shared/schemas/pagination";
 import {
   createLearningNoteSchema,
   updateLearningNoteSchema,
@@ -238,7 +243,10 @@ const listLearningNotes = async (
     );
   }
 
-  const rows = await db
+  const where = and(...conditions);
+  const { page, pageSize } = parsePagination(filters);
+
+  const query = db
     .select({ note: learningNotes, workspace: workspaces })
     .from(learningNotes)
     .leftJoin(
@@ -248,8 +256,21 @@ const listLearningNotes = async (
         eq(workspaces.userId, userId),
       ),
     )
-    .where(and(...conditions))
-    .orderBy(desc(learningNotes.updatedAt), desc(learningNotes.createdAt));
+    .where(where)
+    .orderBy(
+      desc(learningNotes.updatedAt),
+      desc(learningNotes.createdAt),
+      desc(learningNotes.id),
+    );
+
+  const [rows, totalRows] = await Promise.all([
+    page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
+    db
+      .select({ value: count() })
+      .from(learningNotes)
+      .where(where),
+  ]);
+  const total = totalRows[0]?.value ?? 0;
 
   const tagsByNoteId = await loadTagsByNoteIds(
     db,
@@ -265,6 +286,7 @@ const listLearningNotes = async (
         tagsByNoteId.get(row.note.id) ?? [],
       ),
     ),
+    pagination: buildPaginationMeta(total, page, pageSize),
   });
 };
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { paginationMetaSchema } from "./pagination";
+
 export const workspaceTypeSchema = z.enum(["work", "learning"]);
 
 const workspaceNameSchema = z.string().trim().min(1).max(100);
@@ -28,6 +30,7 @@ export const workspaceResponseSchema = z.object({
 
 export const workspaceListResponseSchema = z.object({
   workspaces: z.array(workspaceResponseSchema),
+  pagination: paginationMetaSchema,
 });
 
 export const workspaceDetailResponseSchema = z.object({

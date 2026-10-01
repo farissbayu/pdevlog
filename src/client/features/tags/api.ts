@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 
 import { client, parseApiError } from "@/client/lib/api";
+import type { PaginationMeta } from "@/shared/schemas/pagination";
 import type {
   CreateTagInput,
   TagDetailResponse,
@@ -16,13 +17,38 @@ import type {
 
 const TAGS_KEY = ["tags"] as const;
 
-export async function fetchTags(): Promise<TagResponse[]> {
-  const response = await client.api.tags.$get();
+export type TagListParams = {
+  q?: string;
+  page?: number;
+};
+
+export type TagListResult = {
+  tags: TagResponse[];
+  pagination: PaginationMeta;
+};
+
+function buildTagQuery(params: TagListParams): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (params.q) {
+    query.q = params.q;
+  }
+  if (params.page !== undefined) {
+    query.page = String(params.page);
+  }
+  return query;
+}
+
+export async function fetchTags(
+  params: TagListParams = {},
+): Promise<TagListResult> {
+  const response = await client.api.tags.$get({
+    query: buildTagQuery(params),
+  });
   if (!response.ok) {
     throw await parseApiError(response, "Failed to load tags");
   }
   const data = (await response.json()) as TagListResponse;
-  return data.tags;
+  return { tags: data.tags, pagination: data.pagination };
 }
 
 export async function createTag(input: CreateTagInput): Promise<TagResponse> {
@@ -57,12 +83,24 @@ export async function deleteTag(id: string): Promise<void> {
 }
 
 export const tagsQueryOptions = queryOptions({
-  queryKey: TAGS_KEY,
-  queryFn: fetchTags,
+  queryKey: [...TAGS_KEY, "options"],
+  queryFn: () => fetchTags(),
+  select: (data) => data.tags,
 });
+
+export function tagsListQueryOptions(params: TagListParams) {
+  return queryOptions({
+    queryKey: [...TAGS_KEY, "list", params],
+    queryFn: () => fetchTags(params),
+  });
+}
 
 export function useTagsQuery() {
   return useQuery(tagsQueryOptions);
+}
+
+export function useTagsListQuery(params: TagListParams) {
+  return useQuery(tagsListQueryOptions(params));
 }
 
 export function useCreateTagMutation() {

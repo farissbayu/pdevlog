@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { paginationMetaSchema } from "./pagination";
 import { tagResponseSchema } from "./tag";
 import { workspaceResponseSchema } from "./workspace";
 
@@ -39,6 +40,7 @@ export const bragLogResponseSchema = z.object({
 
 export const bragLogListResponseSchema = z.object({
   bragLogs: z.array(bragLogResponseSchema),
+  pagination: paginationMetaSchema,
 });
 
 export const bragLogDetailResponseSchema = z.object({

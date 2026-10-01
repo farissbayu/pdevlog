@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { paginationMetaSchema } from "./pagination";
 import { tagResponseSchema } from "./tag";
 import { workspaceResponseSchema } from "./workspace";
 
@@ -27,6 +28,7 @@ export const learningNoteResponseSchema = z.object({
 
 export const learningNoteListResponseSchema = z.object({
   learningNotes: z.array(learningNoteResponseSchema),
+  pagination: paginationMetaSchema,
 });
 
 export const learningNoteDetailResponseSchema = z.object({

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { paginationMetaSchema } from "./pagination";
+
 export const tagNameSchema = z.string().trim().min(1).max(50);
 
 export const createTagSchema = z.object({
@@ -18,6 +20,7 @@ export const tagResponseSchema = z.object({
 
 export const tagListResponseSchema = z.object({
   tags: z.array(tagResponseSchema),
+  pagination: paginationMetaSchema,
 });
 
 export const tagDetailResponseSchema = z.object({

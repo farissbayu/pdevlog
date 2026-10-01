@@ -7,16 +7,19 @@ export type FilterParams = {
   tagIds: string[];
   from: string;
   to: string;
+  page: number;
 };
 
 export type FilterParamsApi = {
   filters: FilterParams;
+  query: string;
   hasActiveFilters: boolean;
   setQuery: (value: string) => void;
   setWorkspaceId: (value: string) => void;
   toggleTag: (tagId: string) => void;
   setFrom: (value: string) => void;
   setTo: (value: string) => void;
+  setPage: (value: number) => void;
   reset: () => void;
 };
 
@@ -28,6 +31,7 @@ export const EMPTY_FILTERS: FilterParams = {
   tagIds: [],
   from: "",
   to: "",
+  page: 1,
 };
 
 export function buildFilterQuery(
@@ -39,7 +43,13 @@ export function buildFilterQuery(
   if (filters.tagIds.length > 0) query.tag_id = filters.tagIds;
   if (filters.from) query.from = filters.from;
   if (filters.to) query.to = filters.to;
+  query.page = String(filters.page);
   return query;
+}
+
+function readPage(params: URLSearchParams): number {
+  const value = Number(params.get("page"));
+  return Number.isInteger(value) && value >= 1 ? value : 1;
 }
 
 function readFilters(params: URLSearchParams): FilterParams {
@@ -52,6 +62,7 @@ function readFilters(params: URLSearchParams): FilterParams {
       .filter((value) => value.length > 0),
     from: params.get("from") ?? "",
     to: params.get("to") ?? "",
+    page: readPage(params),
   };
 }
 
@@ -84,6 +95,7 @@ export function useFilterParams(): FilterParamsApi {
           } else {
             next.delete("q");
           }
+          next.delete("page");
           return next;
         },
         { replace: true },
@@ -101,6 +113,7 @@ export function useFilterParams(): FilterParamsApi {
         } else {
           next.delete(key);
         }
+        next.delete("page");
         return next;
       },
       { replace: true },
@@ -119,6 +132,22 @@ export function useFilterParams(): FilterParamsApi {
         for (const id of updated) {
           next.append("tag", id);
         }
+        next.delete("page");
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const setPage = (value: number) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value > 1) {
+          next.set("page", String(value));
+        } else {
+          next.delete("page");
+        }
         return next;
       },
       { replace: true },
@@ -132,20 +161,22 @@ export function useFilterParams(): FilterParamsApi {
   };
 
   const hasActiveFilters =
-    filters.q.length > 0 ||
+    queryInput.trim().length > 0 ||
     filters.workspaceId.length > 0 ||
     filters.tagIds.length > 0 ||
     filters.from.length > 0 ||
     filters.to.length > 0;
 
   return {
-    filters: { ...filters, q: queryInput },
+    filters,
+    query: queryInput,
     hasActiveFilters,
     setQuery: setQueryInput,
     setWorkspaceId: (value) => updateParam("workspaceId", value),
     toggleTag,
     setFrom: (value) => updateParam("from", value),
     setTo: (value) => updateParam("to", value),
+    setPage,
     reset,
   };
 }

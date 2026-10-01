@@ -1,8 +1,16 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, count, eq, like, ne, type SQL } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
+import {
+  tagFilterSchema,
+  type TagFilterInput,
+} from "@/shared/schemas/filters";
+import {
+  buildPaginationMeta,
+  parsePagination,
+} from "@/shared/schemas/pagination";
 import {
   createTagSchema,
   updateTagSchema,
@@ -15,6 +23,7 @@ import { tags, type TagRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
+type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 const DUPLICATE_TAG_ERROR = "A tag with this name already exists";
 
@@ -39,17 +48,43 @@ async function findOwnedTag(
   return tag;
 }
 
-const listTags = async (c: Context<AppEnv>) => {
+const listTags = async (
+  c: Context<AppEnv, "/", QueryInput<TagFilterInput>>,
+) => {
   const userId = c.get("userId");
+  const filters = c.req.valid("query");
   const db = createDb(c.env.DB);
 
-  const rows = await db
+  const conditions: SQL[] = [eq(tags.userId, userId)];
+
+  if (filters.q) {
+    conditions.push(like(tags.name, `%${filters.q}%`));
+  }
+
+  const where = and(...conditions);
+  const { page, pageSize } = parsePagination(filters);
+
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(tags)
+    .where(where);
+  const total = totalRow?.value ?? 0;
+
+  const query = db
     .select()
     .from(tags)
-    .where(eq(tags.userId, userId))
-    .orderBy(asc(tags.name));
+    .where(where)
+    .orderBy(asc(tags.name), asc(tags.id));
 
-  return c.json({ tags: rows.map(toTagResponse) });
+  const rows =
+    page === null
+      ? await query
+      : await query.limit(pageSize).offset((page - 1) * pageSize);
+
+  return c.json({
+    tags: rows.map(toTagResponse),
+    pagination: buildPaginationMeta(total, page, pageSize),
+  });
 };
 
 const createTagHandler = async (
@@ -139,7 +174,7 @@ const deleteTagHandler = async (c: Context<AppEnv, "/:id">) => {
 };
 
 export const tagsRoute = new Hono<AppEnv>()
-  .get("/", listTags)
+  .get("/", zValidator("query", tagFilterSchema), listTags)
   .post("/", zValidator("json", createTagSchema), createTagHandler)
   .put("/:id", zValidator("json", updateTagSchema), updateTagHandler)
   .delete("/:id", deleteTagHandler);

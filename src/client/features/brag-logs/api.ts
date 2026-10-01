@@ -18,12 +18,18 @@ import type {
   CreateBragLogInput,
   UpdateBragLogInput,
 } from "@/shared/schemas/brag-log";
+import type { PaginationMeta } from "@/shared/schemas/pagination";
 
 const BRAG_LOGS_KEY = ["brag-logs"] as const;
 
+export type BragLogListResult = {
+  bragLogs: BragLogResponse[];
+  pagination: PaginationMeta;
+};
+
 export async function fetchBragLogs(
   filters: FilterParams,
-): Promise<BragLogResponse[]> {
+): Promise<BragLogListResult> {
   const response = await client.api["brag-logs"].$get({
     query: buildFilterQuery(filters),
   });
@@ -31,7 +37,7 @@ export async function fetchBragLogs(
     throw await parseApiError(response, "Failed to load brag logs");
   }
   const data = (await response.json()) as BragLogListResponse;
-  return data.bragLogs;
+  return { bragLogs: data.bragLogs, pagination: data.pagination };
 }
 
 export async function fetchBragLog(id: string): Promise<BragLogResponse> {

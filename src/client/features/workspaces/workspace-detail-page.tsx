@@ -6,11 +6,14 @@ import {
   NotebookPen,
   Pencil,
   Plus,
+  SearchX,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
+import { PaginationControls } from "@/client/components/pagination";
+import { SearchInput } from "@/client/components/search-input";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,
@@ -36,6 +39,7 @@ import {
   LearningNoteList,
   LearningNoteListSkeleton,
 } from "@/client/features/learning-notes/learning-note-list";
+import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
 import type { LearningNoteResponse } from "@/shared/schemas/learning-note";
 
@@ -43,7 +47,34 @@ import { useDeleteWorkspaceMutation, useWorkspaceDetailQuery } from "./api";
 import { WorkspaceFormDialog } from "./workspace-form-dialog";
 import { WorkspaceTypeBadge } from "./workspace-type-badge";
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({
+  onCreate,
+  filtered = false,
+  onReset,
+}: {
+  onCreate: () => void;
+  filtered?: boolean;
+  onReset?: () => void;
+}) {
+  if (filtered) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+          <SearchX className="size-6 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">No matching brag logs</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            No brag logs in this workspace match your search.
+          </p>
+        </div>
+        <Button variant="outline" onClick={onReset}>
+          Clear search
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
       <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -64,7 +95,34 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
-function NotesEmptyState({ onCreate }: { onCreate: () => void }) {
+function NotesEmptyState({
+  onCreate,
+  filtered = false,
+  onReset,
+}: {
+  onCreate: () => void;
+  filtered?: boolean;
+  onReset?: () => void;
+}) {
+  if (filtered) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+          <SearchX className="size-6 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">No matching notes</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            No learning notes in this workspace match your search.
+          </p>
+        </div>
+        <Button variant="outline" onClick={onReset}>
+          Clear search
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
       <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -87,6 +145,7 @@ function NotesEmptyState({ onCreate }: { onCreate: () => void }) {
 
 export function WorkspaceDetailPage() {
   const { id = "" } = useParams();
+  const filterApi = useFilterParams();
   const {
     data: workspace,
     isPending: isWorkspacePending,
@@ -94,17 +153,17 @@ export function WorkspaceDetailPage() {
     refetch: refetchWorkspace,
   } = useWorkspaceDetailQuery(id);
   const {
-    data: logs,
+    data: logsData,
     isPending: isLogsPending,
     isError: isLogsError,
     refetch: refetchLogs,
-  } = useBragLogsQuery();
+  } = useBragLogsQuery({ ...filterApi.filters, workspaceId: id });
   const {
-    data: notes,
+    data: notesData,
     isPending: isNotesPending,
     isError: isNotesError,
     refetch: refetchNotes,
-  } = useLearningNotesQuery();
+  } = useLearningNotesQuery({ ...filterApi.filters, workspaceId: id });
 
   const deleteMutation = useDeleteBragLogMutation();
   const noteDeleteMutation = useDeleteLearningNoteMutation();
@@ -198,10 +257,11 @@ export function WorkspaceDetailPage() {
     );
   }
 
-  const workspaceLogs =
-    logs?.filter((log) => log.workspaceId === workspace.id) ?? [];
-  const workspaceNotes =
-    notes?.filter((note) => note.workspaceId === workspace.id) ?? [];
+  const workspaceLogs = logsData?.bragLogs ?? [];
+  const logsPagination = logsData?.pagination;
+  const workspaceNotes = notesData?.learningNotes ?? [];
+  const notesPagination = notesData?.pagination;
+  const hasQuery = filterApi.filters.q.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -262,6 +322,14 @@ export function WorkspaceDetailPage() {
             </Button>
           </div>
 
+          <SearchInput
+            value={filterApi.query}
+            onChange={(event) => filterApi.setQuery(event.target.value)}
+            placeholder="Search brag logs..."
+            aria-label="Search brag logs"
+            className="max-w-sm"
+          />
+
           {isLogsPending ? <BragLogListSkeleton /> : null}
 
           {isLogsError ? (
@@ -269,15 +337,28 @@ export function WorkspaceDetailPage() {
           ) : null}
 
           {!isLogsPending && !isLogsError && workspaceLogs.length === 0 ? (
-            <EmptyState onCreate={openCreate} />
+            <EmptyState
+              onCreate={openCreate}
+              filtered={hasQuery}
+              onReset={filterApi.reset}
+            />
           ) : null}
 
           {!isLogsPending && !isLogsError && workspaceLogs.length > 0 ? (
-            <BragLogList
-              logs={workspaceLogs}
-              onEdit={openEdit}
-              onDelete={setDeleting}
-            />
+            <>
+              <BragLogList
+                logs={workspaceLogs}
+                onEdit={openEdit}
+                onDelete={setDeleting}
+              />
+              {logsPagination ? (
+                <PaginationControls
+                  page={logsPagination.page}
+                  totalPages={logsPagination.totalPages}
+                  onPageChange={filterApi.setPage}
+                />
+              ) : null}
+            </>
           ) : null}
         </>
       ) : null}
@@ -297,6 +378,14 @@ export function WorkspaceDetailPage() {
             </Button>
           </div>
 
+          <SearchInput
+            value={filterApi.query}
+            onChange={(event) => filterApi.setQuery(event.target.value)}
+            placeholder="Search learning notes..."
+            aria-label="Search learning notes"
+            className="max-w-sm"
+          />
+
           {isNotesPending ? <LearningNoteListSkeleton /> : null}
 
           {isNotesError ? (
@@ -304,15 +393,28 @@ export function WorkspaceDetailPage() {
           ) : null}
 
           {!isNotesPending && !isNotesError && workspaceNotes.length === 0 ? (
-            <NotesEmptyState onCreate={openCreateNote} />
+            <NotesEmptyState
+              onCreate={openCreateNote}
+              filtered={hasQuery}
+              onReset={filterApi.reset}
+            />
           ) : null}
 
           {!isNotesPending && !isNotesError && workspaceNotes.length > 0 ? (
-            <LearningNoteList
-              notes={workspaceNotes}
-              onEdit={openEditNote}
-              onDelete={setDeletingNote}
-            />
+            <>
+              <LearningNoteList
+                notes={workspaceNotes}
+                onEdit={openEditNote}
+                onDelete={setDeletingNote}
+              />
+              {notesPagination ? (
+                <PaginationControls
+                  page={notesPagination.page}
+                  totalPages={notesPagination.totalPages}
+                  onPageChange={filterApi.setPage}
+                />
+              ) : null}
+            </>
           ) : null}
         </>
       ) : null}

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { FilterBar } from "@/client/components/filter-bar";
+import { PaginationControls } from "@/client/components/pagination";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,
@@ -30,6 +31,8 @@ export function BragLogsPage() {
   const { data, isPending, isError, refetch } = useBragLogsQuery(
     filterApi.filters,
   );
+  const logs = data?.bragLogs ?? [];
+  const pagination = data?.pagination;
   const { data: tags = [] } = useTagsQuery();
   const { data: workspaces = [] } = useWorkspacesQuery();
   const [formOpen, setFormOpen] = useState(false);
@@ -71,7 +74,7 @@ export function BragLogsPage() {
 
       {isError ? <BragLogErrorState onRetry={() => void refetch()} /> : null}
 
-      {!isPending && !isError && data && data.length === 0 ? (
+      {!isPending && !isError && data && logs.length === 0 ? (
         filterApi.hasActiveFilters ? (
           <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -112,8 +115,17 @@ export function BragLogsPage() {
         )
       ) : null}
 
-      {!isPending && !isError && data && data.length > 0 ? (
-        <BragLogList logs={data} onEdit={openEdit} onDelete={setDeleting} />
+      {!isPending && !isError && logs.length > 0 ? (
+        <>
+          <BragLogList logs={logs} onEdit={openEdit} onDelete={setDeleting} />
+          {pagination ? (
+            <PaginationControls
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={filterApi.setPage}
+            />
+          ) : null}
+        </>
       ) : null}
 
       <BragLogFormDialog
