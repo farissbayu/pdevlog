@@ -1,6 +1,8 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  Clock,
+  FileText,
   Loader2,
   Pencil,
   Trash2,
@@ -22,6 +24,7 @@ import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-
 
 import { useDeleteLearningNoteMutation, useLearningNoteDetailQuery } from "./api";
 import { formatNoteDate } from "./learning-note-list";
+import { countWords, estimateReadingMinutes } from "./note-stats";
 import { NoteToc, extractHeadings } from "./note-toc";
 
 export function LearningNoteDetailPage() {
@@ -35,6 +38,16 @@ export function LearningNoteDetailPage() {
     () => (data ? extractHeadings(data.content) : []),
     [data],
   );
+
+  const stats = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+    return {
+      words: countWords(data.content),
+      readingMinutes: estimateReadingMinutes(data.content),
+    };
+  }, [data]);
 
   const confirmDelete = () => {
     if (!data) {
@@ -108,6 +121,19 @@ export function LearningNoteDetailPage() {
           <h1 className="text-2xl font-semibold">{data.title}</h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Updated {formatNoteDate(data.updatedAt)}</span>
+            {stats ? (
+              <>
+                <span className="inline-flex items-center gap-1">
+                  <Clock className="size-3.5" />
+                  {stats.readingMinutes} min read
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <FileText className="size-3.5" />
+                  {stats.words.toLocaleString()}{" "}
+                  {stats.words === 1 ? "word" : "words"}
+                </span>
+              </>
+            ) : null}
             {data.workspace ? (
               <WorkspaceTypeBadge type={data.workspace.type} />
             ) : null}
