@@ -5,3 +5,4 @@
 - insight
 - idea bank
 - keyboard shortcut for dump notes
+- telegram bot integration

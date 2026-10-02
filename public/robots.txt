@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /login
+Disallow: /dashboard
+Disallow: /workspaces
+Disallow: /brag-logs
+Disallow: /learning-notes
+Disallow: /tags
+Disallow: /settings
+Disallow: /api/
+
+Sitemap: https://pdevlog.farissbay.my.id/sitemap.xml
