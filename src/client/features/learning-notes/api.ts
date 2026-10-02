@@ -120,6 +120,8 @@ export function useCreateLearningNoteMutation() {
     mutationFn: createLearningNote,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LEARNING_NOTES_KEY });
+      queryClient.invalidateQueries({ queryKey: ["sparks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

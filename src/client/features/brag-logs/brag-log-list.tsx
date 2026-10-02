@@ -7,18 +7,19 @@ import {
 import { Link } from "react-router";
 
 import { Button } from "@/client/components/ui/button";
-import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
+import { WorkspaceLabel } from "@/client/features/workspaces/workspace-label";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
 
 import { TagChip, formatBragLogDate } from "./tag-chip";
 
 export function BragLogListSkeleton() {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((index) => (
         <li key={index} className="space-y-3 rounded-lg border bg-card p-5">
           <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
           <div className="h-3 w-3/5 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
           <div className="h-5 w-24 animate-pulse rounded-full bg-muted" />
         </li>
       ))}
@@ -53,36 +54,23 @@ type BragLogListProps = {
 
 export function BragLogList({ logs, onEdit, onDelete }: BragLogListProps) {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {logs.map((log) => (
         <li
           key={log.id}
-          className="group rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+          className="group flex flex-col gap-3 rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
         >
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2">
+            <div className="min-w-0 flex-1 space-y-2">
               <Link
                 to={`/brag-logs/${log.id}`}
                 className="block truncate font-medium hover:underline"
               >
                 {log.title}
               </Link>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <CalendarDays className="size-3.5" />
-                  {formatBragLogDate(log.occurredAt)}
-                </span>
-                {log.workspace ? (
-                  <WorkspaceTypeBadge type={log.workspace.type} />
-                ) : null}
-              </div>
-              {log.tags.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {log.tags.map((tag) => (
-                    <TagChip key={tag.id} tag={tag} />
-                  ))}
-                </div>
-              ) : null}
+              <p className="line-clamp-3 text-sm text-muted-foreground">
+                {log.result}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <Button
@@ -102,6 +90,23 @@ export function BragLogList({ logs, onEdit, onDelete }: BragLogListProps) {
                 <Trash2 className="size-4" />
               </Button>
             </div>
+          </div>
+
+          <div className="mt-auto space-y-2">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="size-3.5" />
+                {formatBragLogDate(log.occurredAt)}
+              </span>
+              <WorkspaceLabel workspace={log.workspace} />
+            </div>
+            {log.tags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {log.tags.map((tag) => (
+                  <TagChip key={tag.id} tag={tag} />
+                ))}
+              </div>
+            ) : null}
           </div>
         </li>
       ))}

@@ -46,6 +46,23 @@ Salin `database_id` yang dihasilkan ke `wrangler.jsonc` pada blok
 > bun run db:migrate:local
 > ```
 
+## 3b. Buat Bucket R2 (Lampiran)
+
+Lampiran gambar (mis. screenshot Spark) disimpan di R2 dan disajikan lewat
+endpoint backend (`/api/sparks/attachments/:id`) yang memeriksa kepemilikan,
+bukan lewat URL publik. Bucket ini bersifat universal untuk pdevlog — object
+di-key dengan folder `attachments/{userId}/{ownerType}/{ownerId}/...`, sehingga
+spark, learning note, dan brag log berbagi satu bucket.
+
+```bash
+bunx wrangler r2 bucket create pdevlog-storage
+```
+
+Binding `STORAGE` sudah dideklarasikan di `wrangler.jsonc` pada blok
+`r2_buckets`. Saat `bun run dev`, Wrangler memakai penyimpanan R2 lokal secara
+otomatis; tidak ada secret tambahan yang diperlukan (akses memakai binding, bukan
+API token S3).
+
 ## 4. Daftarkan Secrets ke Worker
 
 Jalankan satu per satu dan ketik nilainya saat diminta:

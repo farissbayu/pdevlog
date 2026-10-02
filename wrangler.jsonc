@@ -1,25 +1,39 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "pdevlog",
-  "compatibility_date": "2026-09-30",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "src/worker/index.ts",
-  "assets": {
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"],
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "pdevlog-db",
-      "database_id": "942aeb87-c2e8-4a6d-ba58-66cdd5990aae",
-      "migrations_dir": "drizzle",
-    },
-  ],
-  "vars": {
-    "OPENROUTER_MODEL": "openai/gpt-4o-mini",
-  },
-  "observability": {
-    "enabled": true,
-  },
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "pdevlog",
+	"compatibility_date": "2026-09-30",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "src/worker/index.ts",
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*"
+		],
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "pdevlog-db",
+			"database_id": "942aeb87-c2e8-4a6d-ba58-66cdd5990aae",
+			"migrations_dir": "drizzle",
+		},
+	],
+	"r2_buckets": [
+		{
+			"binding": "STORAGE",
+			"bucket_name": "pdevlog-storage",
+		},
+		{
+			"bucket_name": "pdevlog-storage",
+			"binding": "pdevlog_storage"
+		},
+	],
+	"vars": {
+		"OPENROUTER_MODEL": "openai/gpt-4o-mini",
+	},
+	"observability": {
+		"enabled": true,
+	},
 }

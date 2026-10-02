@@ -6,6 +6,7 @@ import {
   eq,
   gte,
   inArray,
+  isNull,
   like,
   lte,
   or,
@@ -16,6 +17,7 @@ import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
 import {
+  UNASSIGNED_WORKSPACE,
   noteFilterSchema,
   normalizeTagIds,
   type NoteFilterInput,
@@ -37,13 +39,22 @@ import { createDb, type Database } from "@/worker/db";
 import {
   learningNotes,
   noteTags,
+  sparks,
   tags,
   workspaces,
+  type AttachmentRow,
   type LearningNoteRow,
   type TagRow,
   type WorkspaceRow,
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import {
+  deleteOwnedAttachments,
+  loadAttachments,
+  loadAttachmentsByOwnerIds,
+  moveAttachments,
+  toAttachmentResponse,
+} from "@/worker/features/attachments/helpers";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
@@ -71,6 +82,7 @@ function toLearningNoteResponse(
   note: LearningNoteRow,
   workspace: WorkspaceRow | null,
   noteTagsList: TagRow[],
+  attachmentRows: AttachmentRow[] = [],
 ): LearningNoteResponse {
   return {
     id: note.id,
@@ -79,6 +91,7 @@ function toLearningNoteResponse(
     workspaceId: note.workspaceId,
     workspace: workspace ? toWorkspaceResponse(workspace) : null,
     tags: noteTagsList.map(toTagResponse),
+    attachments: attachmentRows.map(toAttachmentResponse),
     createdAt: new Date(note.createdAt).toISOString(),
     updatedAt: new Date(note.updatedAt).toISOString(),
   };
@@ -218,7 +231,9 @@ const listLearningNotes = async (
     }
   }
 
-  if (filters.workspace_id) {
+  if (filters.workspace_id === UNASSIGNED_WORKSPACE) {
+    conditions.push(isNull(learningNotes.workspaceId));
+  } else if (filters.workspace_id) {
     conditions.push(eq(learningNotes.workspaceId, filters.workspace_id));
   }
 
@@ -277,6 +292,12 @@ const listLearningNotes = async (
     rows.map((row) => row.note.id),
     userId,
   );
+  const attachmentsByNoteId = await loadAttachmentsByOwnerIds(
+    db,
+    "learning-note",
+    rows.map((row) => row.note.id),
+    userId,
+  );
 
   return c.json({
     learningNotes: rows.map((row) =>
@@ -284,6 +305,7 @@ const listLearningNotes = async (
         row.note,
         row.workspace,
         tagsByNoteId.get(row.note.id) ?? [],
+        attachmentsByNoteId.get(row.note.id) ?? [],
       ),
     ),
     pagination: buildPaginationMeta(total, page, pageSize),
@@ -307,6 +329,18 @@ const createLearningNoteHandler = async (
     return c.json({ error: "Tag not found" }, 404);
   }
 
+  const sparkId = input.spark_id;
+  if (sparkId) {
+    const [ownedSpark] = await db
+      .select({ id: sparks.id })
+      .from(sparks)
+      .where(and(eq(sparks.id, sparkId), eq(sparks.userId, userId)))
+      .limit(1);
+    if (!ownedSpark) {
+      return c.json({ error: "Spark not found" }, 404);
+    }
+  }
+
   const noteId = nanoid();
   const now = new Date();
 
@@ -327,9 +361,32 @@ const createLearningNoteHandler = async (
   if (workspaceId) {
     statements.push(touchWorkspaceStatement(db, workspaceId, userId, now));
   }
+  if (sparkId) {
+    statements.push(
+      db
+        .update(sparks)
+        .set({
+          status: "promoted",
+          promotedType: "learning-note",
+          promotedId: noteId,
+          updatedAt: now,
+        })
+        .where(and(eq(sparks.id, sparkId), eq(sparks.userId, userId))),
+    );
+  }
   await db.batch(
     statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
   );
+
+  if (sparkId && input.carry_attachments !== false) {
+    await moveAttachments(db, {
+      fromOwnerType: "spark",
+      fromOwnerId: sparkId,
+      toOwnerType: "learning-note",
+      toOwnerId: noteId,
+      userId,
+    });
+  }
 
   const [created] = await db
     .select()
@@ -339,9 +396,22 @@ const createLearningNoteHandler = async (
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
   const createdTags = await loadTagsForNote(db, created.id, userId);
+  const createdAttachments = await loadAttachments(
+    db,
+    "learning-note",
+    created.id,
+    userId,
+  );
 
   return c.json(
-    { learningNote: toLearningNoteResponse(created, workspace, createdTags) },
+    {
+      learningNote: toLearningNoteResponse(
+        created,
+        workspace,
+        createdTags,
+        createdAttachments,
+      ),
+    },
     201,
   );
 };
@@ -358,9 +428,20 @@ const getLearningNote = async (c: Context<AppEnv, "/:id">) => {
 
   const workspace = await loadWorkspace(db, note.workspaceId, userId);
   const noteTagsList = await loadTagsForNote(db, note.id, userId);
+  const attachmentRows = await loadAttachments(
+    db,
+    "learning-note",
+    note.id,
+    userId,
+  );
 
   return c.json({
-    learningNote: toLearningNoteResponse(note, workspace, noteTagsList),
+    learningNote: toLearningNoteResponse(
+      note,
+      workspace,
+      noteTagsList,
+      attachmentRows,
+    ),
   });
 };
 
@@ -436,9 +517,20 @@ const updateLearningNoteHandler = async (
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
   const updatedTags = await loadTagsForNote(db, updated.id, userId);
+  const updatedAttachments = await loadAttachments(
+    db,
+    "learning-note",
+    updated.id,
+    userId,
+  );
 
   return c.json({
-    learningNote: toLearningNoteResponse(updated, workspace, updatedTags),
+    learningNote: toLearningNoteResponse(
+      updated,
+      workspace,
+      updatedTags,
+      updatedAttachments,
+    ),
   });
 };
 
@@ -465,6 +557,14 @@ const deleteLearningNoteHandler = async (c: Context<AppEnv, "/:id">) => {
 
   await db.batch(
     statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
+  );
+
+  await deleteOwnedAttachments(
+    db,
+    c.env.STORAGE,
+    "learning-note",
+    id,
+    userId,
   );
 
   return c.json({ success: true });

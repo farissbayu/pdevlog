@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/client/components/ui/dialog";
-import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
+import { WorkspaceLabel } from "@/client/features/workspaces/workspace-label";
 
 import {
   useBragLogDetailQuery,
@@ -133,14 +133,7 @@ export function BragLogDetailPage() {
               <CalendarDays className="size-3.5" />
               {formatBragLogDate(data.occurredAt)}
             </span>
-            {data.workspace ? (
-              <WorkspaceTypeBadge type={data.workspace.type} />
-            ) : null}
-            {data.workspace ? (
-              <span className="text-muted-foreground">
-                {data.workspace.name}
-              </span>
-            ) : null}
+            <WorkspaceLabel workspace={data.workspace} />
           </div>
           {data.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">

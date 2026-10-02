@@ -4,6 +4,7 @@ import {
   FileText,
   FolderKanban,
   GraduationCap,
+  Sparkles,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
@@ -63,24 +64,40 @@ function StatCard({ stat }: { stat: StatCard }) {
 }
 
 function ActivityRow({ item }: { item: ActivityItem }) {
-  const isBragLog = item.type === "brag-log";
-  const Icon = isBragLog ? Trophy : BookOpen;
-  const href = isBragLog
-    ? `/brag-logs/${item.id}`
-    : `/learning-notes/${item.id}`;
+  const config =
+    item.type === "brag-log"
+      ? {
+          Icon: Trophy,
+          href: `/brag-logs/${item.id}`,
+          label: "Brag Log",
+          className:
+            "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        }
+      : item.type === "learning-note"
+        ? {
+            Icon: BookOpen,
+            href: `/learning-notes/${item.id}`,
+            label: "Learning Note",
+            className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          }
+        : {
+            Icon: Sparkles,
+            href: "/sparks",
+            label: "Spark",
+            className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+          };
+  const Icon = config.Icon;
 
   return (
     <li>
       <Link
-        to={href}
+        to={config.href}
         className="flex items-start gap-4 px-5 py-4 transition-colors hover:bg-accent"
       >
         <span
           className={cn(
             "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full",
-            isBragLog
-              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+            config.className,
           )}
         >
           <Icon className="size-4" />
@@ -94,7 +111,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono uppercase tracking-wide">
-              {isBragLog ? "Brag Log" : "Learning Note"}
+              {config.label}
             </span>
             {item.workspace ? (
               <>
@@ -135,8 +152,8 @@ function ActivitySkeleton() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[0, 1, 2].map((index) => (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((index) => (
           <div
             key={index}
             className="h-21 animate-pulse rounded-lg border bg-card"
@@ -180,6 +197,13 @@ export function DashboardPage() {
           to: "/learning-notes",
           className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
         },
+        {
+          label: "Sparks",
+          value: dashboard.data.stats.sparks,
+          icon: Sparkles,
+          to: "/sparks",
+          className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+        },
       ]
     : [];
 
@@ -221,7 +245,7 @@ export function DashboardPage() {
 
       {!isPending && !activity.isError ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <StatCard key={stat.label} stat={stat} />
             ))}
@@ -231,7 +255,7 @@ export function DashboardPage() {
             <div className="border-b px-5 py-4">
               <h2 className="font-medium">Recent activity</h2>
               <p className="text-sm text-muted-foreground">
-                Your latest brag logs and learning notes.
+                Your latest brag logs, learning notes, and sparks.
               </p>
             </div>
 

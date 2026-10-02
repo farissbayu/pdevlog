@@ -151,6 +151,92 @@ export const noteTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.learningNoteId, table.tagId] })],
 );
 
+export const sparkStatuses = ["open", "archived", "promoted"] as const;
+
+export type SparkStatus = (typeof sparkStatuses)[number];
+
+export const sparkPromotionTypes = [
+  "brag-log",
+  "learning-note",
+  "workspace",
+] as const;
+
+export type SparkPromotionType = (typeof sparkPromotionTypes)[number];
+
+export const sparks = sqliteTable(
+  "sparks",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    status: text("status", { enum: sparkStatuses })
+      .notNull()
+      .default("open"),
+    promotedType: text("promoted_type", { enum: sparkPromotionTypes }),
+    promotedId: text("promoted_id"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("sparks_user_id_status_created_at_idx").on(
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const sparkTags = sqliteTable(
+  "spark_tags",
+  {
+    sparkId: text("spark_id")
+      .notNull()
+      .references(() => sparks.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.sparkId, table.tagId] })],
+);
+
+export const attachmentOwnerTypes = [
+  "spark",
+  "learning-note",
+  "brag-log",
+] as const;
+
+export type AttachmentOwnerType = (typeof attachmentOwnerTypes)[number];
+
+export const attachments = sqliteTable(
+  "attachments",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ownerType: text("owner_type", { enum: attachmentOwnerTypes }).notNull(),
+    ownerId: text("owner_id").notNull(),
+    r2Key: text("r2_key").notNull(),
+    mimeType: text("mime_type").notNull(),
+    size: integer("size").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("attachments_owner_idx").on(table.ownerType, table.ownerId),
+    index("attachments_user_id_idx").on(table.userId),
+  ],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
@@ -165,3 +251,9 @@ export type LearningNoteRow = typeof learningNotes.$inferSelect;
 export type NewLearningNoteRow = typeof learningNotes.$inferInsert;
 export type NoteTagRow = typeof noteTags.$inferSelect;
 export type NewNoteTagRow = typeof noteTags.$inferInsert;
+export type SparkRow = typeof sparks.$inferSelect;
+export type NewSparkRow = typeof sparks.$inferInsert;
+export type SparkTagRow = typeof sparkTags.$inferSelect;
+export type NewSparkTagRow = typeof sparkTags.$inferInsert;
+export type AttachmentRow = typeof attachments.$inferSelect;
+export type NewAttachmentRow = typeof attachments.$inferInsert;

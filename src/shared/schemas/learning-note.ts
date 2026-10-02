@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { attachmentResponseSchema } from "./attachment";
 import { paginationMetaSchema } from "./pagination";
 import { tagResponseSchema } from "./tag";
 import { workspaceResponseSchema } from "./workspace";
@@ -11,7 +12,10 @@ const learningNoteFieldsSchema = z.object({
   tag_ids: z.array(z.string().min(1)).optional(),
 });
 
-export const createLearningNoteSchema = learningNoteFieldsSchema;
+export const createLearningNoteSchema = learningNoteFieldsSchema.extend({
+  spark_id: z.string().min(1).optional(),
+  carry_attachments: z.boolean().optional(),
+});
 
 export const updateLearningNoteSchema = learningNoteFieldsSchema.partial();
 
@@ -22,6 +26,7 @@ export const learningNoteResponseSchema = z.object({
   workspaceId: z.string().nullable(),
   workspace: workspaceResponseSchema.nullable(),
   tags: z.array(tagResponseSchema),
+  attachments: z.array(attachmentResponseSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

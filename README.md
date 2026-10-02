@@ -9,9 +9,11 @@ with a D1 (SQLite) database.
 
 - **Google sign-in** — OAuth 2.0 with PKCE via [Arctic](https://arctic.js.org/), session stored in a signed `httpOnly` JWT cookie.
 - **Workspaces** — group entries by context, typed as `work` or `learning`.
-- **Brag logs** — record achievements in **STAR** format (Situation, Task, Action, Result).
+- **Brag logs** — record achievements in **STAR** format (Situation, Task, Action, Result). Assign them to a workspace or keep them standalone; filter by "Unassigned" from the global Brag Logs page.
 - **AI STAR breakdown** — paste rough notes and let an LLM draft the STAR entry plus suggest applicable tags (via OpenRouter, structured output validated with Zod).
 - **Learning notes** — Markdown editor with live preview, syntax highlighting, and auto-generated table of contents.
+- **Sparks** — a frictionless capture inbox. Press `Cmd/Ctrl+K` (or the Spark button) anywhere to dump a link, idea, or screenshot. Recall old sparks with full-text/tag/date filters or a "Surprise me" random pick, then promote them into a learning note or brag log.
+- **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 6 per spark). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted.
 - **Tags** — cross-cut brag logs and notes; filter and search across them.
 - **Dashboard** — totals and recent activity at a glance.
 - **Export** — download brag logs as Markdown, optionally scoped to a date range.
@@ -25,6 +27,7 @@ with a D1 (SQLite) database.
 | Runtime    | Cloudflare Workers, D1 (SQLite) |
 | API        | [Hono](https://hono.dev/) + `@hono/zod-validator` |
 | Database   | [Drizzle ORM](https://orm.drizzle.team/) + Drizzle Kit |
+| Storage    | Cloudflare R2 (spark image attachments) |
 | Frontend   | React 19, React Router 7, TanStack Query |
 | UI         | Tailwind CSS 4, Radix UI, lucide-react |
 | Auth       | Arctic (Google OAuth), JWT sessions |
@@ -135,7 +138,7 @@ src/
     app/                   # router, layout, auth guard, providers
     components/            # shared + shadcn-style UI primitives
     features/              # auth, dashboard, brag-logs, learning-notes,
-                           # workspaces, tags, settings, landing
+                           # workspaces, tags, sparks, settings, landing
     lib/                   # api client, filter params, utils
   shared/schemas/          # Zod schemas shared by client and worker
   worker/                  # Hono API on Cloudflare Workers
@@ -148,7 +151,7 @@ drizzle/                   # generated SQL migrations
 tests/                     # vitest suites
 docs/                      # OAuth and deployment guides
 tasks/                     # CI/CD guide and backlog
-wrangler.jsonc             # Worker, D1, assets config
+wrangler.jsonc             # Worker, D1, R2, assets config
 ```
 
 ## Architecture Notes
@@ -190,6 +193,11 @@ requests require a valid session cookie.
 | GET/PUT/DELETE | `/learning-notes/:id` | Read/update/delete a note |
 | GET | `/dashboard` | Counts and recent workspaces |
 | GET | `/dashboard/recent` | Recent activity feed |
+| GET/POST | `/sparks` | List (filter/search/paginate) or create sparks |
+| GET | `/sparks/random` | Recall a random open spark |
+| GET/PUT/DELETE | `/sparks/:id` | Read/update/delete a spark |
+| POST | `/sparks/:id/attachments` | Upload an image attachment (multipart) |
+| GET/DELETE | `/sparks/attachments/:id` | Owner-checked image proxy / delete |
 | GET | `/export/brag-logs` | Export brag logs as Markdown |
 | GET | `/health` | Health check |
 

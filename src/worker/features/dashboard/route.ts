@@ -5,6 +5,7 @@ import type {
   ActivityItem,
   RecentActivityResponse,
 } from "@/shared/schemas/dashboard";
+import { sparkTitle } from "@/shared/schemas/spark";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
@@ -13,6 +14,8 @@ import {
   bragTags,
   learningNotes,
   noteTags,
+  sparkTags,
+  sparks,
   tags,
   workspaces,
   type TagRow,
@@ -86,11 +89,27 @@ async function loadNoteTags(
   return groupTags(rows);
 }
 
+async function loadSparkTags(
+  db: Database,
+  ids: string[],
+  userId: string,
+): Promise<Map<string, TagRow[]>> {
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ key: sparkTags.sparkId, tag: tags })
+    .from(sparkTags)
+    .innerJoin(tags, eq(sparkTags.tagId, tags.id))
+    .where(and(inArray(sparkTags.sparkId, ids), eq(tags.userId, userId)));
+  return groupTags(rows);
+}
+
 const getDashboard = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
 
-  const [workspaceCount, bragLogCount, learningNoteCount, recent] =
+  const [workspaceCount, bragLogCount, learningNoteCount, sparkCount, recent] =
     await Promise.all([
       db
         .select({ value: count() })
@@ -105,6 +124,10 @@ const getDashboard = async (c: Context<AppEnv>) => {
         .from(learningNotes)
         .where(eq(learningNotes.userId, userId)),
       db
+        .select({ value: count() })
+        .from(sparks)
+        .where(and(eq(sparks.userId, userId), eq(sparks.status, "open"))),
+      db
         .select()
         .from(workspaces)
         .where(eq(workspaces.userId, userId))
@@ -117,6 +140,7 @@ const getDashboard = async (c: Context<AppEnv>) => {
       workspaces: workspaceCount[0]?.value ?? 0,
       bragLogs: bragLogCount[0]?.value ?? 0,
       learningNotes: learningNoteCount[0]?.value ?? 0,
+      sparks: sparkCount[0]?.value ?? 0,
     },
     recentWorkspaces: recent.map(toWorkspaceResponse),
   });
@@ -126,7 +150,7 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
 
-  const [logRows, noteRows] = await Promise.all([
+  const [logRows, noteRows, sparkRows] = await Promise.all([
     db
       .select({ log: bragLogs, workspace: workspaces })
       .from(bragLogs)
@@ -153,9 +177,15 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
       .where(eq(learningNotes.userId, userId))
       .orderBy(desc(learningNotes.createdAt))
       .limit(RECENT_ACTIVITY_LIMIT),
+    db
+      .select()
+      .from(sparks)
+      .where(eq(sparks.userId, userId))
+      .orderBy(desc(sparks.createdAt))
+      .limit(RECENT_ACTIVITY_LIMIT),
   ]);
 
-  const [logTags, noteTagsMap] = await Promise.all([
+  const [logTags, noteTagsMap, sparkTagsMap] = await Promise.all([
     loadBragTags(
       db,
       logRows.map((row) => row.log.id),
@@ -164,6 +194,11 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
     loadNoteTags(
       db,
       noteRows.map((row) => row.note.id),
+      userId,
+    ),
+    loadSparkTags(
+      db,
+      sparkRows.map((row) => row.id),
       userId,
     ),
   ]);
@@ -184,6 +219,14 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
       date: new Date(row.note.createdAt).toISOString(),
       tags: (noteTagsMap.get(row.note.id) ?? []).map(toTagResponse),
       workspace: row.workspace ? toWorkspaceResponse(row.workspace) : null,
+    })),
+    ...sparkRows.map((row) => ({
+      id: row.id,
+      type: "spark" as const,
+      title: sparkTitle(row.content),
+      date: new Date(row.createdAt).toISOString(),
+      tags: (sparkTagsMap.get(row.id) ?? []).map(toTagResponse),
+      workspace: null,
     })),
   ];
 

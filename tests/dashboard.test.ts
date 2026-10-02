@@ -130,6 +130,7 @@ describe("dashboard summary", () => {
       workspaces: 2,
       bragLogs: 1,
       learningNotes: 1,
+      sparks: 0,
     });
     expect(body.recentWorkspaces).toHaveLength(2);
     expect(body.recentWorkspaces[0].id).toBe(withLog);

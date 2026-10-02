@@ -1,6 +1,5 @@
 import { FileText, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
 
 import { FilterBar } from "@/client/components/filter-bar";
 import { PaginationControls } from "@/client/components/pagination";
@@ -45,6 +44,11 @@ export function BragLogsPage() {
     setFormOpen(true);
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
   const confirmDelete = () => {
     if (!deleting) {
       return;
@@ -56,11 +60,17 @@ export function BragLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Brag Logs</h1>
-        <p className="text-sm text-muted-foreground">
-          Every achievement and bug resolution across your workspaces.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Brag Logs</h1>
+          <p className="text-sm text-muted-foreground">
+            Every achievement and bug resolution — in a workspace or standalone.
+          </p>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="size-4" />
+          New brag log
+        </Button>
       </div>
 
       <FilterBar
@@ -101,15 +111,13 @@ export function BragLogsPage() {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">No brag logs yet</h2>
               <p className="max-w-sm text-sm text-muted-foreground">
-                Open a workspace and log your wins with the STAR framework so
-                you never forget them.
+                Log your wins with the STAR framework — assign them to a
+                workspace or keep them standalone.
               </p>
             </div>
-            <Button asChild>
-              <Link to="/workspaces">
-                <Plus className="size-4" />
-                Go to workspaces
-              </Link>
+            <Button onClick={openCreate}>
+              <Plus className="size-4" />
+              New brag log
             </Button>
           </div>
         )

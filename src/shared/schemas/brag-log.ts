@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { attachmentResponseSchema } from "./attachment";
 import { paginationMetaSchema } from "./pagination";
 import { tagResponseSchema } from "./tag";
 import { workspaceResponseSchema } from "./workspace";
@@ -70,7 +71,10 @@ export const starBreakdownResponseSchema = z.object({
   breakdown: starBreakdownSchema,
 });
 
-export const createBragLogSchema = bragLogFieldsSchema;
+export const createBragLogSchema = bragLogFieldsSchema.extend({
+  spark_id: z.string().min(1).optional(),
+  carry_attachments: z.boolean().optional(),
+});
 
 export const updateBragLogSchema = bragLogFieldsSchema.partial();
 
@@ -85,6 +89,7 @@ export const bragLogResponseSchema = z.object({
   workspaceId: z.string().nullable(),
   workspace: workspaceResponseSchema.nullable(),
   tags: z.array(tagResponseSchema),
+  attachments: z.array(attachmentResponseSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

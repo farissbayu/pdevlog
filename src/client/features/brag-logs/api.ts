@@ -132,6 +132,8 @@ export function useCreateBragLogMutation() {
     mutationFn: createBragLog,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BRAG_LOGS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["sparks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

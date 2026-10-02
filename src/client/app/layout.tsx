@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronsLeft,
   ChevronsRight,
+  FileText,
   FolderKanban,
   LayoutDashboard,
   LogOut,
   Menu,
   Settings,
+  Sparkles,
   Tags,
 } from "lucide-react";
 import { useState } from "react";
@@ -25,6 +27,7 @@ import {
 } from "@/client/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/client/components/theme-toggle";
 import { meQueryOptions, useLogoutMutation } from "@/client/features/auth/api";
+import { SparksProvider } from "@/client/features/sparks/sparks-provider";
 import type { UserResponse } from "@/shared/schemas/auth";
 
 const SIDEBAR_STORAGE_KEY = "pdevlog-sidebar-collapsed";
@@ -36,6 +39,8 @@ const navItems: {
 }[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
+  { label: "Brag Logs", icon: FileText, to: "/brag-logs" },
+  { label: "Sparks", icon: Sparkles, to: "/sparks" },
   { label: "Tags", icon: Tags, to: "/tags" },
   { label: "Settings", icon: Settings, to: "/settings" },
 ];
@@ -168,7 +173,8 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-svh bg-background">
+    <SparksProvider>
+      <div className="min-h-svh bg-background">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
         <div className="flex items-center gap-2">
           <img
@@ -252,7 +258,8 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
-    </div>
+      </div>
+    </SparksProvider>
   );
 }
 

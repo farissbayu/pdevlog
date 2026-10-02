@@ -23,21 +23,25 @@ import {
   updateLearningNoteSchema,
   type LearningNoteResponse,
 } from "@/shared/schemas/learning-note";
+import { sparkTitle, type SparkResponse } from "@/shared/schemas/spark";
 
 import {
   useCreateLearningNoteMutation,
   useLearningNoteDetailQuery,
   useUpdateLearningNoteMutation,
 } from "./api";
+import { useSparkDetailQuery } from "@/client/features/sparks/api";
 
 type EditorMode = "edit" | "preview";
 
 function NoteEditorForm({
   note,
   presetWorkspaceId,
+  spark,
 }: {
   note: LearningNoteResponse | null;
   presetWorkspaceId: string;
+  spark?: SparkResponse | null;
 }) {
   const isEditing = Boolean(note);
   const navigate = useNavigate();
@@ -48,13 +52,19 @@ function NoteEditorForm({
   const { data: workspaces } = useWorkspacesQuery();
   const { data: tags } = useTagsQuery();
 
-  const [title, setTitle] = useState(note?.title ?? "");
-  const [content, setContent] = useState(note?.content ?? "");
+  const [title, setTitle] = useState(
+    note?.title ?? (spark ? sparkTitle(spark.content) : ""),
+  );
+  const [content, setContent] = useState(
+    note?.content ?? spark?.content ?? "",
+  );
   const [workspaceId, setWorkspaceId] = useState(
     note?.workspaceId ?? presetWorkspaceId ?? "",
   );
   const [tagIds, setTagIds] = useState<string[]>(
-    note?.tags.map((tag) => tag.id) ?? [],
+    note?.tags.map((tag) => tag.id) ??
+      spark?.tags.map((tag) => tag.id) ??
+      [],
   );
   const [mode, setMode] = useState<EditorMode>("edit");
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +72,11 @@ function NoteEditorForm({
   const backTo =
     isEditing && note
       ? `/learning-notes/${note.id}`
-      : presetWorkspaceId
-        ? `/workspaces/${presetWorkspaceId}`
-        : "/workspaces";
+      : spark
+        ? "/sparks"
+        : presetWorkspaceId
+          ? `/workspaces/${presetWorkspaceId}`
+          : "/workspaces";
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -75,6 +87,7 @@ function NoteEditorForm({
       content,
       workspace_id: workspaceId || null,
       tag_ids: tagIds,
+      ...(spark && !isEditing ? { spark_id: spark.id } : {}),
     };
 
     const onSuccess = (saved: LearningNoteResponse) => {
@@ -130,10 +143,12 @@ function NoteEditorForm({
 
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">
-          {isEditing ? "Edit note" : "New note"}
+          {isEditing ? "Edit note" : spark ? "Turn spark into a note" : "New note"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Write in Markdown and toggle the preview to see the rendered result.
+          {spark
+            ? "Your spark is pre-filled below. Flesh it out, then save it as a learning note."
+            : "Write in Markdown and toggle the preview to see the rendered result."}
         </p>
       </div>
 
@@ -270,8 +285,11 @@ export function NoteEditorPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const presetWorkspaceId = searchParams.get("workspace") ?? "";
+  const sparkId = searchParams.get("spark") ?? "";
   const isEditing = Boolean(id);
   const noteQuery = useLearningNoteDetailQuery(id ?? "");
+  const sparkQuery = useSparkDetailQuery(isEditing ? "" : sparkId);
+  const spark = sparkId ? (sparkQuery.data ?? null) : null;
 
   if (isEditing) {
     if (noteQuery.isPending) {
@@ -311,11 +329,24 @@ export function NoteEditorPage() {
     }
   }
 
+  if (!isEditing && sparkId && sparkQuery.isPending) {
+    return (
+      <div className="space-y-6">
+        <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+        <div className="h-7 w-1/3 animate-pulse rounded bg-muted" />
+        <div className="h-11 animate-pulse rounded bg-muted" />
+        <div className="h-9 w-1/2 animate-pulse rounded bg-muted" />
+        <div className="h-96 animate-pulse rounded-lg bg-muted" />
+      </div>
+    );
+  }
+
   return (
     <NoteEditorForm
-      key={noteQuery.data?.id ?? "new"}
+      key={noteQuery.data?.id ?? spark?.id ?? "new"}
       note={noteQuery.data ?? null}
       presetWorkspaceId={presetWorkspaceId}
+      spark={spark}
     />
   );
 }

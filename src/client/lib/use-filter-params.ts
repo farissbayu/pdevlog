@@ -7,6 +7,7 @@ export type FilterParams = {
   tagIds: string[];
   from: string;
   to: string;
+  status: string;
   page: number;
 };
 
@@ -19,6 +20,7 @@ export type FilterParamsApi = {
   toggleTag: (tagId: string) => void;
   setFrom: (value: string) => void;
   setTo: (value: string) => void;
+  setStatus: (value: string) => void;
   setPage: (value: number) => void;
   reset: () => void;
 };
@@ -31,8 +33,11 @@ export const EMPTY_FILTERS: FilterParams = {
   tagIds: [],
   from: "",
   to: "",
+  status: "",
   page: 1,
 };
+
+export const UNASSIGNED_WORKSPACE = "none";
 
 export function buildFilterQuery(
   filters: FilterParams,
@@ -43,6 +48,7 @@ export function buildFilterQuery(
   if (filters.tagIds.length > 0) query.tag_id = filters.tagIds;
   if (filters.from) query.from = filters.from;
   if (filters.to) query.to = filters.to;
+  if (filters.status) query.status = filters.status;
   query.page = String(filters.page);
   return query;
 }
@@ -62,6 +68,7 @@ function readFilters(params: URLSearchParams): FilterParams {
       .filter((value) => value.length > 0),
     from: params.get("from") ?? "",
     to: params.get("to") ?? "",
+    status: params.get("status") ?? "",
     page: readPage(params),
   };
 }
@@ -165,7 +172,8 @@ export function useFilterParams(): FilterParamsApi {
     filters.workspaceId.length > 0 ||
     filters.tagIds.length > 0 ||
     filters.from.length > 0 ||
-    filters.to.length > 0;
+    filters.to.length > 0 ||
+    filters.status.length > 0;
 
   return {
     filters,
@@ -176,6 +184,7 @@ export function useFilterParams(): FilterParamsApi {
     toggleTag,
     setFrom: (value) => updateParam("from", value),
     setTo: (value) => updateParam("to", value),
+    setStatus: (value) => updateParam("status", value),
     setPage,
     reset,
   };

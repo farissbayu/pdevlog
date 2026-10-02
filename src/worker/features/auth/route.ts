@@ -177,6 +177,17 @@ const deleteAccountHandler = async (c: Context<AppEnv>) => {
   }
 
   const db = createDb(c.env.DB);
+
+  const prefix = `attachments/${userId}/`;
+  let cursor: string | undefined;
+  do {
+    const listed = await c.env.STORAGE.list({ prefix, cursor });
+    if (listed.objects.length > 0) {
+      await c.env.STORAGE.delete(listed.objects.map((object) => object.key));
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
   await db.delete(users).where(eq(users.id, userId));
 
   clearSessionCookie(c);

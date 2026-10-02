@@ -14,6 +14,7 @@ export default defineConfig(async () => {
         wrangler: { configPath: "./wrangler.jsonc" },
         miniflare: {
           compatibilityDate: "2026-08-22",
+          r2Buckets: { STORAGE: "pdevlog-storage" },
           bindings: {
             GOOGLE_CLIENT_ID: "test-google-client-id",
             GOOGLE_CLIENT_SECRET: "test-google-client-secret",

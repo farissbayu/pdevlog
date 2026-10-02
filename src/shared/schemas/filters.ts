@@ -13,6 +13,8 @@ const dateSchema = z
 
 const searchSchema = z.string().trim().max(200).optional();
 
+export const UNASSIGNED_WORKSPACE = "none";
+
 const baseFilterSchema = z
   .object({
     q: searchSchema,
@@ -25,6 +27,16 @@ const baseFilterSchema = z
 
 export const logFilterSchema = baseFilterSchema;
 export const noteFilterSchema = baseFilterSchema;
+
+export const sparkFilterSchema = z
+  .object({
+    q: searchSchema,
+    tag_id: filterQueryValueSchema,
+    from: dateSchema,
+    to: dateSchema,
+    status: z.enum(["open", "archived", "promoted"]).optional(),
+  })
+  .extend(paginationQuerySchema.shape);
 
 export const workspaceFilterSchema = z
   .object({
@@ -40,6 +52,7 @@ export const tagFilterSchema = z
 
 export type LogFilterInput = z.infer<typeof logFilterSchema>;
 export type NoteFilterInput = z.infer<typeof noteFilterSchema>;
+export type SparkFilterInput = z.infer<typeof sparkFilterSchema>;
 export type WorkspaceFilterInput = z.infer<typeof workspaceFilterSchema>;
 export type TagFilterInput = z.infer<typeof tagFilterSchema>;
 

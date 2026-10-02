@@ -13,13 +13,14 @@ import {
   DropdownMenuTrigger,
 } from "@/client/components/ui/dropdown-menu";
 import type { FilterParamsApi } from "@/client/lib/use-filter-params";
+import { UNASSIGNED_WORKSPACE } from "@/client/lib/use-filter-params";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 
 type FilterBarProps = {
   api: FilterParamsApi;
   tags: TagResponse[];
-  workspaces: WorkspaceResponse[];
+  workspaces?: WorkspaceResponse[];
   searchPlaceholder?: string;
 };
 
@@ -30,7 +31,7 @@ export function FilterBar({
   searchPlaceholder = "Search...",
 }: FilterBarProps) {
   const { filters, hasActiveFilters } = api;
-  const selectedWorkspace = workspaces.find(
+  const selectedWorkspace = workspaces?.find(
     (workspace) => workspace.id === filters.workspaceId,
   );
 
@@ -45,33 +46,45 @@ export function FilterBar({
           className="min-w-[200px] flex-1"
         />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="justify-between">
-              {selectedWorkspace ? selectedWorkspace.name : "All workspaces"}
-              <ChevronDown className="size-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
-            <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={filters.workspaceId === ""}
-              onSelect={() => api.setWorkspaceId("")}
-            >
-              All workspaces
-            </DropdownMenuCheckboxItem>
-            {workspaces.map((workspace) => (
+        {workspaces ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="justify-between">
+                {filters.workspaceId === UNASSIGNED_WORKSPACE
+                  ? "Unassigned"
+                  : selectedWorkspace
+                    ? selectedWorkspace.name
+                    : "All workspaces"}
+                <ChevronDown className="size-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
+              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+              <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
-                key={workspace.id}
-                checked={filters.workspaceId === workspace.id}
-                onSelect={() => api.setWorkspaceId(workspace.id)}
+                checked={filters.workspaceId === ""}
+                onSelect={() => api.setWorkspaceId("")}
               >
-                {workspace.name}
+                All workspaces
               </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuCheckboxItem
+                checked={filters.workspaceId === UNASSIGNED_WORKSPACE}
+                onSelect={() => api.setWorkspaceId(UNASSIGNED_WORKSPACE)}
+              >
+                Unassigned
+              </DropdownMenuCheckboxItem>
+              {workspaces.map((workspace) => (
+                <DropdownMenuCheckboxItem
+                  key={workspace.id}
+                  checked={filters.workspaceId === workspace.id}
+                  onSelect={() => api.setWorkspaceId(workspace.id)}
+                >
+                  {workspace.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -122,6 +122,63 @@ describe("brag log isolation and relation ownership", () => {
     expect(list.bragLogs).toHaveLength(1);
   });
 
+  it("creates a standalone brag log and can assign it to a workspace later", async () => {
+    const token = await createUser("standalone-user");
+    const workspaceId = await createWorkspace(token, "Later workspace");
+
+    const standalone = await createBragLog(token);
+    expect(standalone.status).toBe(201);
+    expect(standalone.body.bragLog.workspaceId).toBeNull();
+
+    const assigned = await request(
+      `/api/brag-logs/${standalone.body.bragLog.id}`,
+      token,
+      {
+        method: "PUT",
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      },
+    );
+    expect(assigned.status).toBe(200);
+    const assignedBody = (await assigned.json()) as BragLogBody;
+    expect(assignedBody.bragLog.workspaceId).toBe(workspaceId);
+
+    const cleared = await request(
+      `/api/brag-logs/${standalone.body.bragLog.id}`,
+      token,
+      {
+        method: "PUT",
+        body: JSON.stringify({ workspace_id: null }),
+      },
+    );
+    const clearedBody = (await cleared.json()) as BragLogBody;
+    expect(clearedBody.bragLog.workspaceId).toBeNull();
+  });
+
+  it("filters standalone brag logs with workspace_id=none", async () => {
+    const token = await createUser("unassigned-user");
+    const workspaceId = await createWorkspace(token, "Assigned workspace");
+
+    await createBragLog(token, { workspace_id: workspaceId });
+    await createBragLog(token);
+
+    const unassigned = (await (
+      await request("/api/brag-logs?workspace_id=none", token)
+    ).json()) as { bragLogs: BragLogBody["bragLog"][] };
+    expect(unassigned.bragLogs).toHaveLength(1);
+    expect(unassigned.bragLogs[0].workspaceId).toBeNull();
+
+    const assigned = (await (
+      await request(`/api/brag-logs?workspace_id=${workspaceId}`, token)
+    ).json()) as { bragLogs: BragLogBody["bragLog"][] };
+    expect(assigned.bragLogs).toHaveLength(1);
+    expect(assigned.bragLogs[0].workspaceId).toBe(workspaceId);
+
+    const all = (await (
+      await request("/api/brag-logs", token)
+    ).json()) as { bragLogs: unknown[] };
+    expect(all.bragLogs).toHaveLength(2);
+  });
+
   it("touches the workspace updatedAt when a log is added", async () => {
     const token = await createUser("touch-user");
     const workspaceId = await createWorkspace(token, "Touched workspace");

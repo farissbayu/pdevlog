@@ -6,6 +6,7 @@ import {
   eq,
   gte,
   inArray,
+  isNull,
   lte,
   like,
   or,
@@ -15,6 +16,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
+import { UNASSIGNED_WORKSPACE } from "@/shared/schemas/filters";
 import {
   createBragLogSchema,
   starBreakdownInputSchema,
@@ -39,13 +41,22 @@ import { createDb, type Database } from "@/worker/db";
 import {
   bragLogs,
   bragTags,
+  sparks,
   tags,
   workspaces,
+  type AttachmentRow,
   type BragLogRow,
   type TagRow,
   type WorkspaceRow,
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import {
+  deleteOwnedAttachments,
+  loadAttachments,
+  loadAttachmentsByOwnerIds,
+  moveAttachments,
+  toAttachmentResponse,
+} from "@/worker/features/attachments/helpers";
 import {
   generateStarBreakdown,
   StarBreakdownError,
@@ -78,6 +89,7 @@ function toBragLogResponse(
   log: BragLogRow,
   workspace: WorkspaceRow | null,
   tags: TagRow[],
+  attachmentRows: AttachmentRow[] = [],
 ): BragLogResponse {
   return {
     id: log.id,
@@ -90,6 +102,7 @@ function toBragLogResponse(
     workspaceId: log.workspaceId,
     workspace: workspace ? toWorkspaceResponse(workspace) : null,
     tags: tags.map(toTagResponse),
+    attachments: attachmentRows.map(toAttachmentResponse),
     createdAt: new Date(log.createdAt).toISOString(),
     updatedAt: new Date(log.updatedAt).toISOString(),
   };
@@ -228,7 +241,9 @@ const listBragLogs = async (
     }
   }
 
-  if (filters.workspace_id) {
+  if (filters.workspace_id === UNASSIGNED_WORKSPACE) {
+    conditions.push(isNull(bragLogs.workspaceId));
+  } else if (filters.workspace_id) {
     conditions.push(eq(bragLogs.workspaceId, filters.workspace_id));
   }
 
@@ -284,6 +299,12 @@ const listBragLogs = async (
     rows.map((row) => row.log.id),
     userId,
   );
+  const attachmentsByLogId = await loadAttachmentsByOwnerIds(
+    db,
+    "brag-log",
+    rows.map((row) => row.log.id),
+    userId,
+  );
 
   return c.json({
     bragLogs: rows.map((row) =>
@@ -291,6 +312,7 @@ const listBragLogs = async (
         row.log,
         row.workspace,
         tagsByLogId.get(row.log.id) ?? [],
+        attachmentsByLogId.get(row.log.id) ?? [],
       ),
     ),
     pagination: buildPaginationMeta(total, page, pageSize),
@@ -312,6 +334,18 @@ const createBragLogHandler = async (
   }
   if (!(await validateTagOwnership(db, tagIds, userId))) {
     return c.json({ error: "Tag not found" }, 404);
+  }
+
+  const sparkId = input.spark_id;
+  if (sparkId) {
+    const [ownedSpark] = await db
+      .select({ id: sparks.id })
+      .from(sparks)
+      .where(and(eq(sparks.id, sparkId), eq(sparks.userId, userId)))
+      .limit(1);
+    if (!ownedSpark) {
+      return c.json({ error: "Spark not found" }, 404);
+    }
   }
 
   const logId = nanoid();
@@ -338,9 +372,32 @@ const createBragLogHandler = async (
   if (workspaceId) {
     statements.push(touchWorkspaceStatement(db, workspaceId, userId, now));
   }
+  if (sparkId) {
+    statements.push(
+      db
+        .update(sparks)
+        .set({
+          status: "promoted",
+          promotedType: "brag-log",
+          promotedId: logId,
+          updatedAt: now,
+        })
+        .where(and(eq(sparks.id, sparkId), eq(sparks.userId, userId))),
+    );
+  }
   await db.batch(
     statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
   );
+
+  if (sparkId && input.carry_attachments !== false) {
+    await moveAttachments(db, {
+      fromOwnerType: "spark",
+      fromOwnerId: sparkId,
+      toOwnerType: "brag-log",
+      toOwnerId: logId,
+      userId,
+    });
+  }
 
   const [created] = await db
     .select()
@@ -350,8 +407,24 @@ const createBragLogHandler = async (
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
   const createdTags = await loadTagsForLog(db, created.id, userId);
+  const createdAttachments = await loadAttachments(
+    db,
+    "brag-log",
+    created.id,
+    userId,
+  );
 
-  return c.json({ bragLog: toBragLogResponse(created, workspace, createdTags) }, 201);
+  return c.json(
+    {
+      bragLog: toBragLogResponse(
+        created,
+        workspace,
+        createdTags,
+        createdAttachments,
+      ),
+    },
+    201,
+  );
 };
 
 const getBragLog = async (c: Context<AppEnv, "/:id">) => {
@@ -366,8 +439,11 @@ const getBragLog = async (c: Context<AppEnv, "/:id">) => {
 
   const workspace = await loadWorkspace(db, log.workspaceId, userId);
   const logTags = await loadTagsForLog(db, log.id, userId);
+  const attachmentRows = await loadAttachments(db, "brag-log", log.id, userId);
 
-  return c.json({ bragLog: toBragLogResponse(log, workspace, logTags) });
+  return c.json({
+    bragLog: toBragLogResponse(log, workspace, logTags, attachmentRows),
+  });
 };
 
 const updateBragLogHandler = async (
@@ -444,8 +520,21 @@ const updateBragLogHandler = async (
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
   const updatedTags = await loadTagsForLog(db, updated.id, userId);
+  const updatedAttachments = await loadAttachments(
+    db,
+    "brag-log",
+    updated.id,
+    userId,
+  );
 
-  return c.json({ bragLog: toBragLogResponse(updated, workspace, updatedTags) });
+  return c.json({
+    bragLog: toBragLogResponse(
+      updated,
+      workspace,
+      updatedTags,
+      updatedAttachments,
+    ),
+  });
 };
 
 const deleteBragLogHandler = async (c: Context<AppEnv, "/:id">) => {
@@ -472,6 +561,8 @@ const deleteBragLogHandler = async (c: Context<AppEnv, "/:id">) => {
   await db.batch(
     statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
   );
+
+  await deleteOwnedAttachments(db, c.env.STORAGE, "brag-log", id, userId);
 
   return c.json({ success: true });
 };

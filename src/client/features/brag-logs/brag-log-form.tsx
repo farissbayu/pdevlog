@@ -13,13 +13,22 @@ import {
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
 import { MultiSelect } from "@/client/components/ui/multi-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/client/components/ui/select";
 import { Textarea } from "@/client/components/ui/textarea";
 import { useTagsQuery } from "@/client/features/tags/api";
+import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
   createBragLogSchema,
   updateBragLogSchema,
   type BragLogResponse,
 } from "@/shared/schemas/brag-log";
+import type { SparkResponse } from "@/shared/schemas/spark";
 
 import {
   useCreateBragLogMutation,
@@ -40,6 +49,7 @@ type BragLogFormDialogProps = {
   onOpenChange: (open: boolean) => void;
   bragLog?: BragLogResponse | null;
   workspaceId?: string;
+  spark?: SparkResponse | null;
 };
 
 export function BragLogFormDialog({
@@ -47,6 +57,7 @@ export function BragLogFormDialog({
   onOpenChange,
   bragLog,
   workspaceId,
+  spark,
 }: BragLogFormDialogProps) {
   const isEditing = Boolean(bragLog);
   const createMutation = useCreateBragLogMutation();
@@ -54,6 +65,7 @@ export function BragLogFormDialog({
   const mutation = isEditing ? updateMutation : createMutation;
 
   const { data: tags } = useTagsQuery();
+  const { data: workspaces = [] } = useWorkspacesQuery();
   const generateMutation = useGenerateStarBreakdownMutation();
 
   const [sourceContent, setSourceContent] = useState("");
@@ -63,6 +75,7 @@ export function BragLogFormDialog({
   const [action, setAction] = useState("");
   const [result, setResult] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -71,17 +84,22 @@ export function BragLogFormDialog({
     if (!open) {
       return;
     }
-    setSourceContent("");
+    setSourceContent(bragLog ? "" : (spark?.content ?? ""));
     setTitle(bragLog?.title ?? "");
     setSituation(bragLog?.situation ?? "");
     setTask(bragLog?.task ?? "");
     setAction(bragLog?.action ?? "");
     setResult(bragLog?.result ?? "");
-    setTagIds(bragLog?.tags.map((tag) => tag.id) ?? []);
+    setTagIds(
+      bragLog?.tags.map((tag) => tag.id) ??
+        spark?.tags.map((tag) => tag.id) ??
+        [],
+    );
+    setSelectedWorkspaceId(bragLog?.workspaceId ?? workspaceId ?? "");
     setShowDetails(Boolean(bragLog));
     setError(null);
     setAiError(null);
-  }, [open, bragLog]);
+  }, [open, bragLog, spark, workspaceId]);
 
   const handleGenerate = () => {
     setAiError(null);
@@ -117,9 +135,13 @@ export function BragLogFormDialog({
       action: action.trim(),
       result: result.trim(),
       tag_ids: tagIds,
+      workspace_id: selectedWorkspaceId || null,
       ...(isEditing
         ? {}
-        : { occurred_at: todayIso(), workspace_id: workspaceId ?? null }),
+        : {
+            occurred_at: todayIso(),
+            ...(spark ? { spark_id: spark.id } : {}),
+          }),
     };
 
     if (isEditing && bragLog) {
@@ -191,9 +213,17 @@ export function BragLogFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit brag log" : "New brag log"}</DialogTitle>
+          <DialogTitle>
+            {isEditing
+              ? "Edit brag log"
+              : spark
+                ? "Turn spark into a brag log"
+                : "New brag log"}
+          </DialogTitle>
           <DialogDescription>
-            Capture an achievement or bug fix using the STAR framework.
+            {spark
+              ? "Use your spark as a starting point, then generate or fill the STAR fields."
+              : "Capture an achievement or bug fix using the STAR framework."}
           </DialogDescription>
         </DialogHeader>
 
@@ -282,6 +312,31 @@ export function BragLogFormDialog({
               ))}
             </>
           ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="brag-workspace">Workspace</Label>
+            <Select
+              value={selectedWorkspaceId || "none"}
+              onValueChange={(value) =>
+                setSelectedWorkspaceId(value === "none" ? "" : value)
+              }
+            >
+              <SelectTrigger id="brag-workspace" className="w-full">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No workspace (standalone)</SelectItem>
+                {workspaces.map((workspace) => (
+                  <SelectItem key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Assign this log to a workspace for context, or keep it standalone.
+            </p>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="brag-tags">Tags</Label>
