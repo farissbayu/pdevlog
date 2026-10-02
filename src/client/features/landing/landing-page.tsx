@@ -42,7 +42,7 @@ const features: Feature[] = [
   },
   {
     icon: GraduationCap,
-    title: "Learning notes",
+    title: "Notes",
     description:
       "Write in Markdown with live preview, syntax highlighting and a table of contents.",
     accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -134,7 +134,7 @@ function HeroPreview() {
               },
               {
                 title: "Notes on Postgres indexing",
-                kind: "Learning Note",
+                kind: "Note",
                 tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
                 icon: GraduationCap,
               },

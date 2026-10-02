@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   FileText,
+  FolderKanban,
   Loader2,
   NotebookPen,
   Pencil,
@@ -30,12 +31,12 @@ import {
   BragLogList,
   BragLogListSkeleton,
 } from "@/client/features/brag-logs/brag-log-list";
-import { useLearningNotesQuery } from "@/client/features/learning-notes/api";
+import { useNotesQuery } from "@/client/features/notes/api";
 import {
-  LearningNoteErrorState,
-  LearningNoteList,
-  LearningNoteListSkeleton,
-} from "@/client/features/learning-notes/learning-note-list";
+  NoteErrorState,
+  NoteList,
+  NoteListSkeleton,
+} from "@/client/features/notes/note-list";
 import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
 
@@ -109,7 +110,7 @@ function NotesEmptyState({
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">No matching notes</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
-            No learning notes in this workspace match your search.
+            No notes in this workspace match your search.
           </p>
         </div>
         <Button variant="outline" onClick={onReset}>
@@ -125,10 +126,10 @@ function NotesEmptyState({
         <NotebookPen className="size-6 text-muted-foreground" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">No learning notes yet</h2>
+        <h2 className="text-lg font-semibold">No notes yet</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Capture what you learn about this workspace in Markdown, with code
-          blocks, tables, and tags.
+          Capture notes about this workspace in Markdown, with code blocks,
+          tables, and tags.
         </p>
       </div>
       <Button onClick={onCreate}>
@@ -159,7 +160,7 @@ export function WorkspaceDetailPage() {
     isPending: isNotesPending,
     isError: isNotesError,
     refetch: refetchNotes,
-  } = useLearningNotesQuery({ ...filterApi.filters, workspaceId: id });
+  } = useNotesQuery({ ...filterApi.filters, workspaceId: id });
 
   const deleteMutation = useDeleteBragLogMutation();
   const workspaceDeleteMutation = useDeleteWorkspaceMutation();
@@ -181,7 +182,7 @@ export function WorkspaceDetailPage() {
   };
 
   const openCreateNote = () => {
-    navigate(`/learning-notes/new?workspace=${id}`);
+    navigate(`/notes/new?workspace=${id}`);
   };
 
   const confirmDelete = () => {
@@ -239,7 +240,7 @@ export function WorkspaceDetailPage() {
 
   const workspaceLogs = logsData?.bragLogs ?? [];
   const logsPagination = logsData?.pagination;
-  const workspaceNotes = notesData?.learningNotes ?? [];
+  const workspaceNotes = notesData?.notes ?? [];
   const notesPagination = notesData?.pagination;
   const hasQuery = filterApi.filters.q.trim().length > 0;
 
@@ -258,7 +259,10 @@ export function WorkspaceDetailPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold">{workspace.name}</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
+              <FolderKanban className="size-6 text-primary" />
+              {workspace.name}
+            </h1>
             <WorkspaceTypeBadge type={workspace.type} />
           </div>
           <p className="max-w-2xl text-sm text-muted-foreground">
@@ -343,13 +347,12 @@ export function WorkspaceDetailPage() {
         </>
       ) : null}
 
-      {workspace.type === "learning" ? (
-        <>
-          <div className="flex items-start justify-between gap-4">
+      <>
+        <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Learning notes</h2>
+              <h2 className="text-lg font-semibold">Notes</h2>
               <p className="text-sm text-muted-foreground">
-                Markdown notes capturing what you learn in this workspace.
+                Markdown notes for this workspace.
               </p>
             </div>
             <Button onClick={openCreateNote}>
@@ -361,15 +364,15 @@ export function WorkspaceDetailPage() {
           <SearchInput
             value={filterApi.query}
             onChange={(event) => filterApi.setQuery(event.target.value)}
-            placeholder="Search learning notes..."
-            aria-label="Search learning notes"
+            placeholder="Search notes..."
+            aria-label="Search notes"
             className="max-w-sm"
           />
 
-          {isNotesPending ? <LearningNoteListSkeleton /> : null}
+          {isNotesPending ? <NoteListSkeleton /> : null}
 
           {isNotesError ? (
-            <LearningNoteErrorState onRetry={() => void refetchNotes()} />
+            <NoteErrorState onRetry={() => void refetchNotes()} />
           ) : null}
 
           {!isNotesPending && !isNotesError && workspaceNotes.length === 0 ? (
@@ -382,7 +385,7 @@ export function WorkspaceDetailPage() {
 
           {!isNotesPending && !isNotesError && workspaceNotes.length > 0 ? (
             <>
-              <LearningNoteList notes={workspaceNotes} />
+              <NoteList notes={workspaceNotes} />
               {notesPagination ? (
                 <PaginationControls
                   page={notesPagination.page}
@@ -392,8 +395,7 @@ export function WorkspaceDetailPage() {
               ) : null}
             </>
           ) : null}
-        </>
-      ) : null}
+      </>
 
       <BragLogFormDialog
         open={formOpen}

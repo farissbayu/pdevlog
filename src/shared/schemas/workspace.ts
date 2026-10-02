@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { paginationMetaSchema } from "./pagination";
 
-export const workspaceTypeSchema = z.enum(["work", "learning"]);
+export const workspaceTypeSchema = z.enum(["work", "learning", "general"]);
 
 const workspaceNameSchema = z.string().trim().min(1).max(100);
 const workspaceDescriptionSchema = z.string().trim().max(2000);

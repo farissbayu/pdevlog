@@ -80,14 +80,14 @@ async function createBragLog(
 }
 
 type NoteBody = {
-  learningNote: { id: string; title: string };
+  note: { id: string; title: string };
 };
 
 async function createNote(
   token: string,
   overrides: Record<string, unknown> = {},
 ): Promise<void> {
-  await request("/api/learning-notes", token, {
+  await request("/api/notes", token, {
     method: "POST",
     body: JSON.stringify({
       title: "D1 indexes deep dive",
@@ -98,7 +98,7 @@ async function createNote(
 }
 
 type LogList = { bragLogs: BragLogBody["bragLog"][] };
-type NoteList = { learningNotes: NoteBody["learningNote"][] };
+type NoteList = { notes: NoteBody["note"][] };
 
 async function listLogs(
   token: string,
@@ -112,10 +112,10 @@ async function listLogs(
 async function listNotes(
   token: string,
   query = "",
-): Promise<NoteBody["learningNote"][]> {
-  const response = await request(`/api/learning-notes${query}`, token);
+): Promise<NoteBody["note"][]> {
+  const response = await request(`/api/notes${query}`, token);
   const body = (await response.json()) as NoteList;
-  return body.learningNotes;
+  return body.notes;
 }
 
 describe("brag log search and filter", () => {
@@ -175,7 +175,7 @@ describe("brag log search and filter", () => {
   });
 });
 
-describe("learning note search and filter", () => {
+describe("note search and filter", () => {
   it("searches title and content case-insensitively", async () => {
     const token = await createUser("filter-note-search");
     await createNote(token, {

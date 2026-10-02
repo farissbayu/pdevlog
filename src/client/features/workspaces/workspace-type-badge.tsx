@@ -1,4 +1,4 @@
-import { Briefcase, GraduationCap } from "lucide-react";
+import { Boxes, Briefcase, GraduationCap } from "lucide-react";
 import { cn } from "cn";
 
 import type { WorkspaceTypeInput } from "@/shared/schemas/workspace";
@@ -16,6 +16,11 @@ const typeConfig: Record<
     label: "Learning",
     icon: GraduationCap,
     className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  general: {
+    label: "General",
+    icon: Boxes,
+    className: "bg-slate-500/10 text-slate-600 dark:text-slate-400",
   },
 };
 

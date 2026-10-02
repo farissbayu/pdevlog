@@ -7,7 +7,7 @@ import { tagResponseSchema } from "./tag";
 export const sparkStatusSchema = z.enum(["open", "archived", "promoted"]);
 export const sparkPromotionTypeSchema = z.enum([
   "brag-log",
-  "learning-note",
+  "note",
   "workspace",
 ]);
 

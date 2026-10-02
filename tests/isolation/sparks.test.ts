@@ -217,12 +217,12 @@ describe("spark isolation, recall and promotion", () => {
     expect(attempt.status).toBe(404);
   });
 
-  it("promotes a spark into a learning note atomically", async () => {
+  it("promotes a spark into a note atomically", async () => {
     const token = await createUser("spark-promote-note");
     const created = await createSpark(token, { content: "Learn about CRDTs" });
     const sparkId = created.body.spark.id;
 
-    const note = await request("/api/learning-notes", token, {
+    const note = await request("/api/notes", token, {
       method: "POST",
       body: JSON.stringify({
         title: "CRDTs",
@@ -231,13 +231,13 @@ describe("spark isolation, recall and promotion", () => {
       }),
     });
     expect(note.status).toBe(201);
-    const noteBody = (await note.json()) as { learningNote: { id: string } };
+    const noteBody = (await note.json()) as { note: { id: string } };
 
     const spark = await request(`/api/sparks/${sparkId}`, token);
     const sparkBody = (await spark.json()) as SparkBody;
     expect(sparkBody.spark.status).toBe("promoted");
-    expect(sparkBody.spark.promotedType).toBe("learning-note");
-    expect(sparkBody.spark.promotedId).toBe(noteBody.learningNote.id);
+    expect(sparkBody.spark.promotedType).toBe("note");
+    expect(sparkBody.spark.promotedId).toBe(noteBody.note.id);
   });
 
   it("promotes a spark into a brag log atomically", async () => {
@@ -274,7 +274,7 @@ describe("spark isolation, recall and promotion", () => {
     const created = await createSpark(tokenA);
     const sparkId = created.body.spark.id;
 
-    const attempt = await request("/api/learning-notes", tokenB, {
+    const attempt = await request("/api/notes", tokenB, {
       method: "POST",
       body: JSON.stringify({
         title: "Hijack",
@@ -284,10 +284,10 @@ describe("spark isolation, recall and promotion", () => {
     });
     expect(attempt.status).toBe(404);
 
-    const listB = (await (await request("/api/learning-notes", tokenB)).json()) as {
-      learningNotes: unknown[];
+    const listB = (await (await request("/api/notes", tokenB)).json()) as {
+      notes: unknown[];
     };
-    expect(listB.learningNotes).toHaveLength(0);
+    expect(listB.notes).toHaveLength(0);
   });
 
   it("rejects unauthenticated access to sparks", async () => {

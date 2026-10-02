@@ -4,6 +4,7 @@ import {
   FileText,
   FolderKanban,
   GraduationCap,
+  LayoutDashboard,
   Sparkles,
   Trophy,
   type LucideIcon,
@@ -73,11 +74,11 @@ function ActivityRow({ item }: { item: ActivityItem }) {
           className:
             "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
         }
-      : item.type === "learning-note"
+      : item.type === "note"
         ? {
             Icon: BookOpen,
-            href: `/learning-notes/${item.id}`,
-            label: "Learning Note",
+            href: `/notes/${item.id}`,
+            label: "Note",
             className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
           }
         : {
@@ -191,10 +192,10 @@ export function DashboardPage() {
           className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
         },
         {
-          label: "Learning Notes",
-          value: dashboard.data.stats.learningNotes,
+          label: "Notes",
+          value: dashboard.data.stats.notes,
           icon: GraduationCap,
-          to: "/learning-notes",
+          to: "/notes",
           className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
         },
         {
@@ -212,7 +213,10 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <LayoutDashboard className="size-6 text-primary" />
+          Dashboard
+        </h1>
         <p className="text-sm text-muted-foreground">
           Your latest activity at a glance.
         </p>
@@ -255,7 +259,7 @@ export function DashboardPage() {
             <div className="border-b px-5 py-4">
               <h2 className="font-medium">Recent activity</h2>
               <p className="text-sm text-muted-foreground">
-                Your latest brag logs, learning notes, and sparks.
+                Your latest brag logs, notes, and sparks.
               </p>
             </div>
 
@@ -265,15 +269,14 @@ export function DashboardPage() {
                   <Trophy className="size-5 text-muted-foreground" />
                 </div>
                 <p className="max-w-sm text-sm text-muted-foreground">
-                  No activity yet. Start by logging a brag log or a learning
-                  note!
+                  No activity yet. Start by logging a brag log or a note!
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Button asChild size="sm">
                     <Link to="/brag-logs">Log a brag</Link>
                   </Button>
                   <Button asChild size="sm" variant="outline">
-                    <Link to="/learning-notes">Write a note</Link>
+                    <Link to="/notes">Write a note</Link>
                   </Button>
                 </div>
               </div>

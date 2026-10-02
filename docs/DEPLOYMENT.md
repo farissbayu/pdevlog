@@ -52,7 +52,7 @@ Lampiran gambar (mis. screenshot Spark) disimpan di R2 dan disajikan lewat
 endpoint backend (`/api/sparks/attachments/:id`) yang memeriksa kepemilikan,
 bukan lewat URL publik. Bucket ini bersifat universal untuk pdevlog — object
 di-key dengan folder `attachments/{userId}/{ownerType}/{ownerId}/...`, sehingga
-spark, learning note, dan brag log berbagi satu bucket.
+spark, note, dan brag log berbagi satu bucket.
 
 ```bash
 bunx wrangler r2 bucket create pdevlog-storage
@@ -85,6 +85,15 @@ bun run db:migrate:remote
 Setara dengan
 `wrangler d1 migrations apply pdevlog-db --remote`. Skrip migrasi di `drizzle/`
 bersifat aditif sehingga aman dijalankan pada database yang sudah berisi data.
+
+Migrasi rename (`learning_notes` → `notes`) bersifat **data-preserving**: ia
+me-rename tabel/kolom lewat `ALTER TABLE` dan menulis ulang nilai enum tersimpan
+(`attachments.owner_type` dan `sparks.promoted_type` dari `learning-note`
+menjadi `note`) dengan `UPDATE`, bukan drop-and-recreate. Jalankan
+`bun run db:migrate:remote` **sebelum** men-deploy Worker baru agar Worker lama
+tidak menulis ke skema usang. Karena rename tidak dapat dibalik secara trivial,
+ambil snapshot atau `wrangler d1 export` lebih dulu sebelum menerapkannya ke
+produksi.
 
 ## 6. Build & Deploy
 

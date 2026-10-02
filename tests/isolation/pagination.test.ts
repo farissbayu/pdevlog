@@ -87,7 +87,7 @@ async function createNote(
   token: string,
   overrides: Record<string, unknown> = {},
 ): Promise<void> {
-  await request("/api/learning-notes", token, {
+  await request("/api/notes", token, {
     method: "POST",
     body: JSON.stringify({
       title: "D1 indexes deep dive",
@@ -131,12 +131,12 @@ async function listLogs(token: string, query = ""): Promise<LogList> {
 }
 
 type NoteList = {
-  learningNotes: { id: string; title: string }[];
+  notes: { id: string; title: string }[];
   pagination: PaginationMeta;
 };
 
 async function listNotes(token: string, query = ""): Promise<NoteList> {
-  const response = await request(`/api/learning-notes${query}`, token);
+  const response = await request(`/api/notes${query}`, token);
   return (await response.json()) as NoteList;
 }
 
@@ -244,7 +244,7 @@ describe("workspace-scoped pagination", () => {
     expect(result.bragLogs[0].title).toBe("Docker fix");
   });
 
-  it("paginates learning notes within a workspace", async () => {
+  it("paginates notes within a workspace", async () => {
     const token = await createUser("page-scoped-notes");
     const workspace = await createWorkspace(token, "Belajar", "learning");
     const other = await createWorkspace(token, "Other", "learning");
@@ -261,14 +261,14 @@ describe("workspace-scoped pagination", () => {
       token,
       `?workspace_id=${workspace}&page=1&page_size=2`,
     );
-    expect(page1.learningNotes).toHaveLength(2);
+    expect(page1.notes).toHaveLength(2);
     expect(page1.pagination).toMatchObject({ total: 5, totalPages: 3 });
 
     const page3 = await listNotes(
       token,
       `?workspace_id=${workspace}&page=3&page_size=2`,
     );
-    expect(page3.learningNotes).toHaveLength(1);
+    expect(page3.notes).toHaveLength(1);
   });
 });
 

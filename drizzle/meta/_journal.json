@@ -64,6 +64,20 @@
       "when": 1790927553200,
       "tag": "0008_shallow_maximus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790933239537,
+      "tag": "0009_notes_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790933955210,
+      "tag": "0010_note_sources",
+      "breakpoints": true
     }
   ]
 }

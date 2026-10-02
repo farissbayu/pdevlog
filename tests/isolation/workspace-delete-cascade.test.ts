@@ -82,12 +82,12 @@ async function createBragLog(
   return body.bragLog.id;
 }
 
-async function createLearningNote(
+async function createNote(
   token: string,
   workspaceId: string,
   tagId: string,
 ): Promise<string> {
-  const response = await request("/api/learning-notes", token, {
+  const response = await request("/api/notes", token, {
     method: "POST",
     body: JSON.stringify({
       title: "Learned a thing",
@@ -96,19 +96,19 @@ async function createLearningNote(
       tag_ids: [tagId],
     }),
   });
-  const body = (await response.json()) as { learningNote: { id: string } };
-  return body.learningNote.id;
+  const body = (await response.json()) as { note: { id: string } };
+  return body.note.id;
 }
 
 describe("workspace deletion cascade", () => {
-  it("removes the workspace's brag logs and learning notes but keeps tags", async () => {
+  it("removes the workspace's brag logs and notes but keeps tags", async () => {
     const token = await createUser("ws-cascade");
     const workspaceId = await createWorkspace(token, "work");
     const otherWorkspaceId = await createWorkspace(token, "other");
     const tagId = await createTag(token, "shared");
 
     const bragLogId = await createBragLog(token, workspaceId, tagId);
-    const noteId = await createLearningNote(token, workspaceId, tagId);
+    const noteId = await createNote(token, workspaceId, tagId);
     const otherBragLogId = await createBragLog(
       token,
       otherWorkspaceId,
@@ -131,7 +131,7 @@ describe("workspace deletion cascade", () => {
     ).toBe(0);
     expect(
       await countRows(
-        "SELECT COUNT(*) AS count FROM learning_notes WHERE workspace_id = ?",
+        "SELECT COUNT(*) AS count FROM notes WHERE workspace_id = ?",
         workspaceId,
       ),
     ).toBe(0);
@@ -143,7 +143,7 @@ describe("workspace deletion cascade", () => {
     ).toBe(0);
     expect(
       await countRows(
-        "SELECT COUNT(*) AS count FROM note_tags WHERE learning_note_id = ?",
+        "SELECT COUNT(*) AS count FROM note_tags WHERE note_id = ?",
         noteId,
       ),
     ).toBe(0);

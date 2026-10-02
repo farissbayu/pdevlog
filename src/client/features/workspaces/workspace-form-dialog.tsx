@@ -26,6 +26,7 @@ import { useCreateWorkspaceMutation, useUpdateWorkspaceMutation } from "./api";
 const typeOptions: { value: WorkspaceTypeInput; label: string }[] = [
   { value: "work", label: "Work" },
   { value: "learning", label: "Learning" },
+  { value: "general", label: "General" },
 ];
 
 type WorkspaceFormDialogProps = {
@@ -106,7 +107,7 @@ export function WorkspaceFormDialog({
           <DialogDescription>
             {isEditing
               ? "Update the details of this workspace."
-              : "Group your brag logs and learning notes under a workspace."}
+              : "Group your brag logs and notes under a workspace."}
           </DialogDescription>
         </DialogHeader>
 
@@ -137,7 +138,7 @@ export function WorkspaceFormDialog({
 
           <div className="space-y-2">
             <Label>Type</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {typeOptions.map((option) => (
                 <button
                   key={option.value}

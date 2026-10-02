@@ -136,8 +136,8 @@ export function SparkList({
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {sparks.map((spark) => {
         const promotedHref =
-          spark.promotedType === "learning-note"
-            ? `/learning-notes/${spark.promotedId}`
+          spark.promotedType === "note"
+            ? `/notes/${spark.promotedId}`
             : spark.promotedType === "brag-log"
               ? `/brag-logs/${spark.promotedId}`
               : null;
@@ -218,7 +218,7 @@ export function SparkList({
                 className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
               >
                 <ArrowUpRight className="size-3.5" />
-                Promoted to {spark.promotedType === "brag-log" ? "brag log" : "learning note"}
+                Promoted to {spark.promotedType === "brag-log" ? "brag log" : "note"}
               </Link>
             ) : null}
 

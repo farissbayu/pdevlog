@@ -1,4 +1,4 @@
-import { AlertTriangle, FolderPlus, Plus, SearchX } from "lucide-react";
+import { AlertTriangle, FolderKanban, FolderPlus, Plus, SearchX } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
@@ -38,7 +38,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <div className="space-y-1">
         <h2 className="text-lg font-semibold">Create your first workspace</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Workspaces group your brag logs and learning notes. Start with a work
+          Workspaces group your brag logs and notes. Start with a work
           project or a learning track.
         </p>
       </div>
@@ -121,7 +121,10 @@ export function WorkspacesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Workspaces</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <FolderKanban className="size-6 text-primary" />
+            Workspaces
+          </h1>
           <p className="text-sm text-muted-foreground">
             Manage the workspaces that group your logs and notes.
           </p>

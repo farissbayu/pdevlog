@@ -207,7 +207,7 @@ describe("spark image attachments", () => {
     ).toBe(404);
   });
 
-  it("carries attachments when promoting a spark into a learning note", async () => {
+  it("carries attachments when promoting a spark into a note", async () => {
     const token = await createUser("att-promote");
     const sparkId = await createSpark(token, "Promote me");
     const uploaded = await upload(token, sparkId, pngFile());
@@ -215,7 +215,7 @@ describe("spark image attachments", () => {
       attachment: { id: string };
     };
 
-    const note = await request("/api/learning-notes", token, {
+    const note = await request("/api/notes", token, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -226,10 +226,17 @@ describe("spark image attachments", () => {
     });
     expect(note.status).toBe(201);
     const noteBody = (await note.json()) as {
-      learningNote: { id: string; attachments: { id: string }[] };
+      note: { id: string; attachments: { id: string }[] };
     };
-    expect(noteBody.learningNote.attachments).toHaveLength(1);
-    expect(noteBody.learningNote.attachments[0].id).toBe(attachment.id);
+    expect(noteBody.note.attachments).toHaveLength(1);
+    expect(noteBody.note.attachments[0].id).toBe(attachment.id);
+
+    const ownerRow = await env.DB.prepare(
+      "SELECT owner_type AS ownerType FROM attachments WHERE id = ?",
+    )
+      .bind(attachment.id)
+      .first<{ ownerType: string }>();
+    expect(ownerRow?.ownerType).toBe("note");
 
     const spark = await request(`/api/sparks/${sparkId}`, token);
     const sparkBody = (await spark.json()) as SparkBody;

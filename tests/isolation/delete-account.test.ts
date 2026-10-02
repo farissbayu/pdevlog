@@ -82,12 +82,12 @@ async function createBragLog(
   return body.bragLog.id;
 }
 
-async function createLearningNote(
+async function createNote(
   token: string,
   workspaceId: string,
   tagId: string,
 ): Promise<string> {
-  const response = await request("/api/learning-notes", token, {
+  const response = await request("/api/notes", token, {
     method: "POST",
     body: JSON.stringify({
       title: "Learned a thing",
@@ -96,8 +96,8 @@ async function createLearningNote(
       tag_ids: [tagId],
     }),
   });
-  const body = (await response.json()) as { learningNote: { id: string } };
-  return body.learningNote.id;
+  const body = (await response.json()) as { note: { id: string } };
+  return body.note.id;
 }
 
 async function seedUser(
@@ -113,7 +113,7 @@ async function seedUser(
   const workspaceId = await createWorkspace(token, `${id} workspace`);
   const tagId = await createTag(token, `${id} tag`);
   const bragLogId = await createBragLog(token, workspaceId, tagId);
-  const noteId = await createLearningNote(token, workspaceId, tagId);
+  const noteId = await createNote(token, workspaceId, tagId);
   return { token, workspaceId, tagId, bragLogId, noteId };
 }
 
@@ -154,7 +154,7 @@ describe("account deletion cascade", () => {
     ).toBe(0);
     expect(
       await countRows(
-        "SELECT COUNT(*) AS count FROM learning_notes WHERE user_id = ?",
+        "SELECT COUNT(*) AS count FROM notes WHERE user_id = ?",
         "delete-a",
       ),
     ).toBe(0);
@@ -166,7 +166,7 @@ describe("account deletion cascade", () => {
     ).toBe(0);
     expect(
       await countRows(
-        "SELECT COUNT(*) AS count FROM note_tags WHERE learning_note_id = ?",
+        "SELECT COUNT(*) AS count FROM note_tags WHERE note_id = ?",
         userA.noteId,
       ),
     ).toBe(0);
@@ -191,7 +191,7 @@ describe("account deletion cascade", () => {
     ).toBe(1);
     expect(
       await countRows(
-        "SELECT COUNT(*) AS count FROM learning_notes WHERE user_id = ?",
+        "SELECT COUNT(*) AS count FROM notes WHERE user_id = ?",
         "delete-b",
       ),
     ).toBe(1);
@@ -203,7 +203,7 @@ describe("account deletion cascade", () => {
     ).toBe(1);
     expect(
       await countRows(
-        "SELECT COUNT(*) AS count FROM note_tags WHERE learning_note_id = ?",
+        "SELECT COUNT(*) AS count FROM note_tags WHERE note_id = ?",
         userB.noteId,
       ),
     ).toBe(1);

@@ -62,7 +62,10 @@ export function BragLogsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Brag Logs</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <FileText className="size-6 text-primary" />
+            Brag Logs
+          </h1>
           <p className="text-sm text-muted-foreground">
             Every achievement and bug resolution — in a workspace or standalone.
           </p>

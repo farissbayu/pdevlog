@@ -188,7 +188,7 @@ export function SparksPage() {
             onDelete={setDeleting}
             onArchive={handleArchive}
             onPromoteToNote={(spark) =>
-              navigate(`/learning-notes/new?spark=${spark.id}`)
+              navigate(`/notes/new?spark=${spark.id}`)
             }
             onPromoteToBrag={setBragSpark}
             onViewImage={(spark, index) => setLightbox({ spark, index })}

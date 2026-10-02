@@ -1,6 +1,5 @@
 import { NotebookPen } from "lucide-react";
 import { Link } from "react-router";
-
 import { FilterBar } from "@/client/components/filter-bar";
 import { PaginationControls } from "@/client/components/pagination";
 import { Button } from "@/client/components/ui/button";
@@ -8,19 +7,19 @@ import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import { useFilterParams } from "@/client/lib/use-filter-params";
 
-import { useLearningNotesQuery } from "./api";
+import { useNotesQuery } from "./api";
 import {
-  LearningNoteErrorState,
-  LearningNoteList,
-  LearningNoteListSkeleton,
-} from "./learning-note-list";
+  NoteErrorState,
+  NoteList,
+  NoteListSkeleton,
+} from "./note-list";
 
-export function LearningNotesPage() {
+export function NotesPage() {
   const filterApi = useFilterParams();
-  const { data, isPending, isError, refetch } = useLearningNotesQuery(
+  const { data, isPending, isError, refetch } = useNotesQuery(
     filterApi.filters,
   );
-  const notes = data?.learningNotes ?? [];
+  const notes = data?.notes ?? [];
   const pagination = data?.pagination;
   const { data: tags = [] } = useTagsQuery();
   const { data: workspaces = [] } = useWorkspacesQuery();
@@ -28,10 +27,13 @@ export function LearningNotesPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Learning Notes</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <NotebookPen className="size-6 text-primary" />
+          Notes
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Structured Markdown notes for the things you learn. Create new notes
-          from a workspace.
+          Structured Markdown notes. Attach them to a workspace or keep them
+          standalone.
         </p>
       </div>
 
@@ -39,13 +41,13 @@ export function LearningNotesPage() {
         api={filterApi}
         tags={tags}
         workspaces={workspaces}
-        searchPlaceholder="Search learning notes..."
+        searchPlaceholder="Search notes..."
       />
 
-      {isPending ? <LearningNoteListSkeleton /> : null}
+      {isPending ? <NoteListSkeleton /> : null}
 
       {isError ? (
-        <LearningNoteErrorState onRetry={() => void refetch()} />
+        <NoteErrorState onRetry={() => void refetch()} />
       ) : null}
 
       {!isPending && !isError && data && notes.length === 0 ? (
@@ -57,7 +59,7 @@ export function LearningNotesPage() {
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">No matching notes</h2>
               <p className="max-w-sm text-sm text-muted-foreground">
-                No learning notes match your filters. Try adjusting your search
+                No notes match your filters. Try adjusting your search
                 or resetting the filters.
               </p>
             </div>
@@ -71,10 +73,10 @@ export function LearningNotesPage() {
               <NotebookPen className="size-6 text-muted-foreground" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">No learning notes yet</h2>
+              <h2 className="text-lg font-semibold">No notes yet</h2>
               <p className="max-w-sm text-sm text-muted-foreground">
-                Open a workspace to capture what you learn with Markdown, code
-                blocks, tables, and tags.
+                Capture anything worth remembering with Markdown, code blocks,
+                tables, and tags.
               </p>
             </div>
             <Button asChild>
@@ -89,7 +91,7 @@ export function LearningNotesPage() {
 
       {!isPending && !isError && notes.length > 0 ? (
         <>
-          <LearningNoteList notes={notes} />
+          <NoteList notes={notes} />
           {pagination ? (
             <PaginationControls
               page={pagination.page}

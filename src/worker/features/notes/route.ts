@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -27,23 +28,26 @@ import {
   parsePagination,
 } from "@/shared/schemas/pagination";
 import {
-  createLearningNoteSchema,
-  updateLearningNoteSchema,
-  type CreateLearningNoteInput,
-  type LearningNoteResponse,
-  type UpdateLearningNoteInput,
-} from "@/shared/schemas/learning-note";
+  createNoteSchema,
+  updateNoteSchema,
+  type CreateNoteInput,
+  type NoteResponse,
+  type NoteSourceResponse,
+  type UpdateNoteInput,
+} from "@/shared/schemas/notes";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
 import {
-  learningNotes,
+  notes,
+  noteSources,
   noteTags,
   sparks,
   tags,
   workspaces,
   type AttachmentRow,
-  type LearningNoteRow,
+  type NoteRow,
+  type NoteSourceRow,
   type TagRow,
   type WorkspaceRow,
 } from "@/worker/db/schema";
@@ -78,12 +82,21 @@ function toTagResponse(tag: TagRow): TagResponse {
   };
 }
 
-function toLearningNoteResponse(
-  note: LearningNoteRow,
+function toNoteSourceResponse(source: NoteSourceRow): NoteSourceResponse {
+  return {
+    id: source.id,
+    url: source.url,
+    label: source.label,
+  };
+}
+
+function toNoteResponse(
+  note: NoteRow,
   workspace: WorkspaceRow | null,
   noteTagsList: TagRow[],
+  sourceRows: NoteSourceRow[] = [],
   attachmentRows: AttachmentRow[] = [],
-): LearningNoteResponse {
+): NoteResponse {
   return {
     id: note.id,
     title: note.title,
@@ -91,6 +104,7 @@ function toLearningNoteResponse(
     workspaceId: note.workspaceId,
     workspace: workspace ? toWorkspaceResponse(workspace) : null,
     tags: noteTagsList.map(toTagResponse),
+    sources: sourceRows.map(toNoteSourceResponse),
     attachments: attachmentRows.map(toAttachmentResponse),
     createdAt: new Date(note.createdAt).toISOString(),
     updatedAt: new Date(note.updatedAt).toISOString(),
@@ -101,11 +115,11 @@ async function findOwnedNote(
   db: Database,
   id: string,
   userId: string,
-): Promise<LearningNoteRow | undefined> {
+): Promise<NoteRow | undefined> {
   const [note] = await db
     .select()
-    .from(learningNotes)
-    .where(and(eq(learningNotes.id, id), eq(learningNotes.userId, userId)))
+    .from(notes)
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
     .limit(1);
   return note;
 }
@@ -120,7 +134,7 @@ async function loadTagsForNote(
     .from(noteTags)
     .innerJoin(tags, eq(noteTags.tagId, tags.id))
     .where(
-      and(eq(noteTags.learningNoteId, noteId), eq(tags.userId, userId)),
+      and(eq(noteTags.noteId, noteId), eq(tags.userId, userId)),
     );
   return rows.map((row) => row.tag);
 }
@@ -136,17 +150,60 @@ async function loadTagsByNoteIds(
   }
 
   const rows = await db
-    .select({ learningNoteId: noteTags.learningNoteId, tag: tags })
+    .select({ noteId: noteTags.noteId, tag: tags })
     .from(noteTags)
     .innerJoin(tags, eq(noteTags.tagId, tags.id))
     .where(
-      and(inArray(noteTags.learningNoteId, noteIds), eq(tags.userId, userId)),
+      and(inArray(noteTags.noteId, noteIds), eq(tags.userId, userId)),
     );
 
   for (const row of rows) {
-    const list = map.get(row.learningNoteId) ?? [];
+    const list = map.get(row.noteId) ?? [];
     list.push(row.tag);
-    map.set(row.learningNoteId, list);
+    map.set(row.noteId, list);
+  }
+  return map;
+}
+
+async function loadSourcesForNote(
+  db: Database,
+  noteId: string,
+  userId: string,
+): Promise<NoteSourceRow[]> {
+  return db
+    .select()
+    .from(noteSources)
+    .where(
+      and(eq(noteSources.noteId, noteId), eq(noteSources.userId, userId)),
+    )
+    .orderBy(asc(noteSources.position), asc(noteSources.createdAt));
+}
+
+async function loadSourcesByNoteIds(
+  db: Database,
+  noteIds: string[],
+  userId: string,
+): Promise<Map<string, NoteSourceRow[]>> {
+  const map = new Map<string, NoteSourceRow[]>();
+  if (noteIds.length === 0) {
+    return map;
+  }
+
+  const rows = await db
+    .select()
+    .from(noteSources)
+    .where(
+      and(
+        inArray(noteSources.noteId, noteIds),
+        eq(noteSources.userId, userId),
+      ),
+    )
+    .orderBy(asc(noteSources.position), asc(noteSources.createdAt));
+
+  for (const row of rows) {
+    const list = map.get(row.noteId) ?? [];
+    list.push(row);
+    map.set(row.noteId, list);
   }
   return map;
 }
@@ -211,20 +268,20 @@ function touchWorkspaceStatement(
     .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)));
 }
 
-const listLearningNotes = async (
+const listNotes = async (
   c: Context<AppEnv, "/", QueryInput<NoteFilterInput>>,
 ) => {
   const userId = c.get("userId");
   const filters = c.req.valid("query");
   const db = createDb(c.env.DB);
 
-  const conditions: SQL[] = [eq(learningNotes.userId, userId)];
+  const conditions: SQL[] = [eq(notes.userId, userId)];
 
   if (filters.q) {
     const pattern = `%${filters.q}%`;
     const search = or(
-      like(learningNotes.title, pattern),
-      like(learningNotes.content, pattern),
+      like(notes.title, pattern),
+      like(notes.content, pattern),
     );
     if (search) {
       conditions.push(search);
@@ -232,26 +289,26 @@ const listLearningNotes = async (
   }
 
   if (filters.workspace_id === UNASSIGNED_WORKSPACE) {
-    conditions.push(isNull(learningNotes.workspaceId));
+    conditions.push(isNull(notes.workspaceId));
   } else if (filters.workspace_id) {
-    conditions.push(eq(learningNotes.workspaceId, filters.workspace_id));
+    conditions.push(eq(notes.workspaceId, filters.workspace_id));
   }
 
   if (filters.from) {
-    conditions.push(gte(learningNotes.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
+    conditions.push(gte(notes.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
   }
 
   if (filters.to) {
-    conditions.push(lte(learningNotes.createdAt, new Date(`${filters.to}T23:59:59.999Z`)));
+    conditions.push(lte(notes.createdAt, new Date(`${filters.to}T23:59:59.999Z`)));
   }
 
   const tagIds = normalizeTagIds(filters.tag_id);
   if (tagIds.length > 0) {
     conditions.push(
       inArray(
-        learningNotes.id,
+        notes.id,
         db
-          .select({ id: noteTags.learningNoteId })
+          .select({ id: noteTags.noteId })
           .from(noteTags)
           .where(inArray(noteTags.tagId, tagIds)),
       ),
@@ -262,27 +319,27 @@ const listLearningNotes = async (
   const { page, pageSize } = parsePagination(filters);
 
   const query = db
-    .select({ note: learningNotes, workspace: workspaces })
-    .from(learningNotes)
+    .select({ note: notes, workspace: workspaces })
+    .from(notes)
     .leftJoin(
       workspaces,
       and(
-        eq(learningNotes.workspaceId, workspaces.id),
+        eq(notes.workspaceId, workspaces.id),
         eq(workspaces.userId, userId),
       ),
     )
     .where(where)
     .orderBy(
-      desc(learningNotes.updatedAt),
-      desc(learningNotes.createdAt),
-      desc(learningNotes.id),
+      desc(notes.updatedAt),
+      desc(notes.createdAt),
+      desc(notes.id),
     );
 
   const [rows, totalRows] = await Promise.all([
     page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
     db
       .select({ value: count() })
-      .from(learningNotes)
+      .from(notes)
       .where(where),
   ]);
   const total = totalRows[0]?.value ?? 0;
@@ -292,19 +349,25 @@ const listLearningNotes = async (
     rows.map((row) => row.note.id),
     userId,
   );
+  const sourcesByNoteId = await loadSourcesByNoteIds(
+    db,
+    rows.map((row) => row.note.id),
+    userId,
+  );
   const attachmentsByNoteId = await loadAttachmentsByOwnerIds(
     db,
-    "learning-note",
+    "note",
     rows.map((row) => row.note.id),
     userId,
   );
 
   return c.json({
-    learningNotes: rows.map((row) =>
-      toLearningNoteResponse(
+    notes: rows.map((row) =>
+      toNoteResponse(
         row.note,
         row.workspace,
         tagsByNoteId.get(row.note.id) ?? [],
+        sourcesByNoteId.get(row.note.id) ?? [],
         attachmentsByNoteId.get(row.note.id) ?? [],
       ),
     ),
@@ -312,8 +375,8 @@ const listLearningNotes = async (
   });
 };
 
-const createLearningNoteHandler = async (
-  c: Context<AppEnv, "/", JsonInput<CreateLearningNoteInput>>,
+const createNoteHandler = async (
+  c: Context<AppEnv, "/", JsonInput<CreateNoteInput>>,
 ) => {
   const userId = c.get("userId");
   const input = c.req.valid("json");
@@ -321,6 +384,7 @@ const createLearningNoteHandler = async (
 
   const workspaceId = input.workspace_id ?? null;
   const tagIds = [...new Set(input.tag_ids ?? [])];
+  const sourceInputs = input.sources ?? [];
 
   if (!(await validateWorkspaceOwnership(db, workspaceId, userId))) {
     return c.json({ error: "Workspace not found" }, 404);
@@ -344,7 +408,7 @@ const createLearningNoteHandler = async (
   const noteId = nanoid();
   const now = new Date();
 
-  const insertNote = db.insert(learningNotes).values({
+  const insertNote = db.insert(notes).values({
     id: noteId,
     userId,
     workspaceId,
@@ -354,10 +418,25 @@ const createLearningNoteHandler = async (
     updatedAt: now,
   });
   const insertTags = tagIds.map((tagId) =>
-    db.insert(noteTags).values({ learningNoteId: noteId, tagId }),
+    db.insert(noteTags).values({ noteId: noteId, tagId }),
+  );
+  const insertSources = sourceInputs.map((source, index) =>
+    db.insert(noteSources).values({
+      id: nanoid(),
+      noteId,
+      userId,
+      url: source.url,
+      label: source.label ?? null,
+      position: index,
+      createdAt: now,
+    }),
   );
 
-  const statements: BatchItem<"sqlite">[] = [insertNote, ...insertTags];
+  const statements: BatchItem<"sqlite">[] = [
+    insertNote,
+    ...insertTags,
+    ...insertSources,
+  ];
   if (workspaceId) {
     statements.push(touchWorkspaceStatement(db, workspaceId, userId, now));
   }
@@ -367,7 +446,7 @@ const createLearningNoteHandler = async (
         .update(sparks)
         .set({
           status: "promoted",
-          promotedType: "learning-note",
+          promotedType: "note",
           promotedId: noteId,
           updatedAt: now,
         })
@@ -382,7 +461,7 @@ const createLearningNoteHandler = async (
     await moveAttachments(db, {
       fromOwnerType: "spark",
       fromOwnerId: sparkId,
-      toOwnerType: "learning-note",
+      toOwnerType: "note",
       toOwnerId: noteId,
       userId,
     });
@@ -390,25 +469,27 @@ const createLearningNoteHandler = async (
 
   const [created] = await db
     .select()
-    .from(learningNotes)
-    .where(and(eq(learningNotes.id, noteId), eq(learningNotes.userId, userId)))
+    .from(notes)
+    .where(and(eq(notes.id, noteId), eq(notes.userId, userId)))
     .limit(1);
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
   const createdTags = await loadTagsForNote(db, created.id, userId);
+  const createdSources = await loadSourcesForNote(db, created.id, userId);
   const createdAttachments = await loadAttachments(
     db,
-    "learning-note",
+    "note",
     created.id,
     userId,
   );
 
   return c.json(
     {
-      learningNote: toLearningNoteResponse(
+      note: toNoteResponse(
         created,
         workspace,
         createdTags,
+        createdSources,
         createdAttachments,
       ),
     },
@@ -416,37 +497,39 @@ const createLearningNoteHandler = async (
   );
 };
 
-const getLearningNote = async (c: Context<AppEnv, "/:id">) => {
+const getNote = async (c: Context<AppEnv, "/:id">) => {
   const userId = c.get("userId");
   const id = c.req.param("id");
   const db = createDb(c.env.DB);
 
   const note = await findOwnedNote(db, id, userId);
   if (!note) {
-    return c.json({ error: "Learning note not found" }, 404);
+    return c.json({ error: "Note not found" }, 404);
   }
 
   const workspace = await loadWorkspace(db, note.workspaceId, userId);
   const noteTagsList = await loadTagsForNote(db, note.id, userId);
+  const sourceRows = await loadSourcesForNote(db, note.id, userId);
   const attachmentRows = await loadAttachments(
     db,
-    "learning-note",
+    "note",
     note.id,
     userId,
   );
 
   return c.json({
-    learningNote: toLearningNoteResponse(
+    note: toNoteResponse(
       note,
       workspace,
       noteTagsList,
+      sourceRows,
       attachmentRows,
     ),
   });
 };
 
-const updateLearningNoteHandler = async (
-  c: Context<AppEnv, "/:id", JsonInput<UpdateLearningNoteInput>>,
+const updateNoteHandler = async (
+  c: Context<AppEnv, "/:id", JsonInput<UpdateNoteInput>>,
 ) => {
   const userId = c.get("userId");
   const id = c.req.param("id");
@@ -455,11 +538,13 @@ const updateLearningNoteHandler = async (
 
   const owned = await findOwnedNote(db, id, userId);
   if (!owned) {
-    return c.json({ error: "Learning note not found" }, 404);
+    return c.json({ error: "Note not found" }, 404);
   }
 
   const hasTagIds = input.tag_ids !== undefined;
   const tagIds = [...new Set(input.tag_ids ?? [])];
+  const hasSources = input.sources !== undefined;
+  const sourceInputs = input.sources ?? [];
 
   if (
     input.workspace_id !== undefined &&
@@ -472,7 +557,7 @@ const updateLearningNoteHandler = async (
   }
 
   const now = new Date();
-  const updates: Partial<LearningNoteRow> = { updatedAt: now };
+  const updates: Partial<NoteRow> = { updatedAt: now };
   if (input.title !== undefined) updates.title = input.title;
   if (input.content !== undefined) updates.content = input.content;
   if (input.workspace_id !== undefined) {
@@ -480,18 +565,36 @@ const updateLearningNoteHandler = async (
   }
 
   const updateNote = db
-    .update(learningNotes)
+    .update(notes)
     .set(updates)
-    .where(and(eq(learningNotes.id, id), eq(learningNotes.userId, userId)));
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)));
 
   const statements: BatchItem<"sqlite">[] = [updateNote];
   if (hasTagIds) {
     statements.push(
-      db.delete(noteTags).where(eq(noteTags.learningNoteId, id)),
+      db.delete(noteTags).where(eq(noteTags.noteId, id)),
     );
     statements.push(
       ...tagIds.map((tagId) =>
-        db.insert(noteTags).values({ learningNoteId: id, tagId }),
+        db.insert(noteTags).values({ noteId: id, tagId }),
+      ),
+    );
+  }
+  if (hasSources) {
+    statements.push(
+      db.delete(noteSources).where(eq(noteSources.noteId, id)),
+    );
+    statements.push(
+      ...sourceInputs.map((source, index) =>
+        db.insert(noteSources).values({
+          id: nanoid(),
+          noteId: id,
+          userId,
+          url: source.url,
+          label: source.label ?? null,
+          position: index,
+          createdAt: now,
+        }),
       ),
     );
   }
@@ -511,43 +614,45 @@ const updateLearningNoteHandler = async (
 
   const [updated] = await db
     .select()
-    .from(learningNotes)
-    .where(and(eq(learningNotes.id, id), eq(learningNotes.userId, userId)))
+    .from(notes)
+    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
     .limit(1);
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
   const updatedTags = await loadTagsForNote(db, updated.id, userId);
+  const updatedSources = await loadSourcesForNote(db, updated.id, userId);
   const updatedAttachments = await loadAttachments(
     db,
-    "learning-note",
+    "note",
     updated.id,
     userId,
   );
 
   return c.json({
-    learningNote: toLearningNoteResponse(
+    note: toNoteResponse(
       updated,
       workspace,
       updatedTags,
+      updatedSources,
       updatedAttachments,
     ),
   });
 };
 
-const deleteLearningNoteHandler = async (c: Context<AppEnv, "/:id">) => {
+const deleteNoteHandler = async (c: Context<AppEnv, "/:id">) => {
   const userId = c.get("userId");
   const id = c.req.param("id");
   const db = createDb(c.env.DB);
 
   const owned = await findOwnedNote(db, id, userId);
   if (!owned) {
-    return c.json({ error: "Learning note not found" }, 404);
+    return c.json({ error: "Note not found" }, 404);
   }
 
   const statements: BatchItem<"sqlite">[] = [
     db
-      .delete(learningNotes)
-      .where(and(eq(learningNotes.id, id), eq(learningNotes.userId, userId))),
+      .delete(notes)
+      .where(and(eq(notes.id, id), eq(notes.userId, userId))),
   ];
   if (owned.workspaceId) {
     statements.push(
@@ -562,7 +667,7 @@ const deleteLearningNoteHandler = async (c: Context<AppEnv, "/:id">) => {
   await deleteOwnedAttachments(
     db,
     c.env.STORAGE,
-    "learning-note",
+    "note",
     id,
     userId,
   );
@@ -570,17 +675,17 @@ const deleteLearningNoteHandler = async (c: Context<AppEnv, "/:id">) => {
   return c.json({ success: true });
 };
 
-export const learningNotesRoute = new Hono<AppEnv>()
-  .get("/", zValidator("query", noteFilterSchema), listLearningNotes)
+export const notesRoute = new Hono<AppEnv>()
+  .get("/", zValidator("query", noteFilterSchema), listNotes)
   .post(
     "/",
-    zValidator("json", createLearningNoteSchema),
-    createLearningNoteHandler,
+    zValidator("json", createNoteSchema),
+    createNoteHandler,
   )
-  .get("/:id", getLearningNote)
+  .get("/:id", getNote)
   .put(
     "/:id",
-    zValidator("json", updateLearningNoteSchema),
-    updateLearningNoteHandler,
+    zValidator("json", updateNoteSchema),
+    updateNoteHandler,
   )
-  .delete("/:id", deleteLearningNoteHandler);
+  .delete("/:id", deleteNoteHandler);

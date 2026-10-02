@@ -2,8 +2,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   Clock,
+  ExternalLink,
   FileText,
   Loader2,
+  NotebookPen,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -22,16 +24,16 @@ import {
 } from "@/client/components/ui/dialog";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 
-import { useDeleteLearningNoteMutation, useLearningNoteDetailQuery } from "./api";
-import { formatNoteDate } from "./learning-note-list";
+import { useDeleteNoteMutation, useNoteDetailQuery } from "./api";
+import { formatNoteDate } from "./note-list";
 import { countWords, estimateReadingMinutes } from "./note-stats";
 import { NoteToc, extractHeadings } from "./note-toc";
 
-export function LearningNoteDetailPage() {
+export function NoteDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { data, isPending, isError, refetch } = useLearningNoteDetailQuery(id);
-  const deleteMutation = useDeleteLearningNoteMutation();
+  const { data, isPending, isError, refetch } = useNoteDetailQuery(id);
+  const deleteMutation = useDeleteNoteMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const headings = useMemo(
@@ -59,7 +61,7 @@ export function LearningNoteDetailPage() {
         navigate(
           data.workspace
             ? `/workspaces/${data.workspace.id}`
-            : "/learning-notes",
+            : "/notes",
         );
       },
     });
@@ -107,18 +109,21 @@ export function LearningNoteDetailPage() {
           to={
             data.workspace
               ? `/workspaces/${data.workspace.id}`
-              : "/learning-notes"
+              : "/notes"
           }
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />
-          {data.workspace ? data.workspace.name : "Learning notes"}
+          {data.workspace ? data.workspace.name : "Notes"}
         </Link>
       </div>
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">{data.title}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <NotebookPen className="size-6 text-primary" />
+            {data.title}
+          </h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Updated {formatNoteDate(data.updatedAt)}</span>
             {stats ? (
@@ -155,7 +160,7 @@ export function LearningNoteDetailPage() {
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="outline" size="icon" asChild>
             <Link
-              to={`/learning-notes/${data.id}/edit`}
+              to={`/notes/${data.id}/edit`}
               aria-label="Edit note"
               title="Edit note"
             >
@@ -173,6 +178,27 @@ export function LearningNoteDetailPage() {
           </Button>
         </div>
       </div>
+
+      {data.sources.length > 0 ? (
+        <div className="space-y-1.5">
+          <h2 className="text-sm font-medium">Sources</h2>
+          <ul className="flex flex-col gap-1">
+            {data.sources.map((source) => (
+              <li key={source.id} className="min-w-0">
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex max-w-full items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="size-3.5 shrink-0" />
+                  <span className="truncate">{source.label || source.url}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_14rem]">
         <div className="min-w-0 space-y-6">

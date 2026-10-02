@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CalendarDays,
+  FileText,
   Lightbulb,
   Loader2,
   Pencil,
@@ -127,7 +128,10 @@ export function BragLogDetailPage() {
 
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">{data.title}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <FileText className="size-6 text-primary" />
+            {data.title}
+          </h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="size-3.5" />

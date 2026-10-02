@@ -22,7 +22,7 @@ export const users = sqliteTable("users", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
-export const workspaceTypes = ["work", "learning"] as const;
+export const workspaceTypes = ["work", "learning", "general"] as const;
 
 export type WorkspaceType = (typeof workspaceTypes)[number];
 
@@ -111,8 +111,8 @@ export const bragTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.bragLogId, table.tagId] })],
 );
 
-export const learningNotes = sqliteTable(
-  "learning_notes",
+export const notes = sqliteTable(
+  "notes",
   {
     id: text("id").primaryKey(),
     userId: text("user_id")
@@ -131,7 +131,7 @@ export const learningNotes = sqliteTable(
       .default(sql`(unixepoch() * 1000)`),
   },
   (table) => [
-    index("learning_notes_user_id_workspace_id_idx").on(
+    index("notes_user_id_workspace_id_idx").on(
       table.userId,
       table.workspaceId,
     ),
@@ -141,14 +141,34 @@ export const learningNotes = sqliteTable(
 export const noteTags = sqliteTable(
   "note_tags",
   {
-    learningNoteId: text("learning_note_id")
+    noteId: text("note_id")
       .notNull()
-      .references(() => learningNotes.id, { onDelete: "cascade" }),
+      .references(() => notes.id, { onDelete: "cascade" }),
     tagId: text("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.learningNoteId, table.tagId] })],
+  (table) => [primaryKey({ columns: [table.noteId, table.tagId] })],
+);
+
+export const noteSources = sqliteTable(
+  "note_sources",
+  {
+    id: text("id").primaryKey(),
+    noteId: text("note_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    label: text("label"),
+    position: integer("position").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [index("note_sources_note_id_idx").on(table.noteId)],
 );
 
 export const sparkStatuses = ["open", "archived", "promoted"] as const;
@@ -157,7 +177,7 @@ export type SparkStatus = (typeof sparkStatuses)[number];
 
 export const sparkPromotionTypes = [
   "brag-log",
-  "learning-note",
+  "note",
   "workspace",
 ] as const;
 
@@ -207,7 +227,7 @@ export const sparkTags = sqliteTable(
 
 export const attachmentOwnerTypes = [
   "spark",
-  "learning-note",
+  "note",
   "brag-log",
 ] as const;
 
@@ -247,8 +267,10 @@ export type BragLogRow = typeof bragLogs.$inferSelect;
 export type NewBragLogRow = typeof bragLogs.$inferInsert;
 export type BragTagRow = typeof bragTags.$inferSelect;
 export type NewBragTagRow = typeof bragTags.$inferInsert;
-export type LearningNoteRow = typeof learningNotes.$inferSelect;
-export type NewLearningNoteRow = typeof learningNotes.$inferInsert;
+export type NoteRow = typeof notes.$inferSelect;
+export type NewNoteRow = typeof notes.$inferInsert;
+export type NoteSourceRow = typeof noteSources.$inferSelect;
+export type NewNoteSourceRow = typeof noteSources.$inferInsert;
 export type NoteTagRow = typeof noteTags.$inferSelect;
 export type NewNoteTagRow = typeof noteTags.$inferInsert;
 export type SparkRow = typeof sparks.$inferSelect;

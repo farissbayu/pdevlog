@@ -65,12 +65,12 @@ async function createBragLog(
   return body.bragLog.id;
 }
 
-async function createLearningNote(
+async function createNote(
   token: string,
   workspaceId: string,
   title = "A note",
 ): Promise<string> {
-  const response = await request("/api/learning-notes", token, {
+  const response = await request("/api/notes", token, {
     method: "POST",
     body: JSON.stringify({
       title,
@@ -78,12 +78,12 @@ async function createLearningNote(
       workspace_id: workspaceId,
     }),
   });
-  const body = (await response.json()) as { learningNote: { id: string } };
-  return body.learningNote.id;
+  const body = (await response.json()) as { note: { id: string } };
+  return body.note.id;
 }
 
 async function setCreatedAt(
-  table: "brag_logs" | "learning_notes",
+  table: "brag_logs" | "notes",
   id: string,
   value: number,
 ): Promise<void> {
@@ -93,14 +93,14 @@ async function setCreatedAt(
 }
 
 type DashboardBody = {
-  stats: { workspaces: number; bragLogs: number; learningNotes: number };
+  stats: { workspaces: number; bragLogs: number; notes: number };
   recentWorkspaces: { id: string }[];
 };
 
 type RecentActivityBody = {
   items: {
     id: string;
-    type: "brag-log" | "learning-note";
+    type: "brag-log" | "note";
     title: string;
   }[];
 };
@@ -117,10 +117,10 @@ describe("dashboard summary", () => {
       .run();
 
     await createBragLog(tokenA, withLog);
-    await createLearningNote(tokenA, withLog);
+    await createNote(tokenA, withLog);
 
     const otherWorkspace = await createWorkspace(tokenB, "Other user workspace");
-    await createLearningNote(tokenB, otherWorkspace, "Other user note");
+    await createNote(tokenB, otherWorkspace, "Other user note");
 
     const response = await request("/api/dashboard", tokenA);
     expect(response.status).toBe(200);
@@ -129,14 +129,14 @@ describe("dashboard summary", () => {
     expect(body.stats).toEqual({
       workspaces: 2,
       bragLogs: 1,
-      learningNotes: 1,
+      notes: 1,
       sparks: 0,
     });
     expect(body.recentWorkspaces).toHaveLength(2);
     expect(body.recentWorkspaces[0].id).toBe(withLog);
   });
 
-  it("merges brag logs and learning notes in reverse chronological order", async () => {
+  it("merges brag logs and notes in reverse chronological order", async () => {
     const tokenA = await createUser("dash-recent-a");
     const tokenB = await createUser("dash-recent-b");
 
@@ -144,12 +144,12 @@ describe("dashboard summary", () => {
     const workspaceB = await createWorkspace(tokenB, "Recent B");
 
     const oldest = await createBragLog(tokenA, workspaceA, "Oldest log");
-    const middle = await createLearningNote(tokenA, workspaceA, "Middle note");
+    const middle = await createNote(tokenA, workspaceA, "Middle note");
     const newest = await createBragLog(tokenA, workspaceA, "Newest log");
     const other = await createBragLog(tokenB, workspaceB, "Other user log");
 
     await setCreatedAt("brag_logs", oldest, 1000);
-    await setCreatedAt("learning_notes", middle, 2000);
+    await setCreatedAt("notes", middle, 2000);
     await setCreatedAt("brag_logs", newest, 3000);
     await setCreatedAt("brag_logs", other, 4000);
 
@@ -164,7 +164,7 @@ describe("dashboard summary", () => {
     ]);
     expect(body.items.map((item) => item.type)).toEqual([
       "brag-log",
-      "learning-note",
+      "note",
       "brag-log",
     ]);
   });

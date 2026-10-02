@@ -12,7 +12,7 @@ export const ALLOWED_IMAGE_TYPES = [
 
 export const attachmentOwnerTypeSchema = z.enum([
   "spark",
-  "learning-note",
+  "note",
   "brag-log",
 ]);
 

@@ -1,9 +1,9 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Link2 } from "lucide-react";
 import { Link } from "react-router";
 
 import { Button } from "@/client/components/ui/button";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
-import type { LearningNoteResponse } from "@/shared/schemas/learning-note";
+import type { NoteResponse } from "@/shared/schemas/notes";
 import type { TagResponse } from "@/shared/schemas/tag";
 
 export function formatNoteDate(value: string): string {
@@ -37,7 +37,7 @@ function NoteTagChip({ tag }: { tag: TagResponse }) {
   );
 }
 
-export function LearningNoteListSkeleton() {
+export function NoteListSkeleton() {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((index) => (
@@ -51,14 +51,14 @@ export function LearningNoteListSkeleton() {
   );
 }
 
-export function LearningNoteErrorState({ onRetry }: { onRetry: () => void }) {
+export function NoteErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 rounded-lg border bg-card px-6 py-16 text-center">
       <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
         <AlertTriangle className="size-6 text-destructive" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">Failed to load learning notes</h2>
+        <h2 className="text-lg font-semibold">Failed to load notes</h2>
         <p className="text-sm text-muted-foreground">
           Something went wrong while loading your notes.
         </p>
@@ -70,11 +70,11 @@ export function LearningNoteErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-type LearningNoteListProps = {
-  notes: LearningNoteResponse[];
+type NoteListProps = {
+  notes: NoteResponse[];
 };
 
-export function LearningNoteList({ notes }: LearningNoteListProps) {
+export function NoteList({ notes }: NoteListProps) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {notes.map((note) => (
@@ -84,7 +84,7 @@ export function LearningNoteList({ notes }: LearningNoteListProps) {
         >
           <div className="min-w-0 space-y-2">
             <Link
-              to={`/learning-notes/${note.id}`}
+              to={`/notes/${note.id}`}
               className="block truncate font-medium hover:underline"
             >
               {note.title}
@@ -98,6 +98,12 @@ export function LearningNoteList({ notes }: LearningNoteListProps) {
                 <WorkspaceTypeBadge type={note.workspace.type} />
               ) : null}
               {note.workspace ? <span>{note.workspace.name}</span> : null}
+              {note.sources.length > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <Link2 className="size-3" />
+                  {note.sources.length}
+                </span>
+              ) : null}
             </div>
             {note.tags.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">

@@ -1,4 +1,13 @@
-import { AlertTriangle, ArrowLeft, Eye, Loader2, Pencil, Save } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Eye,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { cn } from "cn";
@@ -19,34 +28,62 @@ import {
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
-  createLearningNoteSchema,
-  updateLearningNoteSchema,
-  type LearningNoteResponse,
-} from "@/shared/schemas/learning-note";
+  createNoteSchema,
+  updateNoteSchema,
+  type NoteResponse,
+} from "@/shared/schemas/notes";
 import { sparkTitle, type SparkResponse } from "@/shared/schemas/spark";
 
 import {
-  useCreateLearningNoteMutation,
-  useLearningNoteDetailQuery,
-  useUpdateLearningNoteMutation,
+  useCreateNoteMutation,
+  useNoteDetailQuery,
+  useUpdateNoteMutation,
 } from "./api";
 import { useSparkDetailQuery } from "@/client/features/sparks/api";
 
 type EditorMode = "edit" | "preview";
+
+type SourceDraft = { label: string; url: string };
+
+function firstUrlInText(content: string): string | null {
+  const firstLine = content
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+  if (!firstLine) {
+    return null;
+  }
+  const match = firstLine.match(/^https?:\/\/\S+$/i);
+  return match ? match[0] : null;
+}
+
+function initialSources(
+  note: NoteResponse | null,
+  spark: SparkResponse | null | undefined,
+): SourceDraft[] {
+  if (note) {
+    return note.sources.map((source) => ({
+      url: source.url,
+      label: source.label ?? "",
+    }));
+  }
+  const sparkUrl = spark ? firstUrlInText(spark.content) : null;
+  return sparkUrl ? [{ url: sparkUrl, label: "" }] : [];
+}
 
 function NoteEditorForm({
   note,
   presetWorkspaceId,
   spark,
 }: {
-  note: LearningNoteResponse | null;
+  note: NoteResponse | null;
   presetWorkspaceId: string;
   spark?: SparkResponse | null;
 }) {
   const isEditing = Boolean(note);
   const navigate = useNavigate();
-  const createMutation = useCreateLearningNoteMutation();
-  const updateMutation = useUpdateLearningNoteMutation();
+  const createMutation = useCreateNoteMutation();
+  const updateMutation = useUpdateNoteMutation();
   const mutation = isEditing ? updateMutation : createMutation;
 
   const { data: workspaces } = useWorkspacesQuery();
@@ -66,12 +103,24 @@ function NoteEditorForm({
       spark?.tags.map((tag) => tag.id) ??
       [],
   );
+  const [sources, setSources] = useState<SourceDraft[]>(() =>
+    initialSources(note, spark),
+  );
   const [mode, setMode] = useState<EditorMode>("edit");
   const [error, setError] = useState<string | null>(null);
 
+  const addSource = () =>
+    setSources((prev) => [...prev, { label: "", url: "" }]);
+  const updateSource = (index: number, patch: Partial<SourceDraft>) =>
+    setSources((prev) =>
+      prev.map((source, i) => (i === index ? { ...source, ...patch } : source)),
+    );
+  const removeSource = (index: number) =>
+    setSources((prev) => prev.filter((_, i) => i !== index));
+
   const backTo =
     isEditing && note
-      ? `/learning-notes/${note.id}`
+      ? `/notes/${note.id}`
       : spark
         ? "/sparks"
         : presetWorkspaceId
@@ -82,21 +131,34 @@ function NoteEditorForm({
     event.preventDefault();
     setError(null);
 
+    const normalizedSources = sources
+      .map((source) => ({
+        url: source.url.trim(),
+        label: source.label.trim(),
+      }))
+      .filter((source) => source.url.length > 0)
+      .map((source) =>
+        source.label
+          ? { url: source.url, label: source.label }
+          : { url: source.url },
+      );
+
     const payload = {
       title: title.trim(),
       content,
       workspace_id: workspaceId || null,
       tag_ids: tagIds,
+      sources: normalizedSources,
       ...(spark && !isEditing ? { spark_id: spark.id } : {}),
     };
 
-    const onSuccess = (saved: LearningNoteResponse) => {
-      navigate(`/learning-notes/${saved.id}`);
+    const onSuccess = (saved: NoteResponse) => {
+      navigate(`/notes/${saved.id}`);
     };
     const onError = (mutationError: Error) => setError(mutationError.message);
 
     if (isEditing && note) {
-      const parsed = updateLearningNoteSchema.safeParse(payload);
+      const parsed = updateNoteSchema.safeParse(payload);
       if (!parsed.success) {
         setError(parsed.error.issues[0]?.message ?? "Invalid input");
         return;
@@ -108,7 +170,7 @@ function NoteEditorForm({
       return;
     }
 
-    const parsed = createLearningNoteSchema.safeParse(payload);
+    const parsed = createNoteSchema.safeParse(payload);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
@@ -147,7 +209,7 @@ function NoteEditorForm({
         </h1>
         <p className="text-sm text-muted-foreground">
           {spark
-            ? "Your spark is pre-filled below. Flesh it out, then save it as a learning note."
+            ? "Your spark is pre-filled below. Flesh it out, then save it as a note."
             : "Write in Markdown and toggle the preview to see the rendered result."}
         </p>
       </div>
@@ -180,17 +242,11 @@ function NoteEditorForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No workspace</SelectItem>
-                {(workspaces ?? [])
-                  .filter(
-                    (workspace) =>
-                      workspace.type === "learning" ||
-                      workspace.id === workspaceId,
-                  )
-                  .map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </SelectItem>
-                  ))}
+                {(workspaces ?? []).map((workspace) => (
+                  <SelectItem key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -217,6 +273,62 @@ function NoteEditorForm({
               </p>
             )}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Sources</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addSource}
+            >
+              <Plus className="size-3.5" />
+              Add source
+            </Button>
+          </div>
+          {sources.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No sources yet. Add links related to this note.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {sources.map((source, index) => (
+                <div key={index} className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={source.label}
+                    onChange={(event) =>
+                      updateSource(index, { label: event.target.value })
+                    }
+                    placeholder="Label (optional)"
+                    maxLength={200}
+                    className="sm:w-48"
+                  />
+                  <Input
+                    value={source.url}
+                    onChange={(event) =>
+                      updateSource(index, { url: event.target.value })
+                    }
+                    placeholder="https://example.com"
+                    maxLength={2048}
+                    inputMode="url"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeSource(index)}
+                    aria-label="Remove source"
+                    title="Remove source"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -287,7 +399,7 @@ export function NoteEditorPage() {
   const presetWorkspaceId = searchParams.get("workspace") ?? "";
   const sparkId = searchParams.get("spark") ?? "";
   const isEditing = Boolean(id);
-  const noteQuery = useLearningNoteDetailQuery(id ?? "");
+  const noteQuery = useNoteDetailQuery(id ?? "");
   const sparkQuery = useSparkDetailQuery(isEditing ? "" : sparkId);
   const spark = sparkId ? (sparkQuery.data ?? null) : null;
 

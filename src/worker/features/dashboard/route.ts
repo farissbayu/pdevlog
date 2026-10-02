@@ -12,7 +12,7 @@ import { createDb, type Database } from "@/worker/db";
 import {
   bragLogs,
   bragTags,
-  learningNotes,
+  notes,
   noteTags,
   sparkTags,
   sparks,
@@ -82,10 +82,10 @@ async function loadNoteTags(
     return new Map();
   }
   const rows = await db
-    .select({ key: noteTags.learningNoteId, tag: tags })
+    .select({ key: noteTags.noteId, tag: tags })
     .from(noteTags)
     .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(and(inArray(noteTags.learningNoteId, ids), eq(tags.userId, userId)));
+    .where(and(inArray(noteTags.noteId, ids), eq(tags.userId, userId)));
   return groupTags(rows);
 }
 
@@ -109,7 +109,7 @@ const getDashboard = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
 
-  const [workspaceCount, bragLogCount, learningNoteCount, sparkCount, recent] =
+  const [workspaceCount, bragLogCount, noteCount, sparkCount, recent] =
     await Promise.all([
       db
         .select({ value: count() })
@@ -121,8 +121,8 @@ const getDashboard = async (c: Context<AppEnv>) => {
         .where(eq(bragLogs.userId, userId)),
       db
         .select({ value: count() })
-        .from(learningNotes)
-        .where(eq(learningNotes.userId, userId)),
+        .from(notes)
+        .where(eq(notes.userId, userId)),
       db
         .select({ value: count() })
         .from(sparks)
@@ -139,7 +139,7 @@ const getDashboard = async (c: Context<AppEnv>) => {
     stats: {
       workspaces: workspaceCount[0]?.value ?? 0,
       bragLogs: bragLogCount[0]?.value ?? 0,
-      learningNotes: learningNoteCount[0]?.value ?? 0,
+      notes: noteCount[0]?.value ?? 0,
       sparks: sparkCount[0]?.value ?? 0,
     },
     recentWorkspaces: recent.map(toWorkspaceResponse),
@@ -165,17 +165,17 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
       .orderBy(desc(bragLogs.createdAt))
       .limit(RECENT_ACTIVITY_LIMIT),
     db
-      .select({ note: learningNotes, workspace: workspaces })
-      .from(learningNotes)
+      .select({ note: notes, workspace: workspaces })
+      .from(notes)
       .leftJoin(
         workspaces,
         and(
-          eq(learningNotes.workspaceId, workspaces.id),
+          eq(notes.workspaceId, workspaces.id),
           eq(workspaces.userId, userId),
         ),
       )
-      .where(eq(learningNotes.userId, userId))
-      .orderBy(desc(learningNotes.createdAt))
+      .where(eq(notes.userId, userId))
+      .orderBy(desc(notes.createdAt))
       .limit(RECENT_ACTIVITY_LIMIT),
     db
       .select()
@@ -214,7 +214,7 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
     })),
     ...noteRows.map((row) => ({
       id: row.note.id,
-      type: "learning-note" as const,
+      type: "note" as const,
       title: row.note.title,
       date: new Date(row.note.createdAt).toISOString(),
       tags: (noteTagsMap.get(row.note.id) ?? []).map(toTagResponse),

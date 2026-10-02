@@ -6,7 +6,7 @@ import { workspaceResponseSchema } from "./workspace";
 export const dashboardStatsSchema = z.object({
   workspaces: z.number(),
   bragLogs: z.number(),
-  learningNotes: z.number(),
+  notes: z.number(),
   sparks: z.number(),
 });
 
@@ -15,11 +15,7 @@ export const dashboardResponseSchema = z.object({
   recentWorkspaces: z.array(workspaceResponseSchema),
 });
 
-export const activityTypeSchema = z.enum([
-  "brag-log",
-  "learning-note",
-  "spark",
-]);
+export const activityTypeSchema = z.enum(["brag-log", "note", "spark"]);
 
 export const activityItemSchema = z.object({
   id: z.string(),

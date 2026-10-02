@@ -4,6 +4,7 @@ import {
   Download,
   Loader2,
   Mail,
+  Settings,
   ShieldAlert,
 } from "lucide-react";
 import { useState } from "react";
@@ -80,7 +81,10 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Settings</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <Settings className="size-6 text-primary" />
+          Settings
+        </h1>
         <p className="text-sm text-muted-foreground">
           Manage your profile and account data.
         </p>
@@ -194,7 +198,7 @@ export function SettingsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4 p-5">
               <p className="max-w-md text-sm text-muted-foreground">
                 Permanently delete your account along with every workspace,
-                tag, brag log, and learning note you own. This action cannot be
+                tag, brag log, and note you own. This action cannot be
                 undone.
               </p>
               <Button

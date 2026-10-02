@@ -1,18 +1,19 @@
 # Personal Dev Log (`pdevlog`)
 
 A private dev log for software engineers. Capture brag-worthy wins in STAR
-format, write Markdown learning notes, organize everything with workspaces and
+format, write Markdown notes, organize everything with workspaces and
 tags, and export it all whenever you want. Runs entirely on Cloudflare Workers
 with a D1 (SQLite) database.
 
 ## Features
 
 - **Google sign-in** — OAuth 2.0 with PKCE via [Arctic](https://arctic.js.org/), session stored in a signed `httpOnly` JWT cookie.
-- **Workspaces** — group entries by context, typed as `work` or `learning`.
+- **Workspaces** — group entries by context, typed as `work`, `learning`, or `general`.
 - **Brag logs** — record achievements in **STAR** format (Situation, Task, Action, Result). Assign them to a workspace or keep them standalone; filter by "Unassigned" from the global Brag Logs page.
 - **AI STAR breakdown** — paste rough notes and let an LLM draft the STAR entry plus suggest applicable tags (via OpenRouter, structured output validated with Zod).
-- **Learning notes** — Markdown editor with live preview, syntax highlighting, and auto-generated table of contents.
-- **Sparks** — a frictionless capture inbox. Press `Cmd/Ctrl+K` (or the Spark button) anywhere to dump a link, idea, or screenshot. Recall old sparks with full-text/tag/date filters or a "Surprise me" random pick, then promote them into a learning note or brag log.
+- **Notes** — Markdown editor with live preview, syntax highlighting, and auto-generated table of contents. Attach a note to a workspace of any type or keep it standalone.
+- **Source material** — attach links (with optional labels) to a note; each opens in a new tab.
+- **Sparks** — a frictionless capture inbox. Press `Cmd/Ctrl+K` (or the Spark button) anywhere to dump a link, idea, or screenshot. Recall old sparks with full-text/tag/date filters or a "Surprise me" random pick, then promote them into a note or brag log.
 - **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 6 per spark). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted.
 - **Tags** — cross-cut brag logs and notes; filter and search across them.
 - **Dashboard** — totals and recent activity at a glance.
@@ -137,7 +138,7 @@ src/
   client/                  # React SPA
     app/                   # router, layout, auth guard, providers
     components/            # shared + shadcn-style UI primitives
-    features/              # auth, dashboard, brag-logs, learning-notes,
+    features/              # auth, dashboard, brag-logs, notes,
                            # workspaces, tags, sparks, settings, landing
     lib/                   # api client, filter params, utils
   shared/schemas/          # Zod schemas shared by client and worker
@@ -189,8 +190,8 @@ requests require a valid session cookie.
 | GET/POST | `/brag-logs` | List (filter/search/paginate) or create |
 | POST | `/brag-logs/star-breakdown` | AI-generate a STAR entry |
 | GET/PUT/DELETE | `/brag-logs/:id` | Read/update/delete a brag log |
-| GET/POST | `/learning-notes` | List or create notes |
-| GET/PUT/DELETE | `/learning-notes/:id` | Read/update/delete a note |
+| GET/POST | `/notes` | List or create notes |
+| GET/PUT/DELETE | `/notes/:id` | Read/update/delete a note |
 | GET | `/dashboard` | Counts and recent workspaces |
 | GET | `/dashboard/recent` | Recent activity feed |
 | GET/POST | `/sparks` | List (filter/search/paginate) or create sparks |

@@ -136,7 +136,10 @@ export function TagsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Tags</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <TagIcon className="size-6 text-primary" />
+          Tags
+        </h1>
         <p className="text-sm text-muted-foreground">
           Reusable labels for technologies you work with.
         </p>
