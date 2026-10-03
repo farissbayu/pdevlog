@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Clock,
+  FileDown,
   FileText,
   Loader2,
   NotebookPen,
@@ -162,6 +163,15 @@ export function NoteDetailPage() {
         <div className="flex shrink-0 items-center gap-2">
           <Button variant="outline" size="icon" asChild>
             <Link
+              to={`/notes/${data.id}/print`}
+              aria-label="Download PDF"
+              title="Download PDF"
+            >
+              <FileDown className="size-4" />
+            </Link>
+          </Button>
+          <Button variant="outline" size="icon" asChild>
+            <Link
               to={`/notes/${data.id}/edit`}
               aria-label="Edit note"
               title="Edit note"
@@ -208,7 +218,7 @@ export function NoteDetailPage() {
         </div>
 
         <aside className="hidden lg:block">
-          <div className="sticky top-6 max-h-[calc(100svh-3rem)] overflow-y-auto">
+          <div className="note-toc-scroll sticky top-6 max-h-[calc(100svh-3rem)] overflow-y-auto pr-2">
             <NoteToc headings={headings} />
           </div>
         </aside>

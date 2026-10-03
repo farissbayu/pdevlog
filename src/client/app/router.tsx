@@ -9,6 +9,7 @@ import { DashboardPage } from "@/client/features/dashboard/dashboard-page";
 import { LandingPage } from "@/client/features/landing/landing-page";
 import { NoteDetailPage } from "@/client/features/notes/note-detail-page";
 import { NoteEditorPage } from "@/client/features/notes/note-editor";
+import { NotePrintPage } from "@/client/features/notes/note-print-page";
 import { NotesPage } from "@/client/features/notes/notes-page";
 import { SettingsPage } from "@/client/features/settings/settings-page";
 import { SparksPage } from "@/client/features/sparks/sparks-page";
@@ -45,6 +46,14 @@ export const router = createBrowserRouter([
       { path: "tags", element: <TagsPage /> },
       { path: "settings", element: <SettingsPage /> },
     ],
+  },
+  {
+    path: "/notes/:id/print",
+    element: (
+      <AuthGuard>
+        <NotePrintPage />
+      </AuthGuard>
+    ),
   },
   {
     path: "*",

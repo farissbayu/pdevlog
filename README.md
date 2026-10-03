@@ -17,7 +17,7 @@ with a D1 (SQLite) database.
 - **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 20 per owner). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted into a note.
 - **Tags** — cross-cut brag logs and notes; filter and search across them.
 - **Dashboard** — totals and recent activity at a glance.
-- **Export** — download brag logs as Markdown, optionally scoped to a date range.
+- **Export** — download brag logs as Markdown (optionally scoped to a date range) and any note as a print-ready PDF for offline reading.
 - **Account deletion** — remove your account and all owned data (cascading deletes).
 - **Light/dark theme**, collapsible sidebar, responsive layout.
 
