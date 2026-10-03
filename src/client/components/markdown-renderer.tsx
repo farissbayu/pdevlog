@@ -7,14 +7,37 @@ import remarkGfm from "remark-gfm";
 type MarkdownRendererProps = {
   content: string;
   className?: string;
+  resolveImageSrc?: (src: string) => string;
 };
 
-export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+export function MarkdownRenderer({
+  content,
+  className,
+  resolveImageSrc,
+}: MarkdownRendererProps) {
   return (
     <div className={cn("markdown-body", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: true }]]}
+        components={
+          resolveImageSrc
+            ? {
+                img: ({ src, alt, node, ...props }) => {
+                  void node;
+                  return (
+                    <img
+                      src={
+                        typeof src === "string" ? resolveImageSrc(src) : src
+                      }
+                      alt={alt ?? ""}
+                      {...props}
+                    />
+                  );
+                },
+              }
+            : undefined
+        }
       >
         {content}
       </ReactMarkdown>

@@ -2,11 +2,20 @@ import {
   AlertTriangle,
   ArrowLeft,
   Eye,
+  ImagePlus,
   Loader2,
   Pencil,
   Save,
+  X,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { cn } from "cn";
 
@@ -24,6 +33,13 @@ import {
   SelectValue,
 } from "@/client/components/ui/select";
 import {
+  extractImageFiles,
+  formatBytes,
+  uploadAttachment,
+  useFilePreviews,
+  validateImageFile,
+} from "@/client/lib/attachments";
+import {
   SourceEditor,
   normalizeSourceDrafts,
   sourceDraftsFromResponse,
@@ -31,6 +47,11 @@ import {
 } from "@/client/features/sources/source-editor";
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
+import {
+  MAX_ATTACHMENT_SIZE,
+  MAX_STORAGE_PER_OWNER,
+  type AttachmentResponse,
+} from "@/shared/schemas/attachment";
 import {
   createNoteSchema,
   updateNoteSchema,
@@ -47,6 +68,29 @@ import { useSparkDetailQuery } from "@/client/features/sparks/api";
 
 type EditorMode = "edit" | "preview";
 
+const PENDING_PREFIX = "/__pending__/";
+
+type PendingFile = {
+  id: string;
+  file: File;
+};
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function removeMarkdownImage(content: string, target: string): string {
+  const pattern = new RegExp(
+    `!\\[[^\\]]*\\]\\(${escapeRegExp(target)}\\)`,
+    "g",
+  );
+  return content
+    .replace(pattern, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
+}
+
 function firstUrlInText(content: string): string | null {
   const firstLine = content
     .split("\n")
@@ -57,6 +101,22 @@ function firstUrlInText(content: string): string | null {
   }
   const match = firstLine.match(/^https?:\/\/\S+$/i);
   return match ? match[0] : null;
+}
+
+function initialContent(
+  note: NoteResponse | null,
+  spark: SparkResponse | null | undefined,
+): string {
+  if (note) {
+    return note.content;
+  }
+  if (!spark) {
+    return "";
+  }
+  const embeds = (spark.attachments ?? [])
+    .map((attachment) => `![image](${attachment.url})`)
+    .join("\n\n");
+  return embeds ? `${spark.content}\n\n${embeds}` : spark.content;
 }
 
 function initialSources(
@@ -85,7 +145,6 @@ function NoteEditorForm({
   const navigate = useNavigate();
   const createMutation = useCreateNoteMutation();
   const updateMutation = useUpdateNoteMutation();
-  const mutation = isEditing ? updateMutation : createMutation;
 
   const { data: workspaces } = useWorkspacesQuery();
   const { data: tags } = useTagsQuery();
@@ -93,9 +152,7 @@ function NoteEditorForm({
   const [title, setTitle] = useState(
     note?.title ?? (spark ? sparkTitle(spark.content) : ""),
   );
-  const [content, setContent] = useState(
-    note?.content ?? spark?.content ?? "",
-  );
+  const [content, setContent] = useState(() => initialContent(note, spark));
   const [workspaceId, setWorkspaceId] = useState(
     note?.workspaceId ?? presetWorkspaceId ?? "",
   );
@@ -107,8 +164,47 @@ function NoteEditorForm({
   const [sources, setSources] = useState<SourceDraft[]>(() =>
     initialSources(note, spark),
   );
+  const [pending, setPending] = useState<PendingFile[]>([]);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("edit");
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const pendingFiles = useMemo(
+    () => pending.map((item) => item.file),
+    [pending],
+  );
+  const previews = useFilePreviews(pendingFiles);
+
+  const pendingUrls = useMemo(() => {
+    const map = new Map<string, string>();
+    pending.forEach((item, index) => {
+      const preview = previews[index];
+      if (preview) {
+        map.set(item.id, preview.url);
+      }
+    });
+    return map;
+  }, [pending, previews]);
+
+  const resolveImageSrc = useCallback(
+    (src: string) => {
+      if (src.startsWith(PENDING_PREFIX)) {
+        return pendingUrls.get(src.slice(PENDING_PREFIX.length)) ?? src;
+      }
+      return src;
+    },
+    [pendingUrls],
+  );
+
+  const visibleAttachments = (note?.attachments ?? []).filter(
+    (attachment) => !removedIds.includes(attachment.id),
+  );
+  const totalCount = visibleAttachments.length + pending.length;
 
   const backTo =
     isEditing && note
@@ -119,36 +215,142 @@ function NoteEditorForm({
           ? `/workspaces/${presetWorkspaceId}`
           : "/workspaces";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setError(null);
+  const insertAtCursor = (snippet: string) => {
+    const textarea = contentRef.current;
+    const start = textarea?.selectionStart ?? null;
+    const end = textarea?.selectionEnd ?? null;
+    setContent((current) => {
+      if (start === null || end === null) {
+        return current.length > 0 ? `${current}\n${snippet}` : snippet;
+      }
+      return `${current.slice(0, start)}${snippet}${current.slice(end)}`;
+    });
+    if (textarea && start !== null) {
+      requestAnimationFrame(() => {
+        textarea.focus();
+        const position = start + snippet.length;
+        textarea.setSelectionRange(position, position);
+      });
+    }
+  };
 
-    const normalizedSources = normalizeSourceDrafts(sources);
+  const addFiles = (incoming: File[]) => {
+    if (incoming.length === 0) {
+      return;
+    }
+    setError(null);
+    const accepted: PendingFile[] = [];
+    let count = totalCount;
+    let validationError: string | null = null;
+    for (const file of incoming) {
+      const message = validateImageFile(file, count);
+      if (message) {
+        validationError = message;
+        continue;
+      }
+      accepted.push({ id: crypto.randomUUID(), file });
+      count += 1;
+    }
+    if (accepted.length > 0) {
+      setPending((current) => [...current, ...accepted]);
+      insertAtCursor(
+        accepted
+          .map((item) => `![image](${PENDING_PREFIX}${item.id})`)
+          .join("\n\n"),
+      );
+    }
+    if (validationError) {
+      setError(validationError);
+    }
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLElement>) => {
+    const pasted = extractImageFiles(event.clipboardData);
+    if (pasted.length > 0) {
+      event.preventDefault();
+      addFiles(pasted);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    const dropped = extractImageFiles(event.dataTransfer);
+    if (dropped.length > 0) {
+      event.preventDefault();
+      addFiles(dropped);
+    }
+  };
+
+  const removePending = (item: PendingFile) => {
+    setPending((current) => current.filter((entry) => entry.id !== item.id));
+    setContent((current) =>
+      removeMarkdownImage(current, `${PENDING_PREFIX}${item.id}`),
+    );
+  };
+
+  const removeExisting = (attachment: AttachmentResponse) => {
+    setRemovedIds((current) => [...current, attachment.id]);
+    setContent((current) => removeMarkdownImage(current, attachment.url));
+  };
+
+  const persistPending = async (noteId: string): Promise<string> => {
+    if (pending.length === 0) {
+      return content;
+    }
+    setUploading(true);
+    try {
+      let next = content;
+      for (const item of pending) {
+        const attachment = await uploadAttachment("notes", noteId, item.file);
+        next = next
+          .split(`${PENDING_PREFIX}${item.id}`)
+          .join(attachment.url);
+      }
+      setContent(next);
+      setPending([]);
+      return next;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (uploading || createMutation.isPending || updateMutation.isPending) {
+      return;
+    }
+    setError(null);
 
     const payload = {
       title: title.trim(),
       content,
       workspace_id: workspaceId || null,
       tag_ids: tagIds,
-      sources: normalizedSources,
-      ...(spark && !isEditing ? { spark_id: spark.id } : {}),
+      sources: normalizeSourceDrafts(sources),
+      ...(spark && !note ? { spark_id: spark.id } : {}),
     };
 
-    const onSuccess = (saved: NoteResponse) => {
-      navigate(`/notes/${saved.id}`);
-    };
-    const onError = (mutationError: Error) => setError(mutationError.message);
+    const onError = (mutationError: Error) =>
+      setError(mutationError.message);
+    const persistedId = note?.id ?? savedNoteId;
 
-    if (isEditing && note) {
+    if (persistedId) {
       const parsed = updateNoteSchema.safeParse(payload);
       if (!parsed.success) {
         setError(parsed.error.issues[0]?.message ?? "Invalid input");
         return;
       }
-      updateMutation.mutate(
-        { id: note.id, input: parsed.data },
-        { onSuccess, onError },
-      );
+      try {
+        const finalContent = await persistPending(persistedId);
+        updateMutation.mutate(
+          { id: persistedId, input: { ...parsed.data, content: finalContent } },
+          {
+            onSuccess: () => navigate(`/notes/${persistedId}`),
+            onError,
+          },
+        );
+      } catch (uploadError) {
+        setError((uploadError as Error).message);
+      }
       return;
     }
 
@@ -157,8 +359,31 @@ function NoteEditorForm({
       setError(parsed.error.issues[0]?.message ?? "Invalid input");
       return;
     }
-    createMutation.mutate(parsed.data, { onSuccess, onError });
+    createMutation.mutate(parsed.data, {
+      onSuccess: async (saved) => {
+        setSavedNoteId(saved.id);
+        try {
+          const finalContent = await persistPending(saved.id);
+          if (finalContent !== parsed.data.content) {
+            updateMutation.mutate(
+              { id: saved.id, input: { content: finalContent } },
+              {
+                onSuccess: () => navigate(`/notes/${saved.id}`),
+                onError,
+              },
+            );
+            return;
+          }
+          navigate(`/notes/${saved.id}`);
+        } catch (uploadError) {
+          setError((uploadError as Error).message);
+        }
+      },
+      onError,
+    });
   };
+
+  const busy = uploading || createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -174,13 +399,17 @@ function NoteEditorForm({
           <Button type="button" variant="outline" asChild>
             <Link to={backTo}>Cancel</Link>
           </Button>
-          <Button type="submit" form="note-form" disabled={mutation.isPending}>
-            {mutation.isPending ? (
+          <Button type="submit" form="note-form" disabled={busy}>
+            {busy ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               <Save className="size-4" />
             )}
-            {isEditing ? "Save changes" : "Create note"}
+            {uploading
+              ? "Uploading\u2026"
+              : isEditing
+                ? "Save changes"
+                : "Create note"}
           </Button>
         </div>
       </div>
@@ -196,7 +425,12 @@ function NoteEditorForm({
         </p>
       </div>
 
-      <form id="note-form" className="space-y-5" onSubmit={handleSubmit}>
+      <form
+        id="note-form"
+        className="space-y-5"
+        onSubmit={handleSubmit}
+        onPaste={handlePaste}
+      >
         <div className="space-y-2">
           <Label htmlFor="note-title">Title</Label>
           <Input
@@ -298,18 +532,75 @@ function NoteEditorForm({
             </div>
           </div>
 
+          {visibleAttachments.length > 0 || previews.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {visibleAttachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="group relative size-20 overflow-hidden rounded-md border"
+                >
+                  <img
+                    src={attachment.url}
+                    alt="Attachment"
+                    className="size-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove image"
+                    className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={() => removeExisting(attachment)}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+              {pending.map((item, index) => {
+                const preview = previews[index];
+                if (!preview) {
+                  return null;
+                }
+                return (
+                  <div
+                    key={item.id}
+                    className="group relative size-20 overflow-hidden rounded-md border"
+                  >
+                    <img
+                      src={preview.url}
+                      alt="Pending attachment"
+                      className="size-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove image"
+                      className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={() => removePending(item)}
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
           {mode === "edit" ? (
-            <AutoResizeTextarea
-              id="note-content"
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              placeholder={"# Heading\n\nWrite Markdown here..."}
-              className="min-h-[28rem] font-mono text-sm"
-            />
+            <div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()}>
+              <AutoResizeTextarea
+                id="note-content"
+                ref={contentRef}
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                placeholder={"# Heading\n\nWrite Markdown here..."}
+                className="min-h-[28rem] font-mono text-sm"
+              />
+            </div>
           ) : (
             <div className="min-h-[28rem] rounded-md border bg-card p-5">
               {content.trim() ? (
-                <MarkdownRenderer content={content} />
+                <MarkdownRenderer
+                  content={content}
+                  resolveImageSrc={resolveImageSrc}
+                />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Nothing to preview yet.
@@ -317,6 +608,39 @@ function NoteEditorForm({
               )}
             </div>
           )}
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={totalCount >= MAX_STORAGE_PER_OWNER}
+              onClick={() => inputRef.current?.click()}
+            >
+              <ImagePlus className="size-4" />
+              Add image
+            </Button>
+            <span
+              className={cn(
+                "text-xs text-muted-foreground",
+                totalCount >= MAX_STORAGE_PER_OWNER && "text-destructive",
+              )}
+            >
+              {totalCount}/{MAX_STORAGE_PER_OWNER} images · max{" "}
+              {formatBytes(MAX_ATTACHMENT_SIZE)}
+            </span>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                addFiles(Array.from(event.target.files ?? []));
+                event.target.value = "";
+              }}
+            />
+          </div>
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}

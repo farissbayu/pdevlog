@@ -54,12 +54,27 @@ import {
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import {
+  AttachmentUploadError,
+  createAttachment,
   deleteOwnedAttachments,
   loadAttachments,
   loadAttachmentsByOwnerIds,
   moveAttachments,
+  pruneUnreferencedAttachments,
   toAttachmentResponse,
 } from "@/worker/features/attachments/helpers";
+
+const ATTACHMENT_URL_PATTERN = /\/api\/attachments\/([A-Za-z0-9_-]+)/g;
+
+function referencedAttachmentIds(content: string): Set<string> {
+  const ids = new Set<string>();
+  for (const match of content.matchAll(ATTACHMENT_URL_PATTERN)) {
+    if (match[1]) {
+      ids.add(match[1]);
+    }
+  }
+  return ids;
+}
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
@@ -665,6 +680,15 @@ const updateNoteHandler = async (
     statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
   );
 
+  if (input.content !== undefined) {
+    await pruneUnreferencedAttachments(db, c.env.STORAGE, {
+      ownerType: "note",
+      ownerId: id,
+      userId,
+      referencedIds: referencedAttachmentIds(input.content),
+    });
+  }
+
   const [updated] = await db
     .select()
     .from(notes)
@@ -737,6 +761,40 @@ const deleteNoteHandler = async (c: Context<AppEnv, "/:id">) => {
   return c.json({ success: true });
 };
 
+const uploadNoteAttachmentHandler = async (
+  c: Context<AppEnv, "/:id/attachments">,
+) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const db = createDb(c.env.DB);
+
+  const note = await findOwnedNote(db, id, userId);
+  if (!note) {
+    return c.json({ error: "Note not found" }, 404);
+  }
+
+  const form = await c.req.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return c.json({ error: "No file provided" }, 400);
+  }
+
+  try {
+    const row = await createAttachment(db, c.env.STORAGE, {
+      ownerType: "note",
+      ownerId: id,
+      userId,
+      file,
+    });
+    return c.json({ attachment: toAttachmentResponse(row) }, 201);
+  } catch (error) {
+    if (error instanceof AttachmentUploadError) {
+      return c.json({ error: error.error.message }, 400);
+    }
+    throw error;
+  }
+};
+
 export const notesRoute = new Hono<AppEnv>()
   .get("/", zValidator("query", noteFilterSchema), listNotes)
   .post(
@@ -750,4 +808,5 @@ export const notesRoute = new Hono<AppEnv>()
     zValidator("json", updateNoteSchema),
     updateNoteHandler,
   )
-  .delete("/:id", deleteNoteHandler);
+  .delete("/:id", deleteNoteHandler)
+  .post("/:id/attachments", uploadNoteAttachmentHandler);

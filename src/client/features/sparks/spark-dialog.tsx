@@ -50,7 +50,7 @@ import {
   formatBytes,
   useFilePreviews,
   validateImageFile,
-} from "./attachment-utils";
+} from "@/client/lib/attachments";
 
 type SparkDialogProps = {
   open: boolean;

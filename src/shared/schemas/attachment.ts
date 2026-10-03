@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
-export const MAX_STORAGE_PER_OWNER = 6;
+export const MAX_STORAGE_PER_OWNER = 20;
 
 export const ALLOWED_IMAGE_TYPES = [
   "image/png",
@@ -32,5 +32,5 @@ export type AttachmentOwnerType = z.infer<typeof attachmentOwnerTypeSchema>;
 export type AttachmentResponse = z.infer<typeof attachmentResponseSchema>;
 
 export function attachmentUrl(id: string): string {
-  return `/api/sparks/attachments/${id}`;
+  return `/api/attachments/${id}`;
 }

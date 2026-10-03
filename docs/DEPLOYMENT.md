@@ -49,7 +49,7 @@ Salin `database_id` yang dihasilkan ke `wrangler.jsonc` pada blok
 ## 3b. Buat Bucket R2 (Lampiran)
 
 Lampiran gambar (mis. screenshot Spark) disimpan di R2 dan disajikan lewat
-endpoint backend (`/api/sparks/attachments/:id`) yang memeriksa kepemilikan,
+endpoint backend (`/api/attachments/:id`) yang memeriksa kepemilikan,
 bukan lewat URL publik. Bucket ini bersifat universal untuk pdevlog — object
 di-key dengan folder `attachments/{userId}/{ownerType}/{ownerId}/...`, sehingga
 spark, note, dan brag log berbagi satu bucket.

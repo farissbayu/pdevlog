@@ -5,6 +5,7 @@ import {
   SESSION_COOKIE,
   createSessionToken,
 } from "@/worker/features/auth/session";
+import { MAX_STORAGE_PER_OWNER } from "@/shared/schemas/attachment";
 import app from "@/worker/index";
 
 async function createUser(id: string): Promise<string> {
@@ -85,13 +86,13 @@ describe("spark image attachments", () => {
       attachment: { id: string; url: string; mimeType: string };
     };
     expect(attachment.mimeType).toBe("image/png");
-    expect(attachment.url).toBe(`/api/sparks/attachments/${attachment.id}`);
+    expect(attachment.url).toBe(`/api/attachments/${attachment.id}`);
 
     const detail = await request(`/api/sparks/${sparkId}`, token);
     const body = (await detail.json()) as SparkBody;
     expect(body.spark.attachments).toHaveLength(1);
 
-    const image = await request(`/api/sparks/attachments/${attachment.id}`, token);
+    const image = await request(`/api/attachments/${attachment.id}`, token);
     expect(image.status).toBe(200);
     expect(image.headers.get("content-type")).toBe("image/png");
     expect(image.headers.get("cache-control")).toContain("private");
@@ -107,19 +108,19 @@ describe("spark image attachments", () => {
       attachment: { id: string };
     };
 
-    const first = await request(`/api/sparks/attachments/${attachment.id}`, token);
+    const first = await request(`/api/attachments/${attachment.id}`, token);
     const etag = first.headers.get("etag");
     expect(etag).toBeTruthy();
 
     const notModified = await request(
-      `/api/sparks/attachments/${attachment.id}`,
+      `/api/attachments/${attachment.id}`,
       token,
       { headers: { "If-None-Match": etag! } },
     );
     expect(notModified.status).toBe(304);
 
     const partial = await request(
-      `/api/sparks/attachments/${attachment.id}`,
+      `/api/attachments/${attachment.id}`,
       token,
       { headers: { Range: "bytes=0-3" } },
     );
@@ -147,13 +148,17 @@ describe("spark image attachments", () => {
     const token = await createUser("att-limit");
     const sparkId = await createSpark(token);
 
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < MAX_STORAGE_PER_OWNER; index += 1) {
       const response = await upload(token, sparkId, pngFile(`s${index}.png`));
       expect(response.status).toBe(201);
     }
 
-    const seventh = await upload(token, sparkId, pngFile("s6.png"));
-    expect(seventh.status).toBe(400);
+    const overflow = await upload(
+      token,
+      sparkId,
+      pngFile(`s${MAX_STORAGE_PER_OWNER}.png`),
+    );
+    expect(overflow.status).toBe(400);
   });
 
   it("blocks cross-user access to attachments with 404", async () => {
@@ -166,14 +171,14 @@ describe("spark image attachments", () => {
     };
 
     expect(
-      (await request(`/api/sparks/attachments/${attachment.id}`, tokenA)).status,
+      (await request(`/api/attachments/${attachment.id}`, tokenA)).status,
     ).toBe(200);
     expect(
-      (await request(`/api/sparks/attachments/${attachment.id}`, tokenB)).status,
+      (await request(`/api/attachments/${attachment.id}`, tokenB)).status,
     ).toBe(404);
     expect(
       (
-        await request(`/api/sparks/attachments/${attachment.id}`, tokenB, {
+        await request(`/api/attachments/${attachment.id}`, tokenB, {
           method: "DELETE",
         })
       ).status,
@@ -203,7 +208,7 @@ describe("spark image attachments", () => {
     const remaining = await env.STORAGE.list({ prefix });
     expect(remaining.objects).toHaveLength(0);
     expect(
-      (await request(`/api/sparks/attachments/${attachment.id}`, token)).status,
+      (await request(`/api/attachments/${attachment.id}`, token)).status,
     ).toBe(404);
   });
 
@@ -243,13 +248,13 @@ describe("spark image attachments", () => {
     expect(sparkBody.spark.attachments).toHaveLength(0);
 
     expect(
-      (await request(`/api/sparks/attachments/${attachment.id}`, token)).status,
+      (await request(`/api/attachments/${attachment.id}`, token)).status,
     ).toBe(200);
   });
 
   it("rejects unauthenticated attachment access", async () => {
     const response = await app.fetch(
-      new Request("https://example.com/api/sparks/attachments/nope"),
+      new Request("https://example.com/api/attachments/nope"),
       env,
     );
     expect(response.status).toBe(401);

@@ -165,7 +165,7 @@ export async function createAttachment(
   if (existing.length >= MAX_STORAGE_PER_OWNER) {
     throw new AttachmentUploadError({
       code: "too_many",
-      message: `A spark can hold at most ${MAX_STORAGE_PER_OWNER} images`,
+      message: `You can attach at most ${MAX_STORAGE_PER_OWNER} images`,
     });
   }
 
@@ -236,6 +236,33 @@ export async function deleteOwnedAttachments(
         eq(attachments.ownerType, ownerType),
         eq(attachments.ownerId, ownerId),
         eq(attachments.userId, userId),
+      ),
+    );
+}
+
+export async function pruneUnreferencedAttachments(
+  db: Database,
+  bucket: R2Bucket,
+  params: {
+    ownerType: AttachmentOwnerType;
+    ownerId: string;
+    userId: string;
+    referencedIds: Set<string>;
+  },
+): Promise<void> {
+  const { ownerType, ownerId, userId, referencedIds } = params;
+  const rows = await loadAttachments(db, ownerType, ownerId, userId);
+  const orphans = rows.filter((row) => !referencedIds.has(row.id));
+  if (orphans.length === 0) {
+    return;
+  }
+  await bucket.delete(orphans.map((row) => row.r2Key));
+  await db
+    .delete(attachments)
+    .where(
+      inArray(
+        attachments.id,
+        orphans.map((row) => row.id),
       ),
     );
 }

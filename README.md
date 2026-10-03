@@ -14,7 +14,7 @@ with a D1 (SQLite) database.
 - **Notes** — Markdown editor with live preview, syntax highlighting, and auto-generated table of contents. Attach a note to a workspace of any type or keep it standalone.
 - **Source material** — attach links (with optional labels) to a note; each opens in a new tab.
 - **Sparks** — a frictionless capture inbox. Press `Cmd/Ctrl+K` (or the Spark button) anywhere to dump a link, idea, or screenshot. Recall old sparks with full-text/tag/date filters or a "Surprise me" random pick, then promote them into a note or brag log.
-- **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 6 per spark). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted.
+- **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 20 per owner). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted into a note.
 - **Tags** — cross-cut brag logs and notes; filter and search across them.
 - **Dashboard** — totals and recent activity at a glance.
 - **Export** — download brag logs as Markdown, optionally scoped to a date range.
@@ -198,7 +198,8 @@ requests require a valid session cookie.
 | GET | `/sparks/random` | Recall a random open spark |
 | GET/PUT/DELETE | `/sparks/:id` | Read/update/delete a spark |
 | POST | `/sparks/:id/attachments` | Upload an image attachment (multipart) |
-| GET/DELETE | `/sparks/attachments/:id` | Owner-checked image proxy / delete |
+| POST | `/notes/:id/attachments` | Upload an image attachment (multipart) |
+| GET/DELETE | `/attachments/:id` | Owner-checked image proxy / delete |
 | GET | `/export/brag-logs` | Export brag logs as Markdown |
 | GET | `/health` | Health check |
 

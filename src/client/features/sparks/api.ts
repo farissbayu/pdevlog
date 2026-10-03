@@ -7,12 +7,15 @@ import {
 
 import { client, parseApiError } from "@/client/lib/api";
 import {
+  deleteAttachment,
+  uploadAttachment,
+} from "@/client/lib/attachments";
+import {
   EMPTY_FILTERS,
   buildFilterQuery,
   type FilterParams,
 } from "@/client/lib/use-filter-params";
 import type { PaginationMeta } from "@/shared/schemas/pagination";
-import type { AttachmentResponse } from "@/shared/schemas/attachment";
 import type {
   CreateSparkInput,
   SparkDetailResponse,
@@ -94,40 +97,12 @@ export async function fetchRandomSpark(): Promise<SparkResponse> {
   return data.spark;
 }
 
-export async function uploadSparkAttachment(
-  sparkId: string,
-  file: File,
-): Promise<AttachmentResponse> {
-  const form = new FormData();
-  form.append("file", file);
-  const response = await fetch(`/api/sparks/${sparkId}/attachments`, {
-    method: "POST",
-    body: form,
-    credentials: "include",
-  });
-  if (!response.ok) {
-    throw await parseApiError(response, "Failed to upload image");
-  }
-  const data = (await response.json()) as { attachment: AttachmentResponse };
-  return data.attachment;
-}
-
-export async function deleteAttachment(attachmentId: string): Promise<void> {
-  const response = await fetch(`/api/sparks/attachments/${attachmentId}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  if (!response.ok) {
-    throw await parseApiError(response, "Failed to delete image");
-  }
-}
-
 export function useUploadSparkAttachmentMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ sparkId, file }: { sparkId: string; file: File }) =>
-      uploadSparkAttachment(sparkId, file),
+      uploadAttachment("sparks", sparkId, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SPARKS_KEY });
     },

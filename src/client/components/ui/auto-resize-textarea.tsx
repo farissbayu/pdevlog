@@ -69,9 +69,19 @@ function getCaretViewportTop(
 function AutoResizeTextarea({
   className,
   value,
+  ref: forwardedRef,
   ...props
 }: ComponentProps<typeof Textarea>) {
   const ref = useRef<HTMLTextAreaElement>(null)
+
+  const setRef = (node: HTMLTextAreaElement | null) => {
+    ref.current = node
+    if (typeof forwardedRef === "function") {
+      forwardedRef(node)
+    } else if (forwardedRef) {
+      forwardedRef.current = node
+    }
+  }
 
   useLayoutEffect(() => {
     const element = ref.current
@@ -99,7 +109,7 @@ function AutoResizeTextarea({
 
   return (
     <Textarea
-      ref={ref}
+      ref={setRef}
       value={value}
       className={cn("resize-none overflow-hidden", className)}
       {...props}
