@@ -32,6 +32,7 @@ function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
     name: workspace.name,
     description: workspace.description,
     type: workspace.type,
+    sources: [],
     createdAt: new Date(workspace.createdAt).toISOString(),
     updatedAt: new Date(workspace.updatedAt).toISOString(),
   };

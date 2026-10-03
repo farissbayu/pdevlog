@@ -94,6 +94,7 @@ async function createNote(
       content: "## Notes\n\nDetails.",
       workspace_id: workspaceId,
       tag_ids: [tagId],
+      sources: [{ url: "https://example.com/note-source" }],
     }),
   });
   const body = (await response.json()) as { note: { id: string } };
@@ -114,6 +115,13 @@ describe("workspace deletion cascade", () => {
       otherWorkspaceId,
       tagId,
     );
+
+    await request(`/api/workspaces/${workspaceId}`, token, {
+      method: "PUT",
+      body: JSON.stringify({
+        sources: [{ url: "https://example.com/workspace-source" }],
+      }),
+    });
 
     const response = await request(`/api/workspaces/${workspaceId}`, token, {
       method: "DELETE",
@@ -144,6 +152,18 @@ describe("workspace deletion cascade", () => {
     expect(
       await countRows(
         "SELECT COUNT(*) AS count FROM note_tags WHERE note_id = ?",
+        noteId,
+      ),
+    ).toBe(0);
+    expect(
+      await countRows(
+        "SELECT COUNT(*) AS count FROM sources WHERE owner_type = 'workspace' AND owner_id = ?",
+        workspaceId,
+      ),
+    ).toBe(0);
+    expect(
+      await countRows(
+        "SELECT COUNT(*) AS count FROM sources WHERE owner_type = 'note' AND owner_id = ?",
         noteId,
       ),
     ).toBe(0);

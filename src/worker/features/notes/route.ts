@@ -32,22 +32,23 @@ import {
   updateNoteSchema,
   type CreateNoteInput,
   type NoteResponse,
-  type NoteSourceResponse,
   type UpdateNoteInput,
 } from "@/shared/schemas/notes";
+import { type SourceResponse } from "@/shared/schemas/source";
 import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
 import {
   notes,
-  noteSources,
   noteTags,
+  sources,
   sparks,
   tags,
   workspaces,
   type AttachmentRow,
   type NoteRow,
-  type NoteSourceRow,
+  type SourceOwnerType,
+  type SourceRow,
   type TagRow,
   type WorkspaceRow,
 } from "@/worker/db/schema";
@@ -63,12 +64,16 @@ import {
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
-function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
+function toWorkspaceResponse(
+  workspace: WorkspaceRow,
+  sourceRows: SourceRow[] = [],
+): WorkspaceResponse {
   return {
     id: workspace.id,
     name: workspace.name,
     description: workspace.description,
     type: workspace.type,
+    sources: sourceRows.map(toSourceResponse),
     createdAt: new Date(workspace.createdAt).toISOString(),
     updatedAt: new Date(workspace.updatedAt).toISOString(),
   };
@@ -82,19 +87,22 @@ function toTagResponse(tag: TagRow): TagResponse {
   };
 }
 
-function toNoteSourceResponse(source: NoteSourceRow): NoteSourceResponse {
+function toSourceResponse(source: SourceRow): SourceResponse {
   return {
     id: source.id,
     url: source.url,
     label: source.label,
+    kind: source.kind,
+    locator: source.locator,
   };
 }
 
 function toNoteResponse(
   note: NoteRow,
   workspace: WorkspaceRow | null,
+  workspaceSources: SourceRow[],
   noteTagsList: TagRow[],
-  sourceRows: NoteSourceRow[] = [],
+  sourceRows: SourceRow[] = [],
   attachmentRows: AttachmentRow[] = [],
 ): NoteResponse {
   return {
@@ -102,9 +110,11 @@ function toNoteResponse(
     title: note.title,
     content: note.content,
     workspaceId: note.workspaceId,
-    workspace: workspace ? toWorkspaceResponse(workspace) : null,
+    workspace: workspace
+      ? toWorkspaceResponse(workspace, workspaceSources)
+      : null,
     tags: noteTagsList.map(toTagResponse),
-    sources: sourceRows.map(toNoteSourceResponse),
+    sources: sourceRows.map(toSourceResponse),
     attachments: attachmentRows.map(toAttachmentResponse),
     createdAt: new Date(note.createdAt).toISOString(),
     updatedAt: new Date(note.updatedAt).toISOString(),
@@ -165,45 +175,52 @@ async function loadTagsByNoteIds(
   return map;
 }
 
-async function loadSourcesForNote(
+async function loadSources(
   db: Database,
-  noteId: string,
+  ownerType: SourceOwnerType,
+  ownerId: string,
   userId: string,
-): Promise<NoteSourceRow[]> {
+): Promise<SourceRow[]> {
   return db
     .select()
-    .from(noteSources)
+    .from(sources)
     .where(
-      and(eq(noteSources.noteId, noteId), eq(noteSources.userId, userId)),
+      and(
+        eq(sources.ownerType, ownerType),
+        eq(sources.ownerId, ownerId),
+        eq(sources.userId, userId),
+      ),
     )
-    .orderBy(asc(noteSources.position), asc(noteSources.createdAt));
+    .orderBy(asc(sources.position), asc(sources.createdAt));
 }
 
-async function loadSourcesByNoteIds(
+async function loadSourcesByOwnerIds(
   db: Database,
-  noteIds: string[],
+  ownerType: SourceOwnerType,
+  ownerIds: string[],
   userId: string,
-): Promise<Map<string, NoteSourceRow[]>> {
-  const map = new Map<string, NoteSourceRow[]>();
-  if (noteIds.length === 0) {
+): Promise<Map<string, SourceRow[]>> {
+  const map = new Map<string, SourceRow[]>();
+  if (ownerIds.length === 0) {
     return map;
   }
 
   const rows = await db
     .select()
-    .from(noteSources)
+    .from(sources)
     .where(
       and(
-        inArray(noteSources.noteId, noteIds),
-        eq(noteSources.userId, userId),
+        eq(sources.ownerType, ownerType),
+        inArray(sources.ownerId, ownerIds),
+        eq(sources.userId, userId),
       ),
     )
-    .orderBy(asc(noteSources.position), asc(noteSources.createdAt));
+    .orderBy(asc(sources.position), asc(sources.createdAt));
 
   for (const row of rows) {
-    const list = map.get(row.noteId) ?? [];
+    const list = map.get(row.ownerId) ?? [];
     list.push(row);
-    map.set(row.noteId, list);
+    map.set(row.ownerId, list);
   }
   return map;
 }
@@ -344,20 +361,32 @@ const listNotes = async (
   ]);
   const total = totalRows[0]?.value ?? 0;
 
-  const tagsByNoteId = await loadTagsByNoteIds(
+  const noteIds = rows.map((row) => row.note.id);
+  const workspaceIds = [
+    ...new Set(
+      rows
+        .map((row) => row.note.workspaceId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const tagsByNoteId = await loadTagsByNoteIds(db, noteIds, userId);
+  const sourcesByNoteId = await loadSourcesByOwnerIds(
     db,
-    rows.map((row) => row.note.id),
+    "note",
+    noteIds,
     userId,
   );
-  const sourcesByNoteId = await loadSourcesByNoteIds(
+  const sourcesByWorkspaceId = await loadSourcesByOwnerIds(
     db,
-    rows.map((row) => row.note.id),
+    "workspace",
+    workspaceIds,
     userId,
   );
   const attachmentsByNoteId = await loadAttachmentsByOwnerIds(
     db,
     "note",
-    rows.map((row) => row.note.id),
+    noteIds,
     userId,
   );
 
@@ -366,6 +395,9 @@ const listNotes = async (
       toNoteResponse(
         row.note,
         row.workspace,
+        row.note.workspaceId
+          ? (sourcesByWorkspaceId.get(row.note.workspaceId) ?? [])
+          : [],
         tagsByNoteId.get(row.note.id) ?? [],
         sourcesByNoteId.get(row.note.id) ?? [],
         attachmentsByNoteId.get(row.note.id) ?? [],
@@ -421,12 +453,15 @@ const createNoteHandler = async (
     db.insert(noteTags).values({ noteId: noteId, tagId }),
   );
   const insertSources = sourceInputs.map((source, index) =>
-    db.insert(noteSources).values({
+    db.insert(sources).values({
       id: nanoid(),
-      noteId,
       userId,
-      url: source.url,
+      ownerType: "note",
+      ownerId: noteId,
+      url: source.url ?? null,
       label: source.label ?? null,
+      kind: source.kind ?? null,
+      locator: source.locator ?? null,
       position: index,
       createdAt: now,
     }),
@@ -475,7 +510,10 @@ const createNoteHandler = async (
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
   const createdTags = await loadTagsForNote(db, created.id, userId);
-  const createdSources = await loadSourcesForNote(db, created.id, userId);
+  const createdSources = await loadSources(db, "note", created.id, userId);
+  const createdWorkspaceSources = created.workspaceId
+    ? await loadSources(db, "workspace", created.workspaceId, userId)
+    : [];
   const createdAttachments = await loadAttachments(
     db,
     "note",
@@ -488,6 +526,7 @@ const createNoteHandler = async (
       note: toNoteResponse(
         created,
         workspace,
+        createdWorkspaceSources,
         createdTags,
         createdSources,
         createdAttachments,
@@ -509,7 +548,10 @@ const getNote = async (c: Context<AppEnv, "/:id">) => {
 
   const workspace = await loadWorkspace(db, note.workspaceId, userId);
   const noteTagsList = await loadTagsForNote(db, note.id, userId);
-  const sourceRows = await loadSourcesForNote(db, note.id, userId);
+  const sourceRows = await loadSources(db, "note", note.id, userId);
+  const workspaceSources = note.workspaceId
+    ? await loadSources(db, "workspace", note.workspaceId, userId)
+    : [];
   const attachmentRows = await loadAttachments(
     db,
     "note",
@@ -521,6 +563,7 @@ const getNote = async (c: Context<AppEnv, "/:id">) => {
     note: toNoteResponse(
       note,
       workspace,
+      workspaceSources,
       noteTagsList,
       sourceRows,
       attachmentRows,
@@ -582,16 +625,26 @@ const updateNoteHandler = async (
   }
   if (hasSources) {
     statements.push(
-      db.delete(noteSources).where(eq(noteSources.noteId, id)),
+      db
+        .delete(sources)
+        .where(
+          and(
+            eq(sources.ownerType, "note"),
+            eq(sources.ownerId, id),
+          ),
+        ),
     );
     statements.push(
       ...sourceInputs.map((source, index) =>
-        db.insert(noteSources).values({
+        db.insert(sources).values({
           id: nanoid(),
-          noteId: id,
           userId,
-          url: source.url,
+          ownerType: "note",
+          ownerId: id,
+          url: source.url ?? null,
           label: source.label ?? null,
+          kind: source.kind ?? null,
+          locator: source.locator ?? null,
           position: index,
           createdAt: now,
         }),
@@ -620,7 +673,10 @@ const updateNoteHandler = async (
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
   const updatedTags = await loadTagsForNote(db, updated.id, userId);
-  const updatedSources = await loadSourcesForNote(db, updated.id, userId);
+  const updatedSources = await loadSources(db, "note", updated.id, userId);
+  const updatedWorkspaceSources = updated.workspaceId
+    ? await loadSources(db, "workspace", updated.workspaceId, userId)
+    : [];
   const updatedAttachments = await loadAttachments(
     db,
     "note",
@@ -632,6 +688,7 @@ const updateNoteHandler = async (
     note: toNoteResponse(
       updated,
       workspace,
+      updatedWorkspaceSources,
       updatedTags,
       updatedSources,
       updatedAttachments,
@@ -650,6 +707,11 @@ const deleteNoteHandler = async (c: Context<AppEnv, "/:id">) => {
   }
 
   const statements: BatchItem<"sqlite">[] = [
+    db
+      .delete(sources)
+      .where(
+        and(eq(sources.ownerType, "note"), eq(sources.ownerId, id)),
+      ),
     db
       .delete(notes)
       .where(and(eq(notes.id, id), eq(notes.userId, userId))),

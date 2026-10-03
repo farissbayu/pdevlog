@@ -15,6 +15,12 @@ import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
 import { Textarea } from "@/client/components/ui/textarea";
 import {
+  SourceEditor,
+  normalizeSourceDrafts,
+  sourceDraftsFromResponse,
+  type SourceDraft,
+} from "@/client/features/sources/source-editor";
+import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
   type WorkspaceResponse,
@@ -48,6 +54,7 @@ export function WorkspaceFormDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<WorkspaceTypeInput>("work");
+  const [sources, setSources] = useState<SourceDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +64,7 @@ export function WorkspaceFormDialog({
     setName(workspace?.name ?? "");
     setDescription(workspace?.description ?? "");
     setType(workspace?.type ?? "work");
+    setSources(sourceDraftsFromResponse(workspace?.sources ?? []));
     setError(null);
   }, [open, workspace]);
 
@@ -68,6 +76,7 @@ export function WorkspaceFormDialog({
       name: name.trim(),
       description: description.trim() ? description.trim() : null,
       type,
+      sources: normalizeSourceDrafts(sources),
     };
 
     if (isEditing && workspace) {
@@ -156,6 +165,13 @@ export function WorkspaceFormDialog({
               ))}
             </div>
           </div>
+
+          <SourceEditor
+            sources={sources}
+            onChange={setSources}
+            label="Workspace sources (optional)"
+            emptyHint="Add the main references for this workspace, e.g. the video, course, or book it covers."
+          />
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

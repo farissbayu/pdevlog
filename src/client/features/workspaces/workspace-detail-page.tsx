@@ -37,6 +37,7 @@ import {
   NoteList,
   NoteListSkeleton,
 } from "@/client/features/notes/note-list";
+import { SourceList } from "@/client/features/sources/source-list";
 import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
 
@@ -290,6 +291,10 @@ export function WorkspaceDetailPage() {
           </Button>
         </div>
       </div>
+
+      {workspace.sources.length > 0 ? (
+        <SourceList sources={workspace.sources} title="Sources" />
+      ) : null}
 
       {workspace.type === "work" ? (
         <>

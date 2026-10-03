@@ -90,6 +90,81 @@ describe("workspace data isolation", () => {
     expect(listB.workspaces).toHaveLength(0);
   });
 
+  it("creates, updates and exposes workspace sources", async () => {
+    const token = await createUser("ws-source-owner");
+
+    const created = await request("/api/workspaces", token, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Bootcamp",
+        type: "learning",
+        sources: [
+          {
+            url: "https://coursera.org/learn/x",
+            label: "Course",
+            kind: "course",
+          },
+        ],
+      }),
+    });
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as {
+      workspace: {
+        id: string;
+        sources: { id: string; url: string | null; kind: string | null }[];
+      };
+    };
+    expect(body.workspace.sources).toHaveLength(1);
+    expect(body.workspace.sources[0]?.kind).toBe("course");
+
+    const workspaceId = body.workspace.id;
+
+    const updated = await request(`/api/workspaces/${workspaceId}`, token, {
+      method: "PUT",
+      body: JSON.stringify({
+        sources: [{ label: "Clean Code", kind: "book", locator: "p.1" }],
+      }),
+    });
+    expect(updated.status).toBe(200);
+    const updatedBody = (await updated.json()) as {
+      workspace: {
+        sources: {
+          url: string | null;
+          label: string | null;
+          locator: string | null;
+        }[];
+      };
+    };
+    expect(updatedBody.workspace.sources).toHaveLength(1);
+    expect(updatedBody.workspace.sources[0]?.url).toBeNull();
+    expect(updatedBody.workspace.sources[0]?.label).toBe("Clean Code");
+    expect(updatedBody.workspace.sources[0]?.locator).toBe("p.1");
+
+    const detail = (await (
+      await request(`/api/workspaces/${workspaceId}`, token)
+    ).json()) as { workspace: { sources: unknown[] } };
+    expect(detail.workspace.sources).toHaveLength(1);
+
+    const list = (await (await request("/api/workspaces", token)).json()) as {
+      workspaces: { sources: unknown[] }[];
+    };
+    expect(list.workspaces[0]?.sources).toHaveLength(1);
+  });
+
+  it("rejects a workspace source with neither URL nor label", async () => {
+    const token = await createUser("ws-source-invalid");
+
+    const response = await request("/api/workspaces", token, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Bad source",
+        type: "general",
+        sources: [{ kind: "book" }],
+      }),
+    });
+    expect(response.status).toBe(400);
+  });
+
   it("rejects unauthenticated access to workspaces", async () => {
     const response = await app.fetch(
       new Request("https://example.com/api/workspaces"),

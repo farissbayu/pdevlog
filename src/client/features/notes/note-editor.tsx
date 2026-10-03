@@ -4,9 +4,7 @@ import {
   Eye,
   Loader2,
   Pencil,
-  Plus,
   Save,
-  Trash2,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
@@ -25,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/client/components/ui/select";
+import {
+  SourceEditor,
+  normalizeSourceDrafts,
+  sourceDraftsFromResponse,
+  type SourceDraft,
+} from "@/client/features/sources/source-editor";
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
@@ -43,8 +47,6 @@ import { useSparkDetailQuery } from "@/client/features/sparks/api";
 
 type EditorMode = "edit" | "preview";
 
-type SourceDraft = { label: string; url: string };
-
 function firstUrlInText(content: string): string | null {
   const firstLine = content
     .split("\n")
@@ -62,13 +64,12 @@ function initialSources(
   spark: SparkResponse | null | undefined,
 ): SourceDraft[] {
   if (note) {
-    return note.sources.map((source) => ({
-      url: source.url,
-      label: source.label ?? "",
-    }));
+    return sourceDraftsFromResponse(note.sources);
   }
   const sparkUrl = spark ? firstUrlInText(spark.content) : null;
-  return sparkUrl ? [{ url: sparkUrl, label: "" }] : [];
+  return sparkUrl
+    ? [{ url: sparkUrl, label: "", kind: "", locator: "" }]
+    : [];
 }
 
 function NoteEditorForm({
@@ -109,15 +110,6 @@ function NoteEditorForm({
   const [mode, setMode] = useState<EditorMode>("edit");
   const [error, setError] = useState<string | null>(null);
 
-  const addSource = () =>
-    setSources((prev) => [...prev, { label: "", url: "" }]);
-  const updateSource = (index: number, patch: Partial<SourceDraft>) =>
-    setSources((prev) =>
-      prev.map((source, i) => (i === index ? { ...source, ...patch } : source)),
-    );
-  const removeSource = (index: number) =>
-    setSources((prev) => prev.filter((_, i) => i !== index));
-
   const backTo =
     isEditing && note
       ? `/notes/${note.id}`
@@ -131,17 +123,7 @@ function NoteEditorForm({
     event.preventDefault();
     setError(null);
 
-    const normalizedSources = sources
-      .map((source) => ({
-        url: source.url.trim(),
-        label: source.label.trim(),
-      }))
-      .filter((source) => source.url.length > 0)
-      .map((source) =>
-        source.label
-          ? { url: source.url, label: source.label }
-          : { url: source.url },
-      );
+    const normalizedSources = normalizeSourceDrafts(sources);
 
     const payload = {
       title: title.trim(),
@@ -275,61 +257,11 @@ function NoteEditorForm({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Sources</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addSource}
-            >
-              <Plus className="size-3.5" />
-              Add source
-            </Button>
-          </div>
-          {sources.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No sources yet. Add links related to this note.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {sources.map((source, index) => (
-                <div key={index} className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    value={source.label}
-                    onChange={(event) =>
-                      updateSource(index, { label: event.target.value })
-                    }
-                    placeholder="Label (optional)"
-                    maxLength={200}
-                    className="sm:w-48"
-                  />
-                  <Input
-                    value={source.url}
-                    onChange={(event) =>
-                      updateSource(index, { url: event.target.value })
-                    }
-                    placeholder="https://example.com"
-                    maxLength={2048}
-                    inputMode="url"
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeSource(index)}
-                    aria-label="Remove source"
-                    title="Remove source"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <SourceEditor
+          sources={sources}
+          onChange={setSources}
+          emptyHint="No sources yet. Add links, books, or courses related to this note."
+        />
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">

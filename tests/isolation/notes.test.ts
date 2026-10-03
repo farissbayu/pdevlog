@@ -57,7 +57,13 @@ async function createTag(token: string, name: string): Promise<string> {
   return body.tag.id;
 }
 
-type NoteSource = { id: string; url: string; label: string | null };
+type NoteSource = {
+  id: string;
+  url: string | null;
+  label: string | null;
+  kind: string | null;
+  locator: string | null;
+};
 
 type NoteBody = {
   note: {
@@ -65,6 +71,11 @@ type NoteBody = {
     title: string;
     content: string;
     workspaceId: string | null;
+    workspace: {
+      id: string;
+      name: string;
+      sources: NoteSource[];
+    } | null;
     tags: { id: string; name: string }[];
     sources: NoteSource[];
   };
@@ -292,7 +303,7 @@ describe("note isolation and relation ownership", () => {
     expect(listB.notes).toHaveLength(0);
   });
 
-  it("cascades note_sources when the note is deleted", async () => {
+  it("removes note-owned sources when the note is deleted", async () => {
     const token = await createUser("note-source-deleter");
 
     const created = await createNote(token, {
@@ -306,11 +317,76 @@ describe("note isolation and relation ownership", () => {
     expect(deleted.status).toBe(200);
 
     const rows = await env.DB.prepare(
-      "SELECT COUNT(*) AS count FROM note_sources WHERE note_id = ?",
+      "SELECT COUNT(*) AS count FROM sources WHERE owner_type = 'note' AND owner_id = ?",
     )
       .bind(noteId)
       .first<{ count: number }>();
     expect(rows?.count).toBe(0);
+  });
+
+  it("stores a source without a URL with kind and locator", async () => {
+    const token = await createUser("note-source-book");
+
+    const created = await createNote(token, {
+      sources: [{ label: "Clean Code", kind: "book", locator: "p.120" }],
+    });
+    expect(created.status).toBe(201);
+    const source = created.body.note.sources[0];
+    expect(source?.url).toBeNull();
+    expect(source?.label).toBe("Clean Code");
+    expect(source?.kind).toBe("book");
+    expect(source?.locator).toBe("p.120");
+  });
+
+  it("rejects a source with neither URL nor label", async () => {
+    const token = await createUser("note-source-empty");
+
+    const attempt = await createNote(token, {
+      sources: [{ kind: "book" }],
+    });
+    expect(attempt.status).toBe(400);
+  });
+
+  it("inherits workspace sources into note responses", async () => {
+    const token = await createUser("note-source-inherit");
+
+    const wsResponse = await request("/api/workspaces", token, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Long lecture",
+        type: "learning",
+        sources: [
+          {
+            url: "https://youtu.be/abc123",
+            label: "Full lecture",
+            kind: "video",
+          },
+        ],
+      }),
+    });
+    expect(wsResponse.status).toBe(201);
+    const wsBody = (await wsResponse.json()) as {
+      workspace: { id: string; sources: NoteSource[] };
+    };
+    expect(wsBody.workspace.sources).toHaveLength(1);
+
+    const created = await createNote(token, {
+      workspace_id: wsBody.workspace.id,
+      sources: [{ label: "Section 1", locator: "0:00-5:00", kind: "video" }],
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.note.sources).toHaveLength(1);
+    expect(created.body.note.workspace?.sources).toHaveLength(1);
+    expect(created.body.note.workspace?.sources[0]?.url).toBe(
+      "https://youtu.be/abc123",
+    );
+
+    const detail = await request(
+      `/api/notes/${created.body.note.id}`,
+      token,
+    );
+    const detailBody = (await detail.json()) as NoteBody;
+    expect(detailBody.note.workspace?.sources).toHaveLength(1);
   });
 
   it("blocks cross-user read, update and delete with 404", async () => {

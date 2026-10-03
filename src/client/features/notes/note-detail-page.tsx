@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   Clock,
-  ExternalLink,
   FileText,
   Loader2,
   NotebookPen,
@@ -22,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/client/components/ui/dialog";
+import { SourceList } from "@/client/features/sources/source-list";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 
 import { useDeleteNoteMutation, useNoteDetailQuery } from "./api";
@@ -179,25 +179,12 @@ export function NoteDetailPage() {
         </div>
       </div>
 
-      {data.sources.length > 0 ? (
-        <div className="space-y-1.5">
-          <h2 className="text-sm font-medium">Sources</h2>
-          <ul className="flex flex-col gap-1">
-            {data.sources.map((source) => (
-              <li key={source.id} className="min-w-0">
-                <a
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex max-w-full items-center gap-1.5 text-sm text-primary hover:underline"
-                >
-                  <ExternalLink className="size-3.5 shrink-0" />
-                  <span className="truncate">{source.label || source.url}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <SourceList sources={data.sources} />
+      {data.workspace && data.workspace.sources.length > 0 ? (
+        <SourceList
+          sources={data.workspace.sources}
+          title={`Workspace sources · ${data.workspace.name}`}
+        />
       ) : null}
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_14rem]">

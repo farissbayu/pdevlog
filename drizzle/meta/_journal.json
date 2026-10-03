@@ -78,6 +78,20 @@
       "when": 1790933955210,
       "tag": "0010_note_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791022919884,
+      "tag": "0011_sources_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791022929811,
+      "tag": "0012_drop_note_sources",
+      "breakpoints": true
     }
   ]
 }

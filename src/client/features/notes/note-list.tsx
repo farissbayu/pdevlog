@@ -37,6 +37,10 @@ function NoteTagChip({ tag }: { tag: TagResponse }) {
   );
 }
 
+export function noteSourceCount(note: NoteResponse): number {
+  return note.sources.length + (note.workspace?.sources.length ?? 0);
+}
+
 export function NoteListSkeleton() {
   return (
     <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -98,10 +102,10 @@ export function NoteList({ notes }: NoteListProps) {
                 <WorkspaceTypeBadge type={note.workspace.type} />
               ) : null}
               {note.workspace ? <span>{note.workspace.name}</span> : null}
-              {note.sources.length > 0 ? (
+              {noteSourceCount(note) > 0 ? (
                 <span className="inline-flex items-center gap-1">
                   <Link2 className="size-3" />
-                  {note.sources.length}
+                  {noteSourceCount(note)}
                 </span>
               ) : null}
             </div>

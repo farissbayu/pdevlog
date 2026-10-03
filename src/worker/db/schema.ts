@@ -151,24 +151,43 @@ export const noteTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.noteId, table.tagId] })],
 );
 
-export const noteSources = sqliteTable(
-  "note_sources",
+export const sourceOwnerTypes = ["workspace", "note"] as const;
+
+export type SourceOwnerType = (typeof sourceOwnerTypes)[number];
+
+export const sourceKinds = [
+  "video",
+  "course",
+  "book",
+  "article",
+  "link",
+  "other",
+] as const;
+
+export type SourceKind = (typeof sourceKinds)[number];
+
+export const sources = sqliteTable(
+  "sources",
   {
     id: text("id").primaryKey(),
-    noteId: text("note_id")
-      .notNull()
-      .references(() => notes.id, { onDelete: "cascade" }),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    url: text("url").notNull(),
+    ownerType: text("owner_type", { enum: sourceOwnerTypes }).notNull(),
+    ownerId: text("owner_id").notNull(),
+    url: text("url"),
     label: text("label"),
+    kind: text("kind", { enum: sourceKinds }),
+    locator: text("locator"),
     position: integer("position").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
   },
-  (table) => [index("note_sources_note_id_idx").on(table.noteId)],
+  (table) => [
+    index("sources_owner_idx").on(table.ownerType, table.ownerId),
+    index("sources_user_id_idx").on(table.userId),
+  ],
 );
 
 export const sparkStatuses = ["open", "archived", "promoted"] as const;
@@ -269,8 +288,8 @@ export type BragTagRow = typeof bragTags.$inferSelect;
 export type NewBragTagRow = typeof bragTags.$inferInsert;
 export type NoteRow = typeof notes.$inferSelect;
 export type NewNoteRow = typeof notes.$inferInsert;
-export type NoteSourceRow = typeof noteSources.$inferSelect;
-export type NewNoteSourceRow = typeof noteSources.$inferInsert;
+export type SourceRow = typeof sources.$inferSelect;
+export type NewSourceRow = typeof sources.$inferInsert;
 export type NoteTagRow = typeof noteTags.$inferSelect;
 export type NewNoteTagRow = typeof noteTags.$inferInsert;
 export type SparkRow = typeof sparks.$inferSelect;
