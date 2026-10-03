@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router";
 
 import { GoogleIcon } from "@/client/components/google-icon";
+import { Reveal } from "@/client/components/reveal";
 import { ThemeToggle } from "@/client/components/theme-toggle";
 import { Button } from "@/client/components/ui/button";
 import { meQueryOptions } from "@/client/features/auth/api";
@@ -96,9 +97,9 @@ function HeroPreview() {
     <div className="relative isolate">
       <div
         aria-hidden="true"
-        className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-primary/15 via-transparent to-primary/5 blur-2xl"
+        className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-tr from-primary/15 via-transparent to-primary/5 blur-2xl motion-safe:animate-float"
       />
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm motion-safe:animate-scale-in">
         <div className="flex items-center gap-1.5 border-b px-4 py-3">
           <span className="size-2.5 rounded-full bg-destructive/60" />
           <span className="size-2.5 rounded-full bg-amber-500/60" />
@@ -218,24 +219,24 @@ export function LandingPage() {
       <main>
         <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
           <div className="space-y-6">
-            <span className="inline-flex items-center gap-1.5 rounded-full border bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Sparkles className="size-3.5 text-primary" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground motion-safe:animate-fade-up">
+              <Sparkles className="size-3.5 text-primary motion-safe:animate-pulse" />
               Track your wins, remember your lessons
             </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+            <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl motion-safe:animate-fade-up [animation-delay:80ms]">
               Your personal dev log.
             </h1>
-            <p className="max-w-prose text-lg text-muted-foreground">
+            <p className="max-w-prose text-lg text-muted-foreground motion-safe:animate-fade-up [animation-delay:160ms]">
               A private home for brag-worthy wins and the lessons behind them.
               Capture what you shipped, organize it once, and turn it into a
               story when it matters.
             </p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 motion-safe:animate-fade-up [animation-delay:240ms]">
               {isAuthenticated ? (
-                <Button asChild size="lg">
+                <Button asChild size="lg" className="group">
                   <Link to="/dashboard">
                     Open your dashboard
-                    <ArrowRight className="size-4" />
+                    <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </Button>
               ) : (
@@ -250,7 +251,7 @@ export function LandingPage() {
                 <a href="#features">See features</a>
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground motion-safe:animate-fade-up [animation-delay:320ms]">
               Sign in with Google. Your log stays private to you.
             </p>
           </div>
@@ -264,31 +265,34 @@ export function LandingPage() {
         >
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl space-y-3 text-center">
-              <h2 className="text-3xl font-semibold tracking-tight">
-                Everything you need to keep a dev log
-              </h2>
-              <p className="text-muted-foreground">
-                Purpose-built for developers who want to remember the work, not
-                just do it.
-              </p>
+              <Reveal>
+                <h2 className="text-3xl font-semibold tracking-tight">
+                  Everything you need to keep a dev log
+                </h2>
+              </Reveal>
+              <Reveal delay={80}>
+                <p className="text-muted-foreground">
+                  Purpose-built for developers who want to remember the work,
+                  not just do it.
+                </p>
+              </Reveal>
             </div>
 
             <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {features.map((feature) => (
-                <div
-                  key={feature.title}
-                  className="rounded-xl border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
-                >
-                  <div
-                    className={`flex size-10 items-center justify-center rounded-lg ${feature.accent}`}
-                  >
-                    <feature.icon className="size-5" />
+              {features.map((feature, index) => (
+                <Reveal key={feature.title} delay={index * 60}>
+                  <div className="group h-full rounded-xl border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-md">
+                    <div
+                      className={`flex size-10 items-center justify-center rounded-lg transition-transform duration-200 group-hover:-rotate-3 group-hover:scale-110 ${feature.accent}`}
+                    >
+                      <feature.icon className="size-5" />
+                    </div>
+                    <h3 className="mt-4 font-medium">{feature.title}</h3>
+                    <p className="mt-1.5 text-sm text-muted-foreground">
+                      {feature.description}
+                    </p>
                   </div>
-                  <h3 className="mt-4 font-medium">{feature.title}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -297,31 +301,34 @@ export function LandingPage() {
         <section id="workflow" className="scroll-mt-20 py-20">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl space-y-3 text-center">
-              <h2 className="text-3xl font-semibold tracking-tight">
-                From scattered notes to a clear story
-              </h2>
-              <p className="text-muted-foreground">
-                Three habits, one place to keep them.
-              </p>
+              <Reveal>
+                <h2 className="text-3xl font-semibold tracking-tight">
+                  From scattered notes to a clear story
+                </h2>
+              </Reveal>
+              <Reveal delay={80}>
+                <p className="text-muted-foreground">
+                  Three habits, one place to keep them.
+                </p>
+              </Reveal>
             </div>
 
             <ol className="mt-12 grid gap-4 md:grid-cols-3">
               {steps.map((step, index) => (
-                <li
-                  key={step.title}
-                  className="relative rounded-xl border bg-card p-6"
-                >
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div className="mt-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <step.icon className="size-5" />
-                  </div>
-                  <h3 className="mt-4 font-medium">{step.title}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    {step.description}
-                  </p>
-                </li>
+                <Reveal key={step.title} delay={index * 80}>
+                  <li className="group h-full relative rounded-xl border bg-card p-6 transition-colors duration-200 hover:border-primary/40">
+                    <span className="font-mono text-sm text-muted-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div className="mt-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform duration-200 group-hover:-rotate-3 group-hover:scale-110">
+                      <step.icon className="size-5" />
+                    </div>
+                    <h3 className="mt-4 font-medium">{step.title}</h3>
+                    <p className="mt-1.5 text-sm text-muted-foreground">
+                      {step.description}
+                    </p>
+                  </li>
+                </Reveal>
               ))}
             </ol>
           </div>
@@ -329,30 +336,36 @@ export function LandingPage() {
 
         <section className="border-t bg-muted/30 py-20">
           <div className="mx-auto w-full max-w-3xl px-4 text-center sm:px-6">
-            <h2 className="text-3xl font-semibold tracking-tight text-balance">
-              Start your dev log today
-            </h2>
-            <p className="mx-auto mt-3 max-w-prose text-muted-foreground">
-              Your next performance review, interview or retro will thank you
-              for the notes you take now.
-            </p>
-            <div className="mt-8 flex justify-center">
-              {isAuthenticated ? (
-                <Button asChild size="lg">
-                  <Link to="/dashboard">
-                    Open your dashboard
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild size="lg">
-                  <a href="/api/auth/google">
-                    <GoogleIcon />
-                    Continue with Google
-                  </a>
-                </Button>
-              )}
-            </div>
+            <Reveal>
+              <h2 className="text-3xl font-semibold tracking-tight text-balance">
+                Start your dev log today
+              </h2>
+            </Reveal>
+            <Reveal delay={80}>
+              <p className="mx-auto mt-3 max-w-prose text-muted-foreground">
+                Your next performance review, interview or retro will thank you
+                for the notes you take now.
+              </p>
+            </Reveal>
+            <Reveal delay={160}>
+              <div className="mt-8 flex justify-center">
+                {isAuthenticated ? (
+                  <Button asChild size="lg" className="group">
+                    <Link to="/dashboard">
+                      Open your dashboard
+                      <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild size="lg">
+                    <a href="/api/auth/google">
+                      <GoogleIcon />
+                      Continue with Google
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </Reveal>
           </div>
         </section>
       </main>
