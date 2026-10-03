@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppEnv } from "@/worker/env";
+import { adminRoute } from "@/worker/features/admin/route";
 import { attachmentsRoute } from "@/worker/features/attachments/route";
 import { authRoute } from "@/worker/features/auth/route";
 import { bragLogsRoute } from "@/worker/features/brag-logs/route";
@@ -15,6 +16,7 @@ import { authMiddleware } from "@/worker/middleware/auth";
 const app = new Hono<AppEnv>()
   .use("/api/*", authMiddleware)
   .route("/api/auth", authRoute)
+  .route("/api/admin", adminRoute)
   .route("/api/workspaces", workspacesRoute)
   .route("/api/tags", tagsRoute)
   .route("/api/brag-logs", bragLogsRoute)

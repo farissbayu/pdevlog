@@ -44,13 +44,19 @@ describe("generateStarBreakdown", () => {
     const fetchMock = vi.fn().mockResolvedValue(completionWith(STAR_JSON));
     vi.stubGlobal("fetch", fetchMock);
 
-    const breakdown = await generateStarBreakdown(
+    const { breakdown, usage } = await generateStarBreakdown(
       env,
       "spent the week fixing flaky checkout retries",
     );
 
     expect(breakdown.title).toBe("Recovered failed checkout payments");
     expect(breakdown.action).toContain("idempotency keys");
+    expect(usage).toEqual({
+      model: "test/openrouter-model",
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+    });
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url] = fetchMock.mock.calls[0] as [string];
     expect(String(url)).toContain("/chat/completions");
@@ -71,7 +77,7 @@ describe("generateStarBreakdown", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const breakdown = await generateStarBreakdown(
+    const { breakdown } = await generateStarBreakdown(
       env,
       "fixed checkout retries",
       [{ id: "tag-1", name: "Payments" }],

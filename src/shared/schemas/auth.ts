@@ -5,6 +5,7 @@ export const userResponseSchema = z.object({
   email: z.email(),
   name: z.string(),
   avatarUrl: z.url().nullable(),
+  isAdmin: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

@@ -21,6 +21,7 @@ export default defineConfig(async () => {
             JWT_SECRET: "test-jwt-secret-value-at-least-32-characters",
             OPENROUTER_API_KEY: "test-openrouter-api-key",
             OPENROUTER_MODEL: "test/openrouter-model",
+            ADMIN_EMAILS: "admin@example.com",
             TEST_MIGRATIONS: migrations,
           },
         },

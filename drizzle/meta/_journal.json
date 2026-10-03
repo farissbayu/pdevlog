@@ -92,6 +92,13 @@
       "when": 1791022929811,
       "tag": "0012_drop_note_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791036633175,
+      "tag": "0013_old_golden_guardian",
+      "breakpoints": true
     }
   ]
 }

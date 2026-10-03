@@ -19,6 +19,7 @@ with a D1 (SQLite) database.
 - **Dashboard** — totals and recent activity at a glance.
 - **Export** — download brag logs as Markdown (optionally scoped to a date range) and any note as a print-ready PDF for offline reading.
 - **Account deletion** — remove your account and all owned data (cascading deletes).
+- **Admin page** — for emails listed in `ADMIN_EMAILS`: a separate console with a user datatable (search, sort, paginate), per-user content and AI-token usage, and hard-delete.
 - **Light/dark theme**, collapsible sidebar, responsive layout.
 
 ## Tech Stack
@@ -96,6 +97,7 @@ with a D1 (SQLite) database.
 | `JWT_SECRET` | secret | Signing key for session cookies, min 32 chars |
 | `OPENROUTER_API_KEY` | secret | OpenRouter API key for AI features |
 | `OPENROUTER_MODEL` | var | Model slug, defaults to `openai/gpt-4o-mini` |
+| `ADMIN_EMAILS` | var | Comma-separated emails allowed to access `/admin` |
 
 `.dev.vars` is git-ignored. In production these are set with
 `wrangler secret put`. `OPENROUTER_MODEL` can also be set in `wrangler.jsonc`
@@ -201,6 +203,8 @@ requests require a valid session cookie.
 | POST | `/notes/:id/attachments` | Upload an image attachment (multipart) |
 | GET/DELETE | `/attachments/:id` | Owner-checked image proxy / delete |
 | GET | `/export/brag-logs` | Export brag logs as Markdown |
+| GET | `/admin/users` | List users with per-user usage (admin only) |
+| DELETE | `/admin/users/:id` | Hard-delete a user and their data (admin only) |
 | GET | `/health` | Health check |
 
 ## Deployment

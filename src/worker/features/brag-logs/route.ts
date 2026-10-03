@@ -39,6 +39,7 @@ import type { TagResponse } from "@/shared/schemas/tag";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
 import {
+  aiUsage,
   bragLogs,
   bragTags,
   sparks,
@@ -583,11 +584,22 @@ const generateStarBreakdownHandler = async (
     .where(eq(tags.userId, userId));
 
   try {
-    const breakdown = await generateStarBreakdown(
+    const { breakdown, usage } = await generateStarBreakdown(
       c.env,
       input.content,
       tagOptions,
     );
+
+    await db.insert(aiUsage).values({
+      id: nanoid(),
+      userId,
+      model: usage.model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+      createdAt: new Date(),
+    });
+
     return c.json({ breakdown });
   } catch (error) {
     if (error instanceof StarBreakdownError) {

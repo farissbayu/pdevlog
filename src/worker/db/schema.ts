@@ -276,6 +276,29 @@ export const attachments = sqliteTable(
   ],
 );
 
+export const aiUsage = sqliteTable(
+  "ai_usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    model: text("model").notNull(),
+    promptTokens: integer("prompt_tokens").notNull(),
+    completionTokens: integer("completion_tokens").notNull(),
+    totalTokens: integer("total_tokens").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("ai_usage_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
@@ -298,3 +321,5 @@ export type SparkTagRow = typeof sparkTags.$inferSelect;
 export type NewSparkTagRow = typeof sparkTags.$inferInsert;
 export type AttachmentRow = typeof attachments.$inferSelect;
 export type NewAttachmentRow = typeof attachments.$inferInsert;
+export type AiUsageRow = typeof aiUsage.$inferSelect;
+export type NewAiUsageRow = typeof aiUsage.$inferInsert;

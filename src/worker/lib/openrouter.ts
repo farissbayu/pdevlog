@@ -35,6 +35,18 @@ export class StarBreakdownError extends Error {
   }
 }
 
+export type StarBreakdownUsage = {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+export type StarBreakdownResult = {
+  breakdown: StarBreakdown;
+  usage: StarBreakdownUsage;
+};
+
 function buildTagSchema(tagIds: string[]) {
   if (tagIds.length === 0) {
     return z.array(z.string()).max(0);
@@ -58,7 +70,7 @@ export async function generateStarBreakdown(
   env: AppEnv["Bindings"],
   content: string,
   tagOptions: TagOption[] = [],
-): Promise<StarBreakdown> {
+): Promise<StarBreakdownResult> {
   const client = new OpenAI({
     apiKey: env.OPENROUTER_API_KEY,
     baseURL: OPENROUTER_BASE_URL,
@@ -86,6 +98,10 @@ export async function generateStarBreakdown(
 
   let parsed: StarBreakdown | null;
   let refusal: string | null;
+  let model = requestParams.model;
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let totalTokens = 0;
   try {
     const completion = await client.chat.completions.parse(requestParams, {
       timeout: REQUEST_TIMEOUT_MS,
@@ -93,6 +109,10 @@ export async function generateStarBreakdown(
     const message = completion.choices[0]?.message;
     parsed = (message?.parsed as StarBreakdown | null | undefined) ?? null;
     refusal = message?.refusal ?? null;
+    model = completion.model || requestParams.model;
+    promptTokens = completion.usage?.prompt_tokens ?? 0;
+    completionTokens = completion.usage?.completion_tokens ?? 0;
+    totalTokens = completion.usage?.total_tokens ?? 0;
   } catch (error) {
     const detail = error instanceof Error ? error.message : "unknown error";
     throw new StarBreakdownError(`AI request failed: ${detail}`);
@@ -108,7 +128,15 @@ export async function generateStarBreakdown(
   }
 
   return {
-    ...parsed,
-    tag_ids: parsed.tag_ids.filter((id) => validTagIds.has(id)),
+    breakdown: {
+      ...parsed,
+      tag_ids: parsed.tag_ids.filter((id) => validTagIds.has(id)),
+    },
+    usage: {
+      model,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+    },
   };
 }

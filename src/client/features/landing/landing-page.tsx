@@ -5,10 +5,13 @@ import {
   Download,
   FolderKanban,
   GraduationCap,
+  Image,
   LayoutDashboard,
+  Link2,
   Sparkles,
   Tags,
   Trophy,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router";
@@ -66,8 +69,29 @@ const features: Feature[] = [
     icon: Download,
     title: "Yours to keep",
     description:
-      "Export your logs and notes anytime. No lock-in, no surprises.",
+      "Export your logs to Markdown and download notes as print-ready PDFs anytime. No lock-in.",
     accent: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+  {
+    icon: Zap,
+    title: "Sparks",
+    description:
+      "A frictionless capture inbox. Dump a link, idea, or screenshot instantly, then promote it later.",
+    accent: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  },
+  {
+    icon: Image,
+    title: "Attachments",
+    description:
+      "Paste or drag-and-drop screenshots and images directly into your notes to keep visual context.",
+    accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  },
+  {
+    icon: Link2,
+    title: "Sources",
+    description:
+      "Attach external links and references to your notes and workspaces to keep material organized.",
+    accent: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
   },
 ];
 

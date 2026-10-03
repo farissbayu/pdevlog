@@ -1,7 +1,10 @@
 import { Navigate, createBrowserRouter } from "react-router";
 
+import { AdminGuard } from "@/client/app/admin-guard";
 import { AuthGuard } from "@/client/app/auth-guard";
-import { AppLayout } from "@/client/app/layout";
+import { AdminLayout, AppLayout } from "@/client/app/layout";
+import { AdminOverviewPage } from "@/client/features/admin/admin-page";
+import { AdminUsersPage } from "@/client/features/admin/admin-users-page";
 import { LoginPage } from "@/client/features/auth/login-page";
 import { BragLogDetailPage } from "@/client/features/brag-logs/brag-log-detail-page";
 import { BragLogsPage } from "@/client/features/brag-logs/brag-logs-page";
@@ -45,6 +48,20 @@ export const router = createBrowserRouter([
       { path: "sparks", element: <SparksPage /> },
       { path: "tags", element: <TagsPage /> },
       { path: "settings", element: <SettingsPage /> },
+    ],
+  },
+  {
+    path: "/admin",
+    element: (
+      <AuthGuard>
+        <AdminGuard>
+          <AdminLayout />
+        </AdminGuard>
+      </AuthGuard>
+    ),
+    children: [
+      { index: true, element: <AdminOverviewPage /> },
+      { path: "users", element: <AdminUsersPage /> },
     ],
   },
   {

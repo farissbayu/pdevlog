@@ -8,6 +8,7 @@ import type { UserResponse } from "@/shared/schemas/auth";
 import { createDb, type Database } from "@/worker/db";
 import { users, type UserRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { deleteUserData, isAdminEmail } from "@/worker/lib/users";
 import { authRateLimit } from "@/worker/middleware/rate-limit";
 
 import {
@@ -32,12 +33,13 @@ type GoogleUserInfo = {
   picture?: string;
 };
 
-function toUserResponse(user: UserRow): UserResponse {
+function toUserResponse(user: UserRow, isAdmin: boolean): UserResponse {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     avatarUrl: user.avatarUrl,
+    isAdmin,
     createdAt: new Date(user.createdAt).toISOString(),
     updatedAt: new Date(user.updatedAt).toISOString(),
   };
@@ -178,17 +180,7 @@ const deleteAccountHandler = async (c: Context<AppEnv>) => {
 
   const db = createDb(c.env.DB);
 
-  const prefix = `attachments/${userId}/`;
-  let cursor: string | undefined;
-  do {
-    const listed = await c.env.STORAGE.list({ prefix, cursor });
-    if (listed.objects.length > 0) {
-      await c.env.STORAGE.delete(listed.objects.map((object) => object.key));
-    }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-
-  await db.delete(users).where(eq(users.id, userId));
+  await deleteUserData(db, c.env.STORAGE, userId);
 
   clearSessionCookie(c);
   return c.json({ success: true });
@@ -212,7 +204,12 @@ const meHandler = async (c: Context<AppEnv>) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  return c.json({ user: toUserResponse(user) });
+  return c.json({
+    user: toUserResponse(
+      user,
+      isAdminEmail(user.email, c.env.ADMIN_EMAILS),
+    ),
+  });
 };
 
 export const authRoute = new Hono<AppEnv>()
