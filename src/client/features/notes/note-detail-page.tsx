@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 
 import { MarkdownRenderer } from "@/client/components/markdown-renderer";
 import { Button } from "@/client/components/ui/button";
@@ -63,6 +64,7 @@ export function NoteDetailPage() {
             ? `/workspaces/${data.workspace.id}`
             : "/notes",
         );
+        toast.success("Note deleted");
       },
     });
   };

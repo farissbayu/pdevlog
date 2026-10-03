@@ -15,6 +15,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { cn } from "cn";
+import { toast } from "sonner";
 
 import { AutoResizeTextarea } from "@/client/components/ui/auto-resize-textarea";
 import { Button } from "@/client/components/ui/button";
@@ -167,6 +168,7 @@ export function SparkDialog({
             try {
               await uploadPending(spark.id);
               onOpenChange(false);
+              toast.success("Spark updated");
             } catch (uploadError) {
               setError((uploadError as Error).message);
               onOpenChange(false);
@@ -191,6 +193,7 @@ export function SparkDialog({
         try {
           await uploadPending(created.id);
           onOpenChange(false);
+          toast.success("Spark saved");
         } catch (uploadError) {
           setError((uploadError as Error).message);
           onOpenChange(false);
@@ -210,7 +213,12 @@ export function SparkDialog({
         input: { status: spark.status === "open" ? "archived" : "open" },
       },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          onOpenChange(false);
+          toast.success(
+            spark.status === "open" ? "Spark archived" : "Spark reopened",
+          );
+        },
         onError: (mutationError) => setError(mutationError.message),
       },
     );

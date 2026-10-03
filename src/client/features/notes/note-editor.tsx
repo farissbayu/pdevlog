@@ -18,6 +18,7 @@ import {
 } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { cn } from "cn";
+import { toast } from "sonner";
 
 import { MarkdownRenderer } from "@/client/components/markdown-renderer";
 import { AutoResizeTextarea } from "@/client/components/ui/auto-resize-textarea";
@@ -344,7 +345,10 @@ function NoteEditorForm({
         updateMutation.mutate(
           { id: persistedId, input: { ...parsed.data, content: finalContent } },
           {
-            onSuccess: () => navigate(`/notes/${persistedId}`),
+            onSuccess: () => {
+              navigate(`/notes/${persistedId}`);
+              toast.success("Note saved");
+            },
             onError,
           },
         );
@@ -368,13 +372,17 @@ function NoteEditorForm({
             updateMutation.mutate(
               { id: saved.id, input: { content: finalContent } },
               {
-                onSuccess: () => navigate(`/notes/${saved.id}`),
+                onSuccess: () => {
+                  navigate(`/notes/${saved.id}`);
+                  toast.success("Note created");
+                },
                 onError,
               },
             );
             return;
           }
           navigate(`/notes/${saved.id}`);
+          toast.success("Note created");
         } catch (uploadError) {
           setError((uploadError as Error).message);
         }

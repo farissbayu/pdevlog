@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { cn } from "cn";
+import { toast } from "sonner";
 
 import { Button } from "@/client/components/ui/button";
 import {
@@ -88,7 +89,10 @@ export function WorkspaceFormDialog({
       updateMutation.mutate(
         { id: workspace.id, input: parsed.data },
         {
-          onSuccess: () => onOpenChange(false),
+          onSuccess: () => {
+            onOpenChange(false);
+            toast.success("Workspace updated");
+          },
           onError: () => setError("Failed to update workspace"),
         },
       );
@@ -101,7 +105,10 @@ export function WorkspaceFormDialog({
       return;
     }
     createMutation.mutate(parsed.data, {
-      onSuccess: () => onOpenChange(false),
+      onSuccess: () => {
+        onOpenChange(false);
+        toast.success("Workspace created");
+      },
       onError: () => setError("Failed to create workspace"),
     });
   };

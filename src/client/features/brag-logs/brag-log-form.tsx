@@ -1,5 +1,6 @@
 import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/client/components/ui/button";
 import {
@@ -154,7 +155,10 @@ export function BragLogFormDialog({
       updateMutation.mutate(
         { id: bragLog.id, input: parsed.data },
         {
-          onSuccess: () => onOpenChange(false),
+          onSuccess: () => {
+            onOpenChange(false);
+            toast.success("Brag log updated");
+          },
           onError: (mutationError) => setError(mutationError.message),
         },
       );
@@ -167,7 +171,10 @@ export function BragLogFormDialog({
       return;
     }
     createMutation.mutate(parsed.data, {
-      onSuccess: () => onOpenChange(false),
+      onSuccess: () => {
+        onOpenChange(false);
+        toast.success("Brag log created");
+      },
       onError: (mutationError) => setError(mutationError.message),
     });
   };

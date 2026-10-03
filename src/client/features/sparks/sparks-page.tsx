@@ -2,6 +2,7 @@ import { AlertTriangle, Loader2, Sparkles, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { cn } from "cn";
+import { toast } from "sonner";
 
 import { FilterBar } from "@/client/components/filter-bar";
 import { PaginationControls } from "@/client/components/pagination";
@@ -69,17 +70,30 @@ export function SparksPage() {
   } | null>(null);
 
   const handleArchive = (spark: SparkResponse) => {
-    updateMutation.mutate({
-      id: spark.id,
-      input: { status: spark.status === "open" ? "archived" : "open" },
-    });
+    updateMutation.mutate(
+      {
+        id: spark.id,
+        input: { status: spark.status === "open" ? "archived" : "open" },
+      },
+      {
+        onSuccess: () =>
+          toast.success(
+            spark.status === "open" ? "Spark archived" : "Spark reopened",
+          ),
+      },
+    );
   };
 
   const confirmDelete = () => {
     if (!deleting) {
       return;
     }
-    deleteMutation.mutate(deleting.id, { onSuccess: () => setDeleting(null) });
+    deleteMutation.mutate(deleting.id, {
+      onSuccess: () => {
+        setDeleting(null);
+        toast.success("Spark deleted");
+      },
+    });
   };
 
   const handleRecall = () => {

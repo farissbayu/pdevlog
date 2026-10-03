@@ -1,5 +1,6 @@
 import { FileText, Loader2, Plus } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { FilterBar } from "@/client/components/filter-bar";
 import { PaginationControls } from "@/client/components/pagination";
@@ -54,7 +55,10 @@ export function BragLogsPage() {
       return;
     }
     deleteMutation.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
+      onSuccess: () => {
+        setDeleting(null);
+        toast.success("Brag log deleted");
+      },
     });
   };
 

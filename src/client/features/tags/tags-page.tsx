@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { cn } from "cn";
+import { toast } from "sonner";
 
 import { PaginationControls } from "@/client/components/pagination";
 import { SearchInput } from "@/client/components/search-input";
@@ -90,7 +91,10 @@ export function TagsPage() {
     createMutation.mutate(
       { name: newName.trim() },
       {
-        onSuccess: () => setNewName(""),
+        onSuccess: () => {
+          setNewName("");
+          toast.success("Tag created");
+        },
         onError: (error) => setFormError(error.message),
       },
     );
@@ -118,7 +122,10 @@ export function TagsPage() {
     updateMutation.mutate(
       { id: tag.id, input: { name: editingName.trim() } },
       {
-        onSuccess: () => cancelEdit(),
+        onSuccess: () => {
+          cancelEdit();
+          toast.success("Tag updated");
+        },
         onError: (error) => setEditError(error.message),
       },
     );
@@ -129,7 +136,10 @@ export function TagsPage() {
       return;
     }
     deleteMutation.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
+      onSuccess: () => {
+        setDeleting(null);
+        toast.success("Tag deleted");
+      },
     });
   };
 

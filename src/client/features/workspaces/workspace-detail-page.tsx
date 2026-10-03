@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 
 import { PaginationControls } from "@/client/components/pagination";
 import { SearchInput } from "@/client/components/search-input";
@@ -191,7 +192,10 @@ export function WorkspaceDetailPage() {
       return;
     }
     deleteMutation.mutate(deleting.id, {
-      onSuccess: () => setDeleting(null),
+      onSuccess: () => {
+        setDeleting(null);
+        toast.success("Brag log deleted");
+      },
     });
   };
 
@@ -200,7 +204,10 @@ export function WorkspaceDetailPage() {
       return;
     }
     workspaceDeleteMutation.mutate(workspace.id, {
-      onSuccess: () => navigate("/workspaces"),
+      onSuccess: () => {
+        navigate("/workspaces");
+        toast.success("Workspace deleted");
+      },
     });
   };
 

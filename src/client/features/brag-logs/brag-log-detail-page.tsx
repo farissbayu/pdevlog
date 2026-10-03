@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 
 import { Button } from "@/client/components/ui/button";
 import {
@@ -75,6 +76,7 @@ export function BragLogDetailPage() {
       onSuccess: () => {
         setDeleteOpen(false);
         navigate("/brag-logs");
+        toast.success("Brag log deleted");
       },
     });
   };
