@@ -9,6 +9,7 @@ import { bragLogsRoute } from "@/worker/features/brag-logs/route";
 import { dashboardRoute } from "@/worker/features/dashboard/route";
 import { exportRoute } from "@/worker/features/export/route";
 import { notesRoute } from "@/worker/features/notes/route";
+import { skillShredderRoute } from "@/worker/features/skill-shredder/route";
 import { sparksRoute } from "@/worker/features/sparks/route";
 import { tagsRoute } from "@/worker/features/tags/route";
 import { workspacesRoute } from "@/worker/features/workspaces/route";
@@ -25,6 +26,7 @@ const app = new Hono<AppEnv>()
   .route("/api/notes", notesRoute)
   .route("/api/attachments", attachmentsRoute)
   .route("/api/sparks", sparksRoute)
+  .route("/api/skill-shredder", skillShredderRoute)
   .route("/api/dashboard", dashboardRoute)
   .route("/api/export", exportRoute)
   .get("/api/health", (c) => c.json({ status: "ok" }))

@@ -99,6 +99,13 @@
       "when": 1791036633175,
       "tag": "0013_old_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1791644266521,
+      "tag": "0014_spicy_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,13 @@
 ### Anti-Overwhelm & Idea Execution (Overcoming Fear of Difficult Projects)
 
-- [ ] prd shredder & micro-slice deconstructor
-  - Mengubah PRD raksasa/intimidatif menjadi langkah eksekusi kecil yang ramah mental (mencegah _analysis paralysis_).
+- [ ] skill shredder & toy-project deconstructor
+  - Mengubah topik belajar abstrak ("ingin belajar X") menjadi **Toy Project minimalis** (seperti analogi Todo App pada fullstack) yang berfokus 100% pada pemahaman fundamental.
   - Generator otomatis:
-    - **Spike 0 (The 30-Min Throwaway)**: Eksperimen terkecil pembukti konsep tanpa mikir arsitektur bersih ("ternyata ini ga seseram yang kukira").
-    - **Walking Skeleton (Slice 1)**: 1 database schema + 1 API endpoint + 1 UI button yang bisa diklik. Melarang mikir fitur fase 2 sebelum Slice 1 hidup.
+    - **The "Todo App" Analog**: Merumuskan 1 proyek mainan berukuran mikro tanpa distraksi domain/boilerplate.
+    - **Spike 0 (15-Min Scratch)**: Eksperimen terkecil pembukti koneksi/sintaks di terminal.
+    - **Milestones 1–3**: 3 langkah implementasi bertahap dari hulu ke hilir.
+    - **Ignore List**: Melarang over-engineering (styling CSS, auth, clustering).
+    - **Deliberate Practice Challenge**: 1 tantangan modifikasi mandiri tanpa AI untuk menguji pemahaman sejati.
 - [ ] idea bank: momentum & execution lifecycle
   - Status lifecycle anti-macet: `Spark` -> `30-Min Spike` -> `Walking Skeleton` -> `Building` -> `Shipped` / `Shelved`.
   - Alert "Stale Idea": Jika ide mengendap >14 hari di fase konsepsi, paksa dekonstruksi ulang menjadi slice yang 3x lebih kecil atau archive agar tidak membebani mental.

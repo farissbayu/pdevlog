@@ -205,6 +205,7 @@ export function SparksPage() {
               navigate(`/notes/new?spark=${spark.id}`)
             }
             onPromoteToBrag={setBragSpark}
+            onShred={(spark) => navigate(`/skill-shredder?spark=${spark.id}`)}
             onViewImage={(spark, index) => setLightbox({ spark, index })}
           />
           {pagination ? (

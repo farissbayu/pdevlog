@@ -15,6 +15,8 @@ import { NoteEditorPage } from "@/client/features/notes/note-editor";
 import { NotePrintPage } from "@/client/features/notes/note-print-page";
 import { NotesPage } from "@/client/features/notes/notes-page";
 import { SettingsPage } from "@/client/features/settings/settings-page";
+import { SkillShredderDetailPage } from "@/client/features/skill-shredder/skill-shredder-detail-page";
+import { SkillShredderPage } from "@/client/features/skill-shredder/skill-shredder-page";
 import { SparksPage } from "@/client/features/sparks/sparks-page";
 import { TagsPage } from "@/client/features/tags/tags-page";
 import { WorkspaceDetailPage } from "@/client/features/workspaces/workspace-detail-page";
@@ -45,6 +47,8 @@ export const router = createBrowserRouter([
       { path: "notes/new", element: <NoteEditorPage /> },
       { path: "notes/:id", element: <NoteDetailPage /> },
       { path: "notes/:id/edit", element: <NoteEditorPage /> },
+      { path: "skill-shredder", element: <SkillShredderPage /> },
+      { path: "skill-shredder/:id", element: <SkillShredderDetailPage /> },
       { path: "sparks", element: <SparksPage /> },
       { path: "tags", element: <TagsPage /> },
       { path: "settings", element: <SettingsPage /> },

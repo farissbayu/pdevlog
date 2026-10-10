@@ -299,6 +299,55 @@ export const aiUsage = sqliteTable(
   ],
 );
 
+export const skillShredStatuses = [
+  "draft",
+  "spike_done",
+  "building",
+  "completed",
+  "archived",
+] as const;
+
+export type SkillShredStatus = (typeof skillShredStatuses)[number];
+
+export const skillShreds = sqliteTable(
+  "skill_shreds",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    topic: text("topic").notNull(),
+    currentContext: text("current_context"),
+    targetTimeMinutes: integer("target_time_minutes").notNull().default(60),
+    toyProjectTitle: text("toy_project_title").notNull(),
+    blueprintJson: text("blueprint_json").notNull(),
+    status: text("status", { enum: skillShredStatuses })
+      .notNull()
+      .default("draft"),
+    spikeCompletedAt: integer("spike_completed_at", { mode: "timestamp_ms" }),
+    completedStepsJson: text("completed_steps_json").notNull().default("[]"),
+    challengeCompletedAt: integer("challenge_completed_at", {
+      mode: "timestamp_ms",
+    }),
+    noteId: text("note_id").references(() => notes.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("skill_shreds_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    index("skill_shreds_status_idx").on(table.userId, table.status),
+  ],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
@@ -323,3 +372,5 @@ export type AttachmentRow = typeof attachments.$inferSelect;
 export type NewAttachmentRow = typeof attachments.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
+export type SkillShredRow = typeof skillShreds.$inferSelect;
+export type NewSkillShredRow = typeof skillShreds.$inferInsert;

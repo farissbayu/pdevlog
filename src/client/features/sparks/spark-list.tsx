@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   FileText,
   Pencil,
+  Scissors,
   Trash2,
   Trophy,
 } from "lucide-react";
@@ -120,6 +121,7 @@ type SparkListProps = {
   onArchive: (spark: SparkResponse) => void;
   onPromoteToNote: (spark: SparkResponse) => void;
   onPromoteToBrag: (spark: SparkResponse) => void;
+  onShred: (spark: SparkResponse) => void;
   onViewImage: (spark: SparkResponse, index: number) => void;
 };
 
@@ -130,6 +132,7 @@ export function SparkList({
   onArchive,
   onPromoteToNote,
   onPromoteToBrag,
+  onShred,
   onViewImage,
 }: SparkListProps) {
   return (
@@ -240,6 +243,15 @@ export function SparkList({
               >
                 <Trophy className="size-3.5" />
                 Brag
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onShred(spark)}
+              >
+                <Scissors className="size-3.5" />
+                Shred
               </Button>
               <Button
                 variant="ghost"

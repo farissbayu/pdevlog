@@ -1,15 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  BookOpen,
+  Ban,
+  Check,
   Download,
   FolderKanban,
   GraduationCap,
   Image,
   LayoutDashboard,
-  Link2,
+  Scissors,
   Sparkles,
   Tags,
+  Timer,
   Trophy,
   Zap,
   type LucideIcon,
@@ -31,11 +33,18 @@ type Feature = {
 
 const features: Feature[] = [
   {
-    icon: FolderKanban,
-    title: "Workspaces",
+    icon: Scissors,
+    title: "Skill Shredder",
     description:
-      "Split your work and learning contexts so every entry has an obvious home.",
-    accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+      "Turn \"I want to learn X\" into one tiny toy project, with a 15-minute spike, milestones and a no-AI challenge.",
+    accent: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  },
+  {
+    icon: Zap,
+    title: "Sparks",
+    description:
+      "A frictionless capture inbox. Dump a link, idea, or screenshot instantly, then promote it later.",
+    accent: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   },
   {
     icon: Trophy,
@@ -52,11 +61,25 @@ const features: Feature[] = [
     accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
+    icon: FolderKanban,
+    title: "Workspaces",
+    description:
+      "Split your work and learning contexts so every entry has an obvious home.",
+    accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  {
     icon: Tags,
     title: "Tags",
     description:
       "Cross-cut everything with tags so the right lesson resurfaces when you need it.",
     accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  {
+    icon: Image,
+    title: "Attachments",
+    description:
+      "Paste or drag-and-drop screenshots and images into your notes to keep visual context.",
+    accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
   },
   {
     icon: LayoutDashboard,
@@ -72,49 +95,56 @@ const features: Feature[] = [
       "Export your logs to Markdown and download notes as print-ready PDFs anytime. No lock-in.",
     accent: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   },
-  {
-    icon: Zap,
-    title: "Sparks",
-    description:
-      "A frictionless capture inbox. Dump a link, idea, or screenshot instantly, then promote it later.",
-    accent: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  },
-  {
-    icon: Image,
-    title: "Attachments",
-    description:
-      "Paste or drag-and-drop screenshots and images directly into your notes to keep visual context.",
-    accent: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
-  },
-  {
-    icon: Link2,
-    title: "Sources",
-    description:
-      "Attach external links and references to your notes and workspaces to keep material organized.",
-    accent: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  },
 ];
 
 const steps: { icon: LucideIcon; title: string; description: string }[] = [
   {
-    icon: BookOpen,
+    icon: Zap,
     title: "Capture",
     description:
-      "Dump the raw details while they are fresh — a win, a bug, something you learned.",
+      "Dump a link, idea or screenshot the moment it appears. It waits in your inbox.",
   },
   {
-    icon: Tags,
-    title: "Organize",
+    icon: Scissors,
+    title: "Shred",
     description:
-      "File it under a workspace and tag it, so it stays findable months later.",
+      "Name a topic and get one toy project that teaches the fundamentals, not a 40-hour course.",
   },
   {
-    icon: Sparkles,
-    title: "Reflect",
+    icon: Trophy,
+    title: "Log",
     description:
-      "Turn notes into STAR stories for reviews, interviews and your own growth.",
+      "Turn what you shipped into a STAR brag log, then export the whole story whenever you need it.",
   },
 ];
+
+const shredderPoints: { icon: LucideIcon; title: string; description: string }[] =
+  [
+    {
+      icon: Sparkles,
+      title: "A toy project per skill",
+      description:
+        "The \"Todo App\" equivalent of any topic — zero domain noise, 100% fundamentals.",
+    },
+    {
+      icon: Timer,
+      title: "Spike 0 in 15 minutes",
+      description:
+        "A throwaway scratch script that proves the tech works and kills the fear fast.",
+    },
+    {
+      icon: Check,
+      title: "Milestones 1–3",
+      description:
+        "Vertical build steps with a concrete action and a way to verify each one.",
+    },
+    {
+      icon: Ban,
+      title: "The ignore list",
+      description:
+        "Auth, styling, scaling — the things you are forbidden to touch today.",
+    },
+  ];
 
 function HeroPreview() {
   return (
@@ -135,9 +165,9 @@ function HeroPreview() {
         <div className="space-y-4 p-4">
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Workspaces", value: "4" },
               { label: "Brag Logs", value: "28" },
               { label: "Notes", value: "63" },
+              { label: "Skill Shreds", value: "6" },
             ].map((stat) => (
               <div key={stat.label} className="rounded-lg border bg-background p-3">
                 <p className="text-lg font-semibold tabular-nums">
@@ -152,6 +182,12 @@ function HeroPreview() {
           <div className="overflow-hidden rounded-lg border bg-background">
             {[
               {
+                title: "Toy project: 2-client walkie-talkie",
+                kind: "Skill Shred",
+                tone: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+                icon: Scissors,
+              },
+              {
                 title: "Shipped the billing migration",
                 kind: "Brag Log",
                 tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -162,12 +198,6 @@ function HeroPreview() {
                 kind: "Note",
                 tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
                 icon: GraduationCap,
-              },
-              {
-                title: "Cut API p95 latency by 40%",
-                kind: "Brag Log",
-                tone: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-                icon: Trophy,
               },
             ].map((item) => (
               <div
@@ -186,6 +216,88 @@ function HeroPreview() {
                   </p>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShredderPreview() {
+  return (
+    <div className="relative isolate">
+      <div
+        aria-hidden="true"
+        className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-indigo-500/15 via-transparent to-primary/5 blur-2xl"
+      />
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Scissors className="size-4 text-indigo-600 dark:text-indigo-400" />
+            WebSockets
+          </span>
+          <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+            Building
+          </span>
+        </div>
+        <div className="space-y-3 p-4">
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <p className="text-[10px] font-semibold tracking-wide text-primary uppercase">
+              The "Todo App" for WebSockets
+            </p>
+            <p className="mt-0.5 text-sm font-medium">
+              2-client terminal walkie-talkie
+            </p>
+          </div>
+          <div className="rounded-md border bg-muted/40 p-2.5">
+            <p className="font-mono text-[11px] text-muted-foreground">
+              // Spike 0 · 15 min
+            </p>
+            <p className="font-mono text-[11px]">
+              new WebSocket("wss://echo.workers.dev")
+            </p>
+          </div>
+          <ul className="space-y-1.5">
+            {[
+              { label: "Scaffold an echo server", done: true },
+              { label: "Broadcast to all clients", done: true },
+              { label: "Handle disconnect", done: false },
+            ].map((milestone) => (
+              <li
+                key={milestone.label}
+                className="flex items-center gap-2 text-sm"
+              >
+                <span
+                  className={
+                    milestone.done
+                      ? "flex size-4 items-center justify-center rounded border border-primary bg-primary text-primary-foreground"
+                      : "flex size-4 items-center justify-center rounded border border-input"
+                  }
+                >
+                  {milestone.done ? <Check className="size-3" /> : null}
+                </span>
+                <span
+                  className={
+                    milestone.done
+                      ? "text-muted-foreground line-through"
+                      : undefined
+                  }
+                >
+                  {milestone.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5">
+            <Ban className="size-3.5 text-amber-600 dark:text-amber-400" />
+            {["No auth", "No styling", "No database"].map((item) => (
+              <span
+                key={item}
+                className="rounded-full bg-background px-2 py-0.5 text-[11px] text-muted-foreground"
+              >
+                {item}
+              </span>
             ))}
           </div>
         </div>
@@ -217,6 +329,9 @@ export function LandingPage() {
             <a href="#features" className="transition-colors hover:text-foreground">
               Features
             </a>
+            <a href="#skills" className="transition-colors hover:text-foreground">
+              Skill Shredder
+            </a>
             <a href="#workflow" className="transition-colors hover:text-foreground">
               Workflow
             </a>
@@ -244,16 +359,16 @@ export function LandingPage() {
         <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
           <div className="space-y-6">
             <span className="inline-flex items-center gap-1.5 rounded-full border bg-primary/5 px-3 py-1 text-xs font-medium text-muted-foreground motion-safe:animate-fade-up">
-              <Sparkles className="size-3.5 text-primary motion-safe:animate-pulse" />
-              Track your wins, remember your lessons
+              <Scissors className="size-3.5 text-primary motion-safe:animate-pulse" />
+              Beat tutorial hell. Keep the receipts.
             </span>
             <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl motion-safe:animate-fade-up [animation-delay:80ms]">
-              Your personal dev log.
+              Learn it. Ship it. Log it.
             </h1>
             <p className="max-w-prose text-lg text-muted-foreground motion-safe:animate-fade-up [animation-delay:160ms]">
-              A private home for brag-worthy wins and the lessons behind them.
-              Capture what you shipped, organize it once, and turn it into a
-              story when it matters.
+              pdevlog turns "I want to learn X" into one tiny toy project, keeps
+              a frictionless inbox for your ideas, and captures every win in STAR
+              format — all private, all in one place.
             </p>
             <div className="flex flex-wrap items-center gap-3 motion-safe:animate-fade-up [animation-delay:240ms]">
               {isAuthenticated ? (
@@ -272,7 +387,7 @@ export function LandingPage() {
                 </Button>
               )}
               <Button asChild size="lg" variant="outline">
-                <a href="#features">See features</a>
+                <a href="#skills">How Skill Shredder works</a>
               </Button>
             </div>
             <p className="text-xs text-muted-foreground motion-safe:animate-fade-up [animation-delay:320ms]">
@@ -291,13 +406,13 @@ export function LandingPage() {
             <div className="mx-auto max-w-2xl space-y-3 text-center">
               <Reveal>
                 <h2 className="text-3xl font-semibold tracking-tight">
-                  Everything you need to keep a dev log
+                  Everything you need to grow and prove it
                 </h2>
               </Reveal>
               <Reveal delay={80}>
                 <p className="text-muted-foreground">
-                  Purpose-built for developers who want to remember the work,
-                  not just do it.
+                  Purpose-built for developers who want to learn deliberately,
+                  ship well, and remember the work.
                 </p>
               </Reveal>
             </div>
@@ -322,12 +437,61 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="workflow" className="scroll-mt-20 py-20">
+        <section id="skills" className="scroll-mt-20 py-20">
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              <Reveal>
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-indigo-500/5 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                  <Scissors className="size-3.5" />
+                  Skill Shredder
+                </span>
+              </Reveal>
+              <Reveal delay={60}>
+                <h2 className="text-3xl font-semibold tracking-tight text-balance">
+                  Stop watching tutorials. Build the toy project instead.
+                </h2>
+              </Reveal>
+              <Reveal delay={120}>
+                <p className="text-muted-foreground">
+                  Most topics feel scary until you build the smallest thing that
+                  uses them. Skill Shredder formulates that thing for you — a
+                  hands-on path that fits in an afternoon.
+                </p>
+              </Reveal>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {shredderPoints.map((point, index) => (
+                  <Reveal key={point.title} delay={160 + index * 60}>
+                    <div className="flex gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <point.icon className="size-4" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h3 className="text-sm font-medium">{point.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {point.description}
+                        </p>
+                      </div>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+
+            <Reveal delay={120}>
+              <ShredderPreview />
+            </Reveal>
+          </div>
+        </section>
+
+        <section
+          id="workflow"
+          className="scroll-mt-20 border-t bg-muted/30 py-20"
+        >
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl space-y-3 text-center">
               <Reveal>
                 <h2 className="text-3xl font-semibold tracking-tight">
-                  From scattered notes to a clear story
+                  From a vague spark to a logged win
                 </h2>
               </Reveal>
               <Reveal delay={80}>
@@ -358,17 +522,17 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="border-t bg-muted/30 py-20">
+        <section className="border-t py-20">
           <div className="mx-auto w-full max-w-3xl px-4 text-center sm:px-6">
             <Reveal>
               <h2 className="text-3xl font-semibold tracking-tight text-balance">
-                Start your dev log today
+                Start learning — and keeping the receipts
               </h2>
             </Reveal>
             <Reveal delay={80}>
               <p className="mx-auto mt-3 max-w-prose text-muted-foreground">
-                Your next performance review, interview or retro will thank you
-                for the notes you take now.
+                Shred the skill you keep meaning to learn, then let the wins add
+                up. Your next review, interview or retro will thank you.
               </p>
             </Reveal>
             <Reveal delay={160}>

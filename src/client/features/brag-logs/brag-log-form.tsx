@@ -45,12 +45,23 @@ function todayIso(): string {
   return `${year}-${month}-${day}`;
 }
 
+export type BragLogPrefill = {
+  title?: string;
+  situation?: string;
+  task?: string;
+  action?: string;
+  result?: string;
+  tagIds?: string[];
+  workspaceId?: string;
+};
+
 type BragLogFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bragLog?: BragLogResponse | null;
   workspaceId?: string;
   spark?: SparkResponse | null;
+  prefill?: BragLogPrefill | null;
 };
 
 export function BragLogFormDialog({
@@ -59,6 +70,7 @@ export function BragLogFormDialog({
   bragLog,
   workspaceId,
   spark,
+  prefill,
 }: BragLogFormDialogProps) {
   const isEditing = Boolean(bragLog);
   const createMutation = useCreateBragLogMutation();
@@ -86,21 +98,24 @@ export function BragLogFormDialog({
       return;
     }
     setSourceContent(bragLog ? "" : (spark?.content ?? ""));
-    setTitle(bragLog?.title ?? "");
-    setSituation(bragLog?.situation ?? "");
-    setTask(bragLog?.task ?? "");
-    setAction(bragLog?.action ?? "");
-    setResult(bragLog?.result ?? "");
+    setTitle(bragLog?.title ?? prefill?.title ?? "");
+    setSituation(bragLog?.situation ?? prefill?.situation ?? "");
+    setTask(bragLog?.task ?? prefill?.task ?? "");
+    setAction(bragLog?.action ?? prefill?.action ?? "");
+    setResult(bragLog?.result ?? prefill?.result ?? "");
     setTagIds(
       bragLog?.tags.map((tag) => tag.id) ??
         spark?.tags.map((tag) => tag.id) ??
+        prefill?.tagIds ??
         [],
     );
-    setSelectedWorkspaceId(bragLog?.workspaceId ?? workspaceId ?? "");
-    setShowDetails(Boolean(bragLog));
+    setSelectedWorkspaceId(
+      bragLog?.workspaceId ?? workspaceId ?? prefill?.workspaceId ?? "",
+    );
+    setShowDetails(Boolean(bragLog) || Boolean(prefill));
     setError(null);
     setAiError(null);
-  }, [open, bragLog, spark, workspaceId]);
+  }, [open, bragLog, spark, workspaceId, prefill]);
 
   const handleGenerate = () => {
     setAiError(null);
