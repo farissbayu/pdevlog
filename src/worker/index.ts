@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 
 import type { AppEnv } from "@/worker/env";
 import { adminRoute } from "@/worker/features/admin/route";
@@ -14,6 +15,7 @@ import { workspacesRoute } from "@/worker/features/workspaces/route";
 import { authMiddleware } from "@/worker/middleware/auth";
 
 const app = new Hono<AppEnv>()
+  .use(logger())
   .use("/api/*", authMiddleware)
   .route("/api/auth", authRoute)
   .route("/api/admin", adminRoute)

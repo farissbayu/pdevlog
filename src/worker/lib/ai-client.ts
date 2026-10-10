@@ -19,6 +19,9 @@ const SYSTEM_PROMPT = [
   "Rewrite the notes from a first-person perspective, staying strictly faithful",
   "to the facts provided. Do not invent metrics, tools, or outcomes.",
   "Keep each section focused and free of markdown.",
+  "Respond with a single JSON object whose top-level keys are exactly",
+  "title, situation, task, action, result and tag_ids. Do not nest the",
+  "STAR fields or add any other keys.",
   "When a list of available tags is provided, choose only the tags that",
   "genuinely apply to the entry; never invent tags.",
 ].join(" ");
