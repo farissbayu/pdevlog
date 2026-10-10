@@ -23,16 +23,37 @@ import type {
 
 const PROJECTS_KEY = ["projects"] as const;
 
+export type ProjectFilters = {
+  workspaceId?: string;
+  q?: string;
+  page?: number;
+};
+
 export type ProjectListResult = {
   projects: ProjectResponse[];
   pagination: PaginationMeta;
 };
 
 export async function fetchProjects(
-  workspaceId?: string,
+  filters?: string | ProjectFilters,
 ): Promise<ProjectListResult> {
+  const query: {
+    workspace_id?: string;
+    q?: string;
+    page?: string;
+  } = {};
+
+  if (typeof filters === "string") {
+    if (filters) query.workspace_id = filters;
+  } else if (filters) {
+    if (filters.workspaceId) query.workspace_id = filters.workspaceId;
+    const trimmed = filters.q?.trim();
+    if (trimmed) query.q = trimmed;
+    if (filters.page) query.page = String(filters.page);
+  }
+
   const response = await client.api.projects.$get({
-    query: workspaceId ? { workspace_id: workspaceId } : {},
+    query,
   });
   if (!response.ok) {
     throw await parseApiError(response, "Failed to load projects");
@@ -168,11 +189,20 @@ export async function deleteProjectItem(
   }
 }
 
-export function projectsQueryOptions(workspaceId: string) {
+export function projectsQueryOptions(
+  filters: string | ProjectFilters = {},
+) {
+  const filterObj =
+    typeof filters === "string" ? { workspaceId: filters } : filters;
+  const enabled =
+    typeof filters === "string"
+      ? Boolean(filters)
+      : filterObj.workspaceId === undefined || Boolean(filterObj.workspaceId);
+
   return queryOptions({
-    queryKey: [...PROJECTS_KEY, "list", workspaceId],
-    queryFn: () => fetchProjects(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryKey: [...PROJECTS_KEY, "list", filterObj],
+    queryFn: () => fetchProjects(filters),
+    enabled,
   });
 }
 
@@ -192,8 +222,8 @@ export function projectItemsQueryOptions(projectId: string) {
   });
 }
 
-export function useProjectsQuery(workspaceId: string) {
-  return useQuery(projectsQueryOptions(workspaceId));
+export function useProjectsQuery(filters: string | ProjectFilters) {
+  return useQuery(projectsQueryOptions(filters));
 }
 
 export function useAllProjectsQuery() {

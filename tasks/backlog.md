@@ -1,10 +1,3 @@
-### Anti-Overwhelm & Idea Execution (Overcoming Fear of Difficult Projects)
-
-- [ ] idea bank: momentum & execution lifecycle
-  - Status lifecycle anti-macet: `Spark` -> `30-Min Spike` -> `Walking Skeleton` -> `Building` -> `Shipped` / `Shelved`.
-  - Alert "Stale Idea": Jika ide mengendap >14 hari di fase konsepsi, paksa dekonstruksi ulang menjadi slice yang 3x lebih kecil atau archive agar tidak membebani mental.
-  - Promosi ide yang berhasil di-ship langsung menjadi STAR Brag Log.
-
 ### Autonomous Growth & Objective Self-Appraisal (Tanpa Tech Lead / Manager)
 
 - [ ] ai senior dev mirror & monthly growth auditor
