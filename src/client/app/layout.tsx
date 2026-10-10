@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  NotebookPen,
   Settings,
   Shield,
   Sparkles,
@@ -45,6 +46,7 @@ type NavItem = {
 
 const appNavItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard", exact: true },
+  { label: "Notes", icon: NotebookPen, to: "/notes" },
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Brag Logs", icon: FileText, to: "/brag-logs" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
