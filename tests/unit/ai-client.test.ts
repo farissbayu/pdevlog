@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   StarBreakdownError,
   generateStarBreakdown,
-} from "@/worker/lib/openrouter";
+} from "@/worker/lib/ai-client";
 
 function completionWith(content: string, status = 200): Response {
   return new Response(
@@ -12,7 +12,7 @@ function completionWith(content: string, status = 200): Response {
       id: "chatcmpl-test",
       object: "chat.completion",
       created: 1_700_000_000,
-      model: "test/openrouter-model",
+      model: "test/ai-model",
       choices: [
         {
           index: 0,
@@ -52,7 +52,7 @@ describe("generateStarBreakdown", () => {
     expect(breakdown.title).toBe("Recovered failed checkout payments");
     expect(breakdown.action).toContain("idempotency keys");
     expect(usage).toEqual({
-      model: "test/openrouter-model",
+      model: "test/ai-model",
       promptTokens: 1,
       completionTokens: 1,
       totalTokens: 2,

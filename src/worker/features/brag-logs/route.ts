@@ -61,7 +61,7 @@ import {
 import {
   generateStarBreakdown,
   StarBreakdownError,
-} from "@/worker/lib/openrouter";
+} from "@/worker/lib/ai-client";
 import { rateLimit } from "@/worker/middleware/rate-limit";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };

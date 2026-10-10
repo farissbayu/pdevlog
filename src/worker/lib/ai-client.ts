@@ -8,7 +8,7 @@ import {
 } from "@/shared/schemas/brag-log";
 import type { AppEnv } from "@/worker/env";
 
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const REQUEST_TIMEOUT_MS = 30_000;
 const RESPONSE_FORMAT_NAME = "star_breakdown";
@@ -54,6 +54,13 @@ function buildTagSchema(tagIds: string[]) {
   return z.array(z.enum(tagIds as [string, ...string[]]));
 }
 
+function resolveBaseUrl(baseUrl: string | undefined): string {
+  const value = (baseUrl || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
+  return value.endsWith("/chat/completions")
+    ? value.slice(0, -"/chat/completions".length)
+    : value;
+}
+
 function buildUserPrompt(content: string, tagOptions: TagOption[]): string {
   if (tagOptions.length === 0) {
     return content;
@@ -72,12 +79,8 @@ export async function generateStarBreakdown(
   tagOptions: TagOption[] = [],
 ): Promise<StarBreakdownResult> {
   const client = new OpenAI({
-    apiKey: env.OPENROUTER_API_KEY,
-    baseURL: OPENROUTER_BASE_URL,
-    defaultHeaders: {
-      "HTTP-Referer": "https://pdevlog.app",
-      "X-Title": "pdevlog",
-    },
+    apiKey: env.AI_API_KEY,
+    baseURL: resolveBaseUrl(env.AI_BASE_URL),
   });
 
   const validTagIds = new Set(tagOptions.map((tag) => tag.id));
@@ -86,7 +89,7 @@ export async function generateStarBreakdown(
   });
 
   const requestParams = {
-    model: env.OPENROUTER_MODEL || DEFAULT_MODEL,
+    model: env.AI_MODEL || DEFAULT_MODEL,
     temperature: 0.2,
     response_format: zodResponseFormat(schema, RESPONSE_FORMAT_NAME),
     messages: [

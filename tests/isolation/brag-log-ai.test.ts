@@ -43,7 +43,7 @@ function completionWith(content: string): Response {
       id: "chatcmpl-test",
       object: "chat.completion",
       created: 1_700_000_000,
-      model: "test/openrouter-model",
+      model: "test/ai-model",
       choices: [
         {
           index: 0,

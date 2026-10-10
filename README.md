@@ -33,7 +33,7 @@ with a D1 (SQLite) database.
 | Frontend   | React 19, React Router 7, TanStack Query |
 | UI         | Tailwind CSS 4, Radix UI, lucide-react |
 | Auth       | Arctic (Google OAuth), JWT sessions |
-| AI         | OpenAI SDK pointed at [OpenRouter](https://openrouter.ai/) |
+| AI         | OpenAI SDK pointed at any OpenAI-compatible endpoint |
 | Validation | Zod (shared between client and worker) |
 | Build      | Vite 8 + `@cloudflare/vite-plugin`, Bun |
 | Testing    | Vitest + `@cloudflare/vitest-pool-workers` |
@@ -44,7 +44,7 @@ with a D1 (SQLite) database.
 - [Bun](https://bun.sh)
 - A Cloudflare account (for deploy) — local development only needs Wrangler
 - A Google Cloud OAuth Client ID — see [docs/google-oauth-setup.md](docs/google-oauth-setup.md)
-- An [OpenRouter](https://openrouter.ai/) API key (for the AI STAR breakdown feature)
+- An OpenAI-compatible API key (for the AI STAR breakdown feature)
 
 ## Getting Started
 
@@ -66,8 +66,9 @@ with a D1 (SQLite) database.
    GOOGLE_CLIENT_ID="xxx.apps.googleusercontent.com"
    GOOGLE_CLIENT_SECRET="GOCSPX-xxx"
    JWT_SECRET="random-string-at-least-32-characters-long"
-   OPENROUTER_API_KEY="sk-or-v1-xxx"
-   OPENROUTER_MODEL="openai/gpt-4o-mini"
+   AI_API_KEY="your-openai-compatible-api-key"
+   AI_BASE_URL="https://openrouter.ai/api/v1"
+   AI_MODEL="openai/gpt-4o-mini"
    ```
 
    See [docs/google-oauth-setup.md](docs/google-oauth-setup.md) to create the
@@ -95,12 +96,13 @@ with a D1 (SQLite) database.
 | `GOOGLE_CLIENT_ID` | secret | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | secret | Google OAuth client secret |
 | `JWT_SECRET` | secret | Signing key for session cookies, min 32 chars |
-| `OPENROUTER_API_KEY` | secret | OpenRouter API key for AI features |
-| `OPENROUTER_MODEL` | var | Model slug, defaults to `openai/gpt-4o-mini` |
+| `AI_API_KEY` | secret | API key for the OpenAI-compatible AI provider |
+| `AI_BASE_URL` | secret | Base URL of the OpenAI-compatible endpoint |
+| `AI_MODEL` | var | Model slug, defaults to `openai/gpt-4o-mini` |
 | `ADMIN_EMAILS` | var | Comma-separated emails allowed to access `/admin` |
 
 `.dev.vars` is git-ignored. In production these are set with
-`wrangler secret put`. `OPENROUTER_MODEL` can also be set in `wrangler.jsonc`
+`wrangler secret put`. `AI_MODEL` can also be set in `wrangler.jsonc`
 under `vars`.
 
 ## Scripts

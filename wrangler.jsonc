@@ -31,7 +31,7 @@
 		},
 	],
 	"vars": {
-		"OPENROUTER_MODEL": "openai/gpt-4o-mini",
+		"AI_MODEL": "openai/gpt-4o-mini",
 		"ADMIN_EMAILS": "",
 	},
 	"observability": {
