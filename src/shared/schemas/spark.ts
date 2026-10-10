@@ -9,6 +9,7 @@ export const sparkPromotionTypeSchema = z.enum([
   "brag-log",
   "note",
   "workspace",
+  "project-item",
 ]);
 
 export const createSparkSchema = z.object({

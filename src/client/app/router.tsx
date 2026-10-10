@@ -14,6 +14,7 @@ import { NoteDetailPage } from "@/client/features/notes/note-detail-page";
 import { NoteEditorPage } from "@/client/features/notes/note-editor";
 import { NotePrintPage } from "@/client/features/notes/note-print-page";
 import { NotesPage } from "@/client/features/notes/notes-page";
+import { ProjectDetailPage } from "@/client/features/projects/project-detail-page";
 import { SettingsPage } from "@/client/features/settings/settings-page";
 import { SkillShredderDetailPage } from "@/client/features/skill-shredder/skill-shredder-detail-page";
 import { SkillShredderPage } from "@/client/features/skill-shredder/skill-shredder-page";
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <DashboardPage /> },
       { path: "workspaces", element: <WorkspacesPage /> },
       { path: "workspaces/:id", element: <WorkspaceDetailPage /> },
+      {
+        path: "workspaces/:workspaceId/projects/:projectId",
+        element: <ProjectDetailPage />,
+      },
       { path: "brag-logs", element: <BragLogsPage /> },
       { path: "brag-logs/:id", element: <BragLogDetailPage /> },
       { path: "notes", element: <NotesPage /> },

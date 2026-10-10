@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/client/components/ui/dialog";
 import { BragLogFormDialog } from "@/client/features/brag-logs/brag-log-form";
+import { SparkToBacklogDialog } from "@/client/features/projects/spark-to-backlog-dialog";
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { SparkResponse, SparkStatus } from "@/shared/schemas/spark";
@@ -63,6 +64,7 @@ export function SparksPage() {
 
   const [deleting, setDeleting] = useState<SparkResponse | null>(null);
   const [bragSpark, setBragSpark] = useState<SparkResponse | null>(null);
+  const [backlogSpark, setBacklogSpark] = useState<SparkResponse | null>(null);
   const [recallError, setRecallError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{
     spark: SparkResponse;
@@ -205,6 +207,7 @@ export function SparksPage() {
               navigate(`/notes/new?spark=${spark.id}`)
             }
             onPromoteToBrag={setBragSpark}
+            onPromoteToBacklog={setBacklogSpark}
             onShred={(spark) => navigate(`/skill-shredder?spark=${spark.id}`)}
             onViewImage={(spark, index) => setLightbox({ spark, index })}
           />
@@ -266,6 +269,16 @@ export function SparksPage() {
           }
         }}
         spark={bragSpark}
+      />
+
+      <SparkToBacklogDialog
+        open={Boolean(backlogSpark)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBacklogSpark(null);
+          }
+        }}
+        spark={backlogSpark}
       />
 
       {lightbox ? (

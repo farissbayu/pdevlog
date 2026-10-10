@@ -7,6 +7,7 @@ import {
   NotebookPen,
   Pencil,
   Plus,
+  Rocket,
   SearchX,
   Trash2,
 } from "lucide-react";
@@ -38,9 +39,12 @@ import {
   NoteList,
   NoteListSkeleton,
 } from "@/client/features/notes/note-list";
+import { ProjectFormDialog } from "@/client/features/projects/project-form-dialog";
+import { useProjectsQuery } from "@/client/features/projects/api";
 import { SourceList } from "@/client/features/sources/source-list";
 import { useFilterParams } from "@/client/lib/use-filter-params";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
+import type { ProjectResponse } from "@/shared/schemas/project";
 
 import { useDeleteWorkspaceMutation, useWorkspaceDetailQuery } from "./api";
 import { WorkspaceFormDialog } from "./workspace-form-dialog";
@@ -163,6 +167,7 @@ export function WorkspaceDetailPage() {
     isError: isNotesError,
     refetch: refetchNotes,
   } = useNotesQuery({ ...filterApi.filters, workspaceId: id });
+  const { data: projectsData } = useProjectsQuery(id);
 
   const deleteMutation = useDeleteBragLogMutation();
   const workspaceDeleteMutation = useDeleteWorkspaceMutation();
@@ -172,6 +177,10 @@ export function WorkspaceDetailPage() {
   const [deleting, setDeleting] = useState<BragLogResponse | null>(null);
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
   const [deleteWorkspaceOpen, setDeleteWorkspaceOpen] = useState(false);
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectResponse | null>(
+    null,
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -250,6 +259,7 @@ export function WorkspaceDetailPage() {
   const logsPagination = logsData?.pagination;
   const workspaceNotes = notesData?.notes ?? [];
   const notesPagination = notesData?.pagination;
+  const workspaceProjects = projectsData?.projects ?? [];
   const hasQuery = filterApi.filters.q.trim().length > 0;
 
   return (
@@ -302,6 +312,58 @@ export function WorkspaceDetailPage() {
       {workspace.sources.length > 0 ? (
         <SourceList sources={workspace.sources} title="Sources" />
       ) : null}
+
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">Projects</h2>
+            <p className="text-sm text-muted-foreground">
+              Backlogs and changelogs for software you build in this workspace.
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingProject(null);
+              setProjectFormOpen(true);
+            }}
+          >
+            <Plus className="size-4" />
+            New project
+          </Button>
+        </div>
+
+        {workspaceProjects.length === 0 ? (
+          <div className="rounded-lg border border-dashed bg-card/50 px-6 py-10 text-center">
+            <p className="text-sm text-muted-foreground">No projects yet.</p>
+          </div>
+        ) : (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {workspaceProjects.map((project) => (
+              <li key={project.id}>
+                <Link
+                  to={`/workspaces/${id}/projects/${project.id}`}
+                  className="flex h-full flex-col gap-2 rounded-lg border bg-card p-4 transition-colors hover:border-primary/40"
+                >
+                  <div className="flex items-center gap-2">
+                    <Rocket className="size-4 text-primary" />
+                    <span className="font-medium">{project.name}</span>
+                    <span className="ml-auto rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground">
+                      {project.status}
+                    </span>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">
+                    {project.tagline || project.description || "No description"}
+                  </p>
+                  <div className="mt-auto flex gap-3 pt-2 text-xs text-muted-foreground">
+                    <span>{project.backlogCount} backlog</span>
+                    <span>{project.shippedCount} shipped</span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {workspace.type === "work" ? (
         <>
@@ -453,6 +515,18 @@ export function WorkspaceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProjectFormDialog
+        open={projectFormOpen}
+        onOpenChange={(open) => {
+          setProjectFormOpen(open);
+          if (!open) {
+            setEditingProject(null);
+          }
+        }}
+        workspaceId={workspace.id}
+        project={editingProject}
+      />
 
       <WorkspaceFormDialog
         open={editWorkspaceOpen}

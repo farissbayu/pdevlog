@@ -62,6 +62,7 @@ type BragLogFormDialogProps = {
   workspaceId?: string;
   spark?: SparkResponse | null;
   prefill?: BragLogPrefill | null;
+  projectItemId?: string;
 };
 
 export function BragLogFormDialog({
@@ -71,6 +72,7 @@ export function BragLogFormDialog({
   workspaceId,
   spark,
   prefill,
+  projectItemId,
 }: BragLogFormDialogProps) {
   const isEditing = Boolean(bragLog);
   const createMutation = useCreateBragLogMutation();
@@ -157,6 +159,7 @@ export function BragLogFormDialog({
         : {
             occurred_at: todayIso(),
             ...(spark ? { spark_id: spark.id } : {}),
+            ...(projectItemId ? { project_item_id: projectItemId } : {}),
           }),
     };
 

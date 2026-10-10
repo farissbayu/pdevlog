@@ -42,6 +42,7 @@ import {
   aiUsage,
   bragLogs,
   bragTags,
+  projectItems,
   sparks,
   tags,
   workspaces,
@@ -350,6 +351,20 @@ const createBragLogHandler = async (
     }
   }
 
+  const projectItemId = input.project_item_id;
+  if (projectItemId) {
+    const [ownedItem] = await db
+      .select({ id: projectItems.id })
+      .from(projectItems)
+      .where(
+        and(eq(projectItems.id, projectItemId), eq(projectItems.userId, userId)),
+      )
+      .limit(1);
+    if (!ownedItem) {
+      return c.json({ error: "Project item not found" }, 404);
+    }
+  }
+
   const logId = nanoid();
   const now = new Date();
 
@@ -385,6 +400,19 @@ const createBragLogHandler = async (
           updatedAt: now,
         })
         .where(and(eq(sparks.id, sparkId), eq(sparks.userId, userId))),
+    );
+  }
+  if (projectItemId) {
+    statements.push(
+      db
+        .update(projectItems)
+        .set({ bragLogId: logId, updatedAt: now })
+        .where(
+          and(
+            eq(projectItems.id, projectItemId),
+            eq(projectItems.userId, userId),
+          ),
+        ),
     );
   }
   await db.batch(

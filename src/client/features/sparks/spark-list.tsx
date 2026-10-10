@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   FileText,
   Pencil,
+  Rocket,
   Scissors,
   Trash2,
   Trophy,
@@ -121,6 +122,7 @@ type SparkListProps = {
   onArchive: (spark: SparkResponse) => void;
   onPromoteToNote: (spark: SparkResponse) => void;
   onPromoteToBrag: (spark: SparkResponse) => void;
+  onPromoteToBacklog: (spark: SparkResponse) => void;
   onShred: (spark: SparkResponse) => void;
   onViewImage: (spark: SparkResponse, index: number) => void;
 };
@@ -132,6 +134,7 @@ export function SparkList({
   onArchive,
   onPromoteToNote,
   onPromoteToBrag,
+  onPromoteToBacklog,
   onShred,
   onViewImage,
 }: SparkListProps) {
@@ -144,6 +147,14 @@ export function SparkList({
             : spark.promotedType === "brag-log"
               ? `/brag-logs/${spark.promotedId}`
               : null;
+        const promotedLabel =
+          spark.promotedType === "note"
+            ? "note"
+            : spark.promotedType === "brag-log"
+              ? "brag log"
+              : spark.promotedType === "project-item"
+                ? "project backlog"
+                : null;
 
         const visibleAttachments = spark.attachments.slice(0, 3);
         const extraCount = spark.attachments.length - visibleAttachments.length;
@@ -215,14 +226,21 @@ export function SparkList({
               </div>
             ) : null}
 
-            {promotedHref ? (
-              <Link
-                to={promotedHref}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                <ArrowUpRight className="size-3.5" />
-                Promoted to {spark.promotedType === "brag-log" ? "brag log" : "note"}
-              </Link>
+            {promotedLabel ? (
+              promotedHref ? (
+                <Link
+                  to={promotedHref}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  <ArrowUpRight className="size-3.5" />
+                  Promoted to {promotedLabel}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                  <ArrowUpRight className="size-3.5" />
+                  Promoted to {promotedLabel}
+                </span>
+              )
             ) : null}
 
             <div className="mt-auto flex flex-wrap items-center gap-1 border-t pt-3">
@@ -243,6 +261,15 @@ export function SparkList({
               >
                 <Trophy className="size-3.5" />
                 Brag
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onPromoteToBacklog(spark)}
+              >
+                <Rocket className="size-3.5" />
+                Backlog
               </Button>
               <Button
                 variant="ghost"

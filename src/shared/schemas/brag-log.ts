@@ -73,6 +73,7 @@ export const starBreakdownResponseSchema = z.object({
 
 export const createBragLogSchema = bragLogFieldsSchema.extend({
   spark_id: z.string().min(1).optional(),
+  project_item_id: z.string().min(1).optional(),
   carry_attachments: z.boolean().optional(),
 });
 

@@ -198,6 +198,7 @@ export const sparkPromotionTypes = [
   "brag-log",
   "note",
   "workspace",
+  "project-item",
 ] as const;
 
 export type SparkPromotionType = (typeof sparkPromotionTypes)[number];
@@ -348,6 +349,113 @@ export const skillShreds = sqliteTable(
   ],
 );
 
+export const projectStatuses = ["active", "maintenance", "archived"] as const;
+
+export type ProjectStatus = (typeof projectStatuses)[number];
+
+export const projects = sqliteTable(
+  "projects",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    tagline: text("tagline"),
+    description: text("description"),
+    repoUrl: text("repo_url"),
+    liveUrl: text("live_url"),
+    status: text("status", { enum: projectStatuses })
+      .notNull()
+      .default("active"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("projects_user_id_workspace_id_idx").on(
+      table.userId,
+      table.workspaceId,
+    ),
+    index("projects_user_id_status_idx").on(table.userId, table.status),
+  ],
+);
+
+export const projectItemKinds = [
+  "feat",
+  "fix",
+  "perf",
+  "refactor",
+  "spike",
+  "docs",
+] as const;
+
+export type ProjectItemKind = (typeof projectItemKinds)[number];
+
+export const projectItemStatuses = [
+  "backlog",
+  "in_progress",
+  "shipped",
+  "dropped",
+] as const;
+
+export type ProjectItemStatus = (typeof projectItemStatuses)[number];
+
+export const projectItems = sqliteTable(
+  "project_items",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    kind: text("kind", { enum: projectItemKinds }).notNull().default("feat"),
+    status: text("status", { enum: projectItemStatuses })
+      .notNull()
+      .default("backlog"),
+    targetVersion: text("target_version").notNull().default("Next"),
+    position: integer("position").notNull().default(0),
+    shippedAt: integer("shipped_at", { mode: "timestamp_ms" }),
+    shippedVersion: text("shipped_version"),
+    bragLogId: text("brag_log_id").references(() => bragLogs.id, {
+      onDelete: "set null",
+    }),
+    noteId: text("note_id").references(() => notes.id, {
+      onDelete: "set null",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("project_items_user_id_project_id_idx").on(
+      table.userId,
+      table.projectId,
+    ),
+    index("project_items_project_id_status_idx").on(
+      table.projectId,
+      table.status,
+    ),
+    index("project_items_project_id_target_version_idx").on(
+      table.projectId,
+      table.targetVersion,
+    ),
+  ],
+);
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
@@ -374,3 +482,7 @@ export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
 export type SkillShredRow = typeof skillShreds.$inferSelect;
 export type NewSkillShredRow = typeof skillShreds.$inferInsert;
+export type ProjectRow = typeof projects.$inferSelect;
+export type NewProjectRow = typeof projects.$inferInsert;
+export type ProjectItemRow = typeof projectItems.$inferSelect;
+export type NewProjectItemRow = typeof projectItems.$inferInsert;
