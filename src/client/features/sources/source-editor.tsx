@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
@@ -16,12 +16,9 @@ import {
   type SourceResponse,
 } from "@/shared/schemas/source";
 
-export type SourceDraft = {
-  url: string;
-  label: string;
-  kind: string;
-  locator: string;
-};
+import type { SourceDraft } from "./types";
+
+export type { SourceDraft };
 
 const kindLabels: Record<string, string> = {
   video: "Video",
@@ -69,6 +66,7 @@ export function normalizeSourceDrafts(sources: SourceDraft[]): SourceInput[] {
 type SourceEditorProps = {
   sources: SourceDraft[];
   onChange: (sources: SourceDraft[]) => void;
+  onScanFromContent?: () => void;
   label?: string;
   emptyHint?: string;
 };
@@ -76,6 +74,7 @@ type SourceEditorProps = {
 export function SourceEditor({
   sources,
   onChange,
+  onScanFromContent,
   label = "Sources",
   emptyHint = "No sources yet. Add links, books, or courses related to this entry.",
 }: SourceEditorProps) {
@@ -93,10 +92,23 @@ export function SourceEditor({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label>{label}</Label>
-        <Button type="button" variant="outline" size="sm" onClick={addSource}>
-          <Plus className="size-3.5" />
-          Add source
-        </Button>
+        <div className="flex items-center gap-2">
+          {onScanFromContent ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onScanFromContent}
+            >
+              <Sparkles className="size-3.5" />
+              Scan from content
+            </Button>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={addSource}>
+            <Plus className="size-3.5" />
+            Add source
+          </Button>
+        </div>
       </div>
       {sources.length === 0 ? (
         <p className="text-xs text-muted-foreground">{emptyHint}</p>

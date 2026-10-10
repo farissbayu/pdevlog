@@ -5,6 +5,7 @@ import {
   count,
   desc,
   eq,
+  exists,
   gte,
   inArray,
   isNull,
@@ -310,13 +311,35 @@ const listNotes = async (
   const conditions: SQL[] = [eq(notes.userId, userId)];
 
   if (filters.q) {
-    const pattern = `%${filters.q}%`;
-    const search = or(
-      like(notes.title, pattern),
-      like(notes.content, pattern),
-    );
-    if (search) {
-      conditions.push(search);
+    // AND across up to 5 keyword tokens; each token may match title, content or a source.
+    const tokens = filters.q
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 5);
+
+    for (const token of tokens) {
+      const pattern = `%${token}%`;
+      const sourceMatch = exists(
+        db
+          .select({ id: sources.id })
+          .from(sources)
+          .where(
+            and(
+              eq(sources.userId, userId),
+              eq(sources.ownerType, "note"),
+              eq(sources.ownerId, notes.id),
+              or(like(sources.label, pattern), like(sources.url, pattern)),
+            ),
+          ),
+      );
+      conditions.push(
+        or(
+          like(notes.title, pattern),
+          like(notes.content, pattern),
+          sourceMatch,
+        )!,
+      );
     }
   }
 

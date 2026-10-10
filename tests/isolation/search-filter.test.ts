@@ -223,4 +223,55 @@ describe("note search and filter", () => {
 
     expect((await listNotes(tokenB, "?q=composite")).length).toBe(0);
   });
+
+  it("searches notes by source url", async () => {
+    const token = await createUser("filter-note-src-url");
+    await createNote(token, {
+      title: "Unrelated",
+      content: "Nothing to see here.",
+      sources: [{ url: "https://github.com/anthropics/claude" }],
+    });
+
+    expect((await listNotes(token, "?q=github.com")).length).toBe(1);
+    expect((await listNotes(token, "?q=example.org")).length).toBe(0);
+  });
+
+  it("searches notes by source label", async () => {
+    const token = await createUser("filter-note-src-label");
+    await createNote(token, {
+      title: "Unrelated",
+      content: "Nothing to see here.",
+      sources: [{ label: "Martin Fowler Guide" }],
+    });
+
+    expect((await listNotes(token, "?q=fowler")).length).toBe(1);
+    expect((await listNotes(token, "?q=uncle bob")).length).toBe(0);
+  });
+
+  it("matches separate keywords across title and source", async () => {
+    const token = await createUser("filter-note-multi-token");
+    await createNote(token, {
+      title: "Cloudflare Workers notes",
+      content: "Edge runtime.",
+      sources: [{ url: "https://developers.cloudflare.com/d1" }],
+    });
+    await createNote(token, {
+      title: "Cloudflare only",
+      content: "No database here.",
+    });
+
+    expect((await listNotes(token, "?q=cloudflare d1")).length).toBe(1);
+  });
+
+  it("does not leak other users' notes through source search", async () => {
+    const tokenA = await createUser("filter-note-src-a");
+    const tokenB = await createUser("filter-note-src-b");
+
+    await createNote(tokenA, {
+      title: "Secret",
+      sources: [{ url: "https://github.com/secret/leak" }],
+    });
+
+    expect((await listNotes(tokenB, "?q=github.com/secret")).length).toBe(0);
+  });
 });

@@ -46,6 +46,7 @@ import {
   sourceDraftsFromResponse,
   type SourceDraft,
 } from "@/client/features/sources/source-editor";
+import { extractSourcesFromText } from "@/client/features/sources/url-extractor";
 import { useTagsQuery } from "@/client/features/tags/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
@@ -92,18 +93,6 @@ function removeMarkdownImage(content: string, target: string): string {
     .trimEnd();
 }
 
-function firstUrlInText(content: string): string | null {
-  const firstLine = content
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => line.length > 0);
-  if (!firstLine) {
-    return null;
-  }
-  const match = firstLine.match(/^https?:\/\/\S+$/i);
-  return match ? match[0] : null;
-}
-
 function initialContent(
   note: NoteResponse | null,
   spark: SparkResponse | null | undefined,
@@ -127,10 +116,7 @@ function initialSources(
   if (note) {
     return sourceDraftsFromResponse(note.sources);
   }
-  const sparkUrl = spark ? firstUrlInText(spark.content) : null;
-  return sparkUrl
-    ? [{ url: sparkUrl, label: "", kind: "", locator: "" }]
-    : [];
+  return spark ? extractSourcesFromText(spark.content) : [];
 }
 
 function NoteEditorForm({
@@ -265,12 +251,53 @@ function NoteEditorForm({
     }
   };
 
+  const existingSourceUrls = () =>
+    sources.map((source) => source.url).filter(Boolean);
+
+  const handleScanSources = () => {
+    const found = extractSourcesFromText(content, existingSourceUrls());
+    if (found.length === 0) {
+      toast.info("No new links found in content");
+      return;
+    }
+    setSources((current) => [...current, ...found]);
+    toast.success(`Added ${found.length} source${found.length === 1 ? "" : "s"}`);
+  };
+
   const handlePaste = (event: React.ClipboardEvent<HTMLElement>) => {
     const pasted = extractImageFiles(event.clipboardData);
     if (pasted.length > 0) {
       event.preventDefault();
       addFiles(pasted);
+      return;
     }
+    if (event.target !== contentRef.current) {
+      return;
+    }
+    const text = event.clipboardData.getData("text/plain");
+    if (!text) {
+      return;
+    }
+    const found = extractSourcesFromText(text, existingSourceUrls());
+    if (found.length === 0) {
+      return;
+    }
+    toast(
+      `Found ${found.length} link${found.length === 1 ? "" : "s"} in pasted text`,
+      {
+        action: {
+          label: "Add to Sources",
+          onClick: () =>
+            setSources((current) => {
+              const fresh = extractSourcesFromText(
+                text,
+                current.map((source) => source.url).filter(Boolean),
+              );
+              return fresh.length > 0 ? [...current, ...fresh] : current;
+            }),
+        },
+      },
+    );
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -502,6 +529,7 @@ function NoteEditorForm({
         <SourceEditor
           sources={sources}
           onChange={setSources}
+          onScanFromContent={handleScanSources}
           emptyHint="No sources yet. Add links, books, or courses related to this note."
         />
 
