@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -167,6 +168,44 @@ const faqs: { q: string; a: string }[] = [
   },
 ];
 
+function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [count, setCount] = useState(() => (reduceMotion ? text.length : 0));
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    let index = 0;
+    let timer: number | undefined;
+    const start = window.setTimeout(() => {
+      timer = window.setInterval(() => {
+        index += 1;
+        setCount(index);
+        if (index >= text.length) window.clearInterval(timer);
+      }, 28);
+    }, delay);
+    return () => {
+      window.clearTimeout(start);
+      if (timer) window.clearInterval(timer);
+    };
+  }, [text, delay, reduceMotion]);
+
+  const done = count >= text.length;
+
+  return (
+    <span>
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">{text.slice(0, count)}</span>
+      {done ? null : (
+        <span aria-hidden="true" className="motion-safe:animate-pulse">
+          ▍
+        </span>
+      )}
+    </span>
+  );
+}
+
 function HeroPreview() {
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm motion-safe:animate-scale-in">
@@ -214,7 +253,10 @@ function HeroPreview() {
               <span className="font-semibold text-muted-foreground">
                 Result:{" "}
               </span>
-              p95 latency −94% (800ms → 45ms), with no added server cost.
+              <Typewriter
+                text="p95 latency −94% (800ms → 45ms), with no added server cost."
+                delay={600}
+              />
             </p>
             <p className="text-muted-foreground">
               Action: query profiling, composite indexing, batch fetcher.
