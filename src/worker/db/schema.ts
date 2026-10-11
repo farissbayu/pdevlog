@@ -456,6 +456,121 @@ export const projectItems = sqliteTable(
   ],
 );
 
+export const milestoneStatuses = ["locked", "in_progress", "achieved"] as const;
+export type MilestoneStatus = (typeof milestoneStatuses)[number];
+
+export const evidenceTypes = [
+  "brag_log",
+  "note",
+  "skill_shred",
+  "project_item",
+  "cv",
+] as const;
+export type EvidenceType = (typeof evidenceTypes)[number];
+
+export const skills = sqliteTable(
+  "skills",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    description: text("description"),
+    position: integer("position").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("skills_user_id_idx").on(table.userId),
+    uniqueIndex("skills_user_id_slug_unique").on(table.userId, table.slug),
+  ],
+);
+
+export const skillMilestones = sqliteTable(
+  "skill_milestones",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skillId: text("skill_id")
+      .notNull()
+      .references(() => skills.id, { onDelete: "cascade" }),
+    level: integer("level").notNull(),
+    title: text("title").notNull(),
+    criteria: text("criteria").notNull(),
+    status: text("status", { enum: milestoneStatuses })
+      .notNull()
+      .default("locked"),
+    achievedAt: integer("achieved_at", { mode: "timestamp_ms" }),
+    position: integer("position").notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("skill_milestones_user_skill_idx").on(table.userId, table.skillId),
+    index("skill_milestones_skill_level_idx").on(table.skillId, table.level),
+  ],
+);
+
+export const milestoneEvidences = sqliteTable(
+  "milestone_evidences",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    milestoneId: text("milestone_id")
+      .notNull()
+      .references(() => skillMilestones.id, { onDelete: "cascade" }),
+    evidenceType: text("evidence_type", { enum: evidenceTypes }).notNull(),
+    evidenceId: text("evidence_id").notNull(),
+    reflection: text("reflection"),
+    confidence: integer("confidence"),
+    autoDetected: integer("auto_detected").notNull().default(1),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    index("milestone_evidences_milestone_idx").on(table.milestoneId),
+    index("milestone_evidences_user_item_idx").on(
+      table.userId,
+      table.evidenceType,
+      table.evidenceId,
+    ),
+  ],
+);
+
+export const userProfiles = sqliteTable("user_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  headline: text("headline"),
+  bio: text("bio"),
+  primaryStack: text("primary_stack"),
+  cvMarkdown: text("cv_markdown"),
+  cvExtractedAt: integer("cv_extracted_at", { mode: "timestamp_ms" }),
+  skillInsights: text("skill_insights"),
+  skillAnalyzedAt: integer("skill_analyzed_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type WorkspaceRow = typeof workspaces.$inferSelect;
@@ -486,3 +601,13 @@ export type ProjectRow = typeof projects.$inferSelect;
 export type NewProjectRow = typeof projects.$inferInsert;
 export type ProjectItemRow = typeof projectItems.$inferSelect;
 export type NewProjectItemRow = typeof projectItems.$inferInsert;
+export type SkillRow = typeof skills.$inferSelect;
+export type NewSkillRow = typeof skills.$inferInsert;
+export type SkillMilestoneRow = typeof skillMilestones.$inferSelect;
+export type NewSkillMilestoneRow = typeof skillMilestones.$inferInsert;
+export type MilestoneEvidenceRow = typeof milestoneEvidences.$inferSelect;
+export type NewMilestoneEvidenceRow = typeof milestoneEvidences.$inferInsert;
+export type UserProfileRow = typeof userProfiles.$inferSelect;
+export type NewUserProfileRow = typeof userProfiles.$inferInsert;
+
+

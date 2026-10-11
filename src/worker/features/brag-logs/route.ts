@@ -59,6 +59,7 @@ import {
   moveAttachments,
   toAttachmentResponse,
 } from "@/worker/features/attachments/helpers";
+
 import {
   generateStarBreakdown,
   StarBreakdownError,
@@ -444,6 +445,9 @@ const createBragLogHandler = async (
     userId,
   );
 
+
+
+
   return c.json(
     {
       bragLog: toBragLogResponse(
@@ -455,6 +459,7 @@ const createBragLogHandler = async (
     },
     201,
   );
+
 };
 
 const getBragLog = async (c: Context<AppEnv, "/:id">) => {

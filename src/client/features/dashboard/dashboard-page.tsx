@@ -1,22 +1,27 @@
 import {
   AlertTriangle,
   BookOpen,
+  CheckCircle2,
   FileText,
   FolderKanban,
   GraduationCap,
   LayoutDashboard,
   Sparkles,
+  TrendingUp,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { Link } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/client/components/ui/button";
 import { TagChip } from "@/client/features/brag-logs/tag-chip";
+import { profileQueryOptions } from "@/client/features/profile/api";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 import type { ActivityItem } from "@/shared/schemas/dashboard";
 import { useDashboardQuery, useRecentActivityQuery } from "./api";
+
 
 function formatActivityDate(iso: string): string {
   const date = new Date(iso);
@@ -174,6 +179,8 @@ function DashboardSkeleton() {
 export function DashboardPage() {
   const dashboard = useDashboardQuery();
   const activity = useRecentActivityQuery();
+  const profileQuery = useQuery(profileQueryOptions());
+  const insights = profileQuery.data?.skillInsights;
 
   const stats: StatCard[] = dashboard.data
     ? [
@@ -255,44 +262,125 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="overflow-hidden rounded-lg border bg-card">
-            <div className="border-b px-5 py-4">
-              <h2 className="font-medium">Recent activity</h2>
-              <p className="text-sm text-muted-foreground">
-                Your latest brag logs, notes, and sparks.
-              </p>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Recent Activity */}
+            <div className="overflow-hidden rounded-lg border bg-card lg:col-span-8">
+
+              <div className="border-b px-5 py-4">
+                <h2 className="font-medium">Recent activity</h2>
+                <p className="text-sm text-muted-foreground">
+                  Your latest brag logs, notes, and sparks.
+                </p>
+              </div>
+
+              {activity.data && activity.data.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+                    <Trophy className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="max-w-sm text-sm text-muted-foreground">
+                    No activity yet. Start by logging a brag log or a note!
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button asChild size="sm">
+                      <Link to="/brag-logs">Log a brag</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/notes">Write a note</Link>
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <ul className="divide-y">
+                  {activity.data?.map((item) => (
+                    <ActivityRow
+                      key={`${item.type}-${item.id}`}
+                      item={item}
+                    />
+                  ))}
+                </ul>
+              )}
             </div>
 
-            {activity.data && activity.data.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-                <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-                  <Trophy className="size-5 text-muted-foreground" />
+            {/* Skill & Competency Insights Snapshot */}
+            <div className="flex flex-col rounded-lg border bg-card p-5 lg:col-span-4">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-4 text-primary" />
+                  <h2 className="font-medium text-sm">Competency Snapshot</h2>
                 </div>
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  No activity yet. Start by logging a brag log or a note!
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button asChild size="sm">
-                    <Link to="/brag-logs">Log a brag</Link>
-                  </Button>
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/notes">Write a note</Link>
-                  </Button>
-                </div>
+                {insights && (
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-medium text-primary">
+                    {insights.archetype}
+                  </span>
+                )}
               </div>
-            ) : (
-              <ul className="divide-y">
-                {activity.data?.map((item) => (
-                  <ActivityRow
-                    key={`${item.type}-${item.id}`}
-                    item={item}
-                  />
-                ))}
-              </ul>
-            )}
+
+              <div className="flex flex-1 flex-col justify-center py-4 space-y-3">
+                {insights ? (
+                  <>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {insights.summary}
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="size-3" />
+                        Top Superpowers
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {insights.strengths.slice(0, 3).map((s, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
+                          >
+                            {s.area}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <TrendingUp className="size-3" />
+                        Growth Focus
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {insights.growthAreas.slice(0, 2).map((g, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+                          >
+                            {g.area}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+                    <Sparkles className="size-8 text-muted-foreground/40" />
+                    <p className="text-xs text-muted-foreground max-w-[220px]">
+                      Discover your technical superpowers and areas to grow by
+                      analyzing your CV in Profile.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t pt-3">
+                <Button asChild variant="outline" size="sm" className="w-full gap-1.5 text-xs">
+                  <Link to="/profile?tab=skills">
+                    <Sparkles className="size-3.5" />
+                    {insights ? "View Full Competency Analysis" : "Analyze Skills in Profile"}
+                  </Link>
+                </Button>
+              </div>
+            </div>
           </div>
         </>
       ) : null}
     </div>
   );
 }
+

@@ -65,6 +65,7 @@ import {
   toAttachmentResponse,
 } from "@/worker/features/attachments/helpers";
 
+
 const ATTACHMENT_URL_PATTERN = /\/api\/attachments\/([A-Za-z0-9_-]+)/g;
 
 function referencedAttachmentIds(content: string): Set<string> {
@@ -559,6 +560,9 @@ const createNoteHandler = async (
     userId,
   );
 
+
+
+
   return c.json(
     {
       note: toNoteResponse(
@@ -572,6 +576,7 @@ const createNoteHandler = async (
     },
     201,
   );
+
 };
 
 const getNote = async (c: Context<AppEnv, "/:id">) => {

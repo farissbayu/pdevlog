@@ -1,19 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   Download,
   Loader2,
-  Mail,
   Settings,
   ShieldAlert,
 } from "lucide-react";
 import { useState } from "react";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/client/components/ui/avatar";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,
@@ -26,7 +19,6 @@ import {
 import { DatePicker } from "@/client/components/date-picker";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
-import { meQueryOptions } from "@/client/features/auth/api";
 import {
   DELETE_ACCOUNT_CONFIRMATION,
   deleteAccountSchema,
@@ -34,13 +26,7 @@ import {
 
 import { useDeleteAccountMutation, useExportBragLogs } from "./api";
 
-function getInitials(name: string, email: string): string {
-  const source = name.trim() || email;
-  return source.slice(0, 1).toUpperCase();
-}
-
 export function SettingsPage() {
-  const { data, isPending } = useQuery(meQueryOptions);
   const exportMutation = useExportBragLogs();
   const deleteMutation = useDeleteAccountMutation();
 
@@ -49,7 +35,6 @@ export function SettingsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
 
-  const user = data?.user;
   const rangeError =
     from && to && from > to ? "The start date must be before the end date." : null;
   const isConfirmed = deleteAccountSchema.safeParse({ confirmation }).success;
@@ -86,131 +71,91 @@ export function SettingsPage() {
           Settings
         </h1>
         <p className="text-sm text-muted-foreground">
-          Manage your profile and account data.
+          Manage your account data and preferences.
         </p>
       </div>
 
-      {isPending ? (
-        <div className="h-32 animate-pulse rounded-lg border bg-card" />
-      ) : null}
-
-      {!isPending && user ? (
-        <>
-          <section className="overflow-hidden rounded-lg border bg-card">
-            <div className="border-b px-5 py-4">
-              <h2 className="font-medium">Profile</h2>
-              <p className="text-sm text-muted-foreground">
-                Your Google account information.
-              </p>
+      <section className="overflow-hidden rounded-lg border bg-card">
+        <div className="border-b px-5 py-4">
+          <h2 className="font-medium">Export data</h2>
+          <p className="text-sm text-muted-foreground">
+            Download your brag logs as a Markdown file in STAR format.
+          </p>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="export-from">
+                <CalendarDays className="size-3.5" />
+                From
+              </Label>
+              <DatePicker
+                id="export-from"
+                value={from}
+                onChange={setFrom}
+                placeholder="From date"
+                className="w-40"
+              />
             </div>
-            <div className="flex items-center gap-4 p-5">
-              <Avatar size="lg" className="size-14">
-                {user.avatarUrl ? (
-                  <AvatarImage src={user.avatarUrl} alt={user.name} />
-                ) : null}
-                <AvatarFallback className="text-lg">
-                  {getInitials(user.name, user.email)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 space-y-1">
-                <p className="truncate font-medium">{user.name}</p>
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Mail className="size-3.5 shrink-0" />
-                  <span className="truncate">{user.email}</span>
-                </p>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="export-to">
+                <CalendarDays className="size-3.5" />
+                To
+              </Label>
+              <DatePicker
+                id="export-to"
+                value={to}
+                onChange={setTo}
+                placeholder="To date"
+                className="w-40"
+              />
             </div>
-          </section>
+            <Button
+              onClick={handleExport}
+              disabled={exportMutation.isPending || Boolean(rangeError)}
+            >
+              {exportMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Export to Markdown (.md)
+            </Button>
+          </div>
 
-          <section className="overflow-hidden rounded-lg border bg-card">
-            <div className="border-b px-5 py-4">
-              <h2 className="font-medium">Export data</h2>
-              <p className="text-sm text-muted-foreground">
-                Download your brag logs as a Markdown file in STAR format.
-              </p>
-            </div>
-            <div className="space-y-4 p-5">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="export-from">
-                    <CalendarDays className="size-3.5" />
-                    From
-                  </Label>
-                  <DatePicker
-                    id="export-from"
-                    value={from}
-                    onChange={setFrom}
-                    placeholder="From date"
-                    className="w-40"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="export-to">
-                    <CalendarDays className="size-3.5" />
-                    To
-                  </Label>
-                  <DatePicker
-                    id="export-to"
-                    value={to}
-                    onChange={setTo}
-                    placeholder="To date"
-                    className="w-40"
-                  />
-                </div>
-                <Button
-                  onClick={handleExport}
-                  disabled={
-                    exportMutation.isPending || Boolean(rangeError)
-                  }
-                >
-                  {exportMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Download className="size-4" />
-                  )}
-                  Export to Markdown (.md)
-                </Button>
-              </div>
+          {rangeError ? (
+            <p className="text-sm text-destructive">{rangeError}</p>
+          ) : null}
 
-              {rangeError ? (
-                <p className="text-sm text-destructive">{rangeError}</p>
-              ) : null}
+          {exportMutation.isError ? (
+            <p className="text-sm text-destructive">
+              Export failed. Please try again.
+            </p>
+          ) : null}
 
-              {exportMutation.isError ? (
-                <p className="text-sm text-destructive">
-                  Export failed. Please try again.
-                </p>
-              ) : null}
+          <p className="text-xs text-muted-foreground">
+            Leave both dates empty to export every brag log.
+          </p>
+        </div>
+      </section>
 
-              <p className="text-xs text-muted-foreground">
-                Leave both dates empty to export every brag log.
-              </p>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-lg border border-destructive/40 bg-card">
-            <div className="border-b border-destructive/20 px-5 py-4">
-              <h2 className="flex items-center gap-2 font-medium text-destructive">
-                <ShieldAlert className="size-4" />
-                Danger zone
-              </h2>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-4 p-5">
-              <p className="max-w-md text-sm text-muted-foreground">
-                Permanently delete your account along with every workspace,
-                tag, brag log, and note you own. This action cannot be
-                undone.
-              </p>
-              <Button
-                variant="destructive"
-                onClick={() => setDialogOpen(true)}
-              >
-                Delete account
-              </Button>
-            </div>
-          </section>
-        </>
-      ) : null}
+      <section className="overflow-hidden rounded-lg border border-destructive/40 bg-card">
+        <div className="border-b border-destructive/20 px-5 py-4">
+          <h2 className="flex items-center gap-2 font-medium text-destructive">
+            <ShieldAlert className="size-4" />
+            Danger zone
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <p className="max-w-md text-sm text-muted-foreground">
+            Permanently delete your account along with every workspace, tag,
+            brag log, and note you own. This action cannot be undone.
+          </p>
+          <Button variant="destructive" onClick={() => setDialogOpen(true)}>
+            Delete account
+          </Button>
+        </div>
+      </section>
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
         <DialogContent>

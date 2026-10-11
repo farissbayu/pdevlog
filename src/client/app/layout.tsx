@@ -13,6 +13,7 @@ import {
   Shield,
   Sparkles,
   Tags,
+  User,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -53,8 +54,10 @@ const appNavItems: NavItem[] = [
   { label: "Skill Shredder", icon: Scissors, to: "/skill-shredder" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
   { label: "Tags", icon: Tags, to: "/tags" },
+  { label: "Profile", icon: User, to: "/profile" },
   { label: "Settings", icon: Settings, to: "/settings" },
 ];
+
 
 const adminNavItems: NavItem[] = [
   { label: "Overview", icon: Shield, to: "/admin", exact: true },
@@ -108,6 +111,13 @@ function UserMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-56">
         <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/profile" className="flex items-center gap-2">
+            <User className="size-4" />
+            Profile & CV
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={logoutMutation.isPending}
