@@ -48,8 +48,8 @@ type NavItem = {
 
 const appNavItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard", exact: true },
-  { label: "Notes", icon: NotebookPen, to: "/notes" },
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
+  { label: "Notes", icon: NotebookPen, to: "/notes" },
   { label: "Brag Logs", icon: FileText, to: "/brag-logs" },
   { label: "Skill Shredder", icon: Scissors, to: "/skill-shredder" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
