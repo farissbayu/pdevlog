@@ -23,6 +23,8 @@ export default defineConfig(async () => {
             AI_BASE_URL: "https://ai.example.com/v1",
             AI_MODEL: "test/ai-model",
             ADMIN_EMAILS: "admin@example.com",
+            APP_URL: "https://test.pdevlog.example",
+            APP_NAME: "pdevlog-test",
             TEST_MIGRATIONS: migrations,
           },
         },

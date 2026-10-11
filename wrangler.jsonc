@@ -29,7 +29,9 @@
   "vars": {
     "ADMIN_EMAILS": "",
     "AI_BASE_URL": "https://tokenharbor.ai/v1/chat/completions",
-    "AI_MODEL": "deepseek-v4.1-flash:free",
+    "AI_MODEL": "deepseek-v4.1-flash",
+    "APP_URL": "https://pdevlog.pages.dev",
+    "APP_NAME": "pdevlog"
   },
   "observability": {
     "enabled": true,

@@ -81,15 +81,13 @@ export const skillShredderResultSchema = z.object({
   practiceChallenge: practiceChallengeSchema,
 });
 
-export const skillShredderResponseSchema = z.object({
-  blueprint: skillShredderResultSchema,
-});
-
 export const skillShredStatusSchema = z.enum([
+  "generating",
   "draft",
   "spike_done",
   "building",
   "completed",
+  "failed",
   "archived",
 ]);
 
@@ -97,8 +95,29 @@ export const createSkillShredSchema = z.object({
   topic: z.string().trim().min(1).max(200),
   currentContext: z.string().trim().max(500).optional(),
   targetTimeMinutes: z.number().int().min(15).max(240).default(60),
-  blueprint: skillShredderResultSchema,
+  noteId: z.string().min(1).optional(),
 });
+
+export const listSkillShredsQuerySchema = z.object({
+  note_id: z.string().optional(),
+});
+
+export const exportSkillNoteQuerySchema = z.object({
+  mode: z.enum(["new", "append"]).default("new"),
+});
+
+export function noteToShredContext(content: string, max = 500): string {
+  const plain = content
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[>\-*+]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain.length > max ? plain.slice(0, max).trimEnd() : plain;
+}
 
 export const updateSkillProgressSchema = z.object({
   completedSteps: z.array(z.string().min(1)).max(100).optional(),
@@ -110,9 +129,10 @@ export const skillShredResponseSchema = z.object({
   topic: z.string(),
   currentContext: z.string().nullable(),
   targetTimeMinutes: z.number().int(),
-  toyProjectTitle: z.string(),
-  blueprint: skillShredderResultSchema,
+  toyProjectTitle: z.string().nullable(),
+  blueprint: skillShredderResultSchema.nullable(),
   status: skillShredStatusSchema,
+  errorMessage: z.string().nullable().optional(),
   completedSteps: z.array(z.string()),
   spikeCompletedAt: z.string().nullable(),
   challengeCompletedAt: z.string().nullable(),
@@ -140,9 +160,10 @@ export type Spike0 = z.infer<typeof spike0Schema>;
 export type MilestoneStep = z.infer<typeof milestoneStepSchema>;
 export type PracticeChallenge = z.infer<typeof practiceChallengeSchema>;
 export type SkillShredderResult = z.infer<typeof skillShredderResultSchema>;
-export type SkillShredderResponse = z.infer<typeof skillShredderResponseSchema>;
 export type SkillShredStatus = z.infer<typeof skillShredStatusSchema>;
 export type CreateSkillShredInput = z.infer<typeof createSkillShredSchema>;
+export type ListSkillShredsQuery = z.infer<typeof listSkillShredsQuerySchema>;
+export type ExportSkillNoteQuery = z.infer<typeof exportSkillNoteQuerySchema>;
 export type UpdateSkillProgressInput = z.infer<
   typeof updateSkillProgressSchema
 >;

@@ -1,4 +1,11 @@
-import { GraduationCap, Loader2, Scissors, Sparkles, Trash2 } from "lucide-react";
+import {
+  GraduationCap,
+  Loader2,
+  RotateCcw,
+  Scissors,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { cn } from "cn";
@@ -23,9 +30,11 @@ import {
   SelectValue,
 } from "@/client/components/ui/select";
 import { Textarea } from "@/client/components/ui/textarea";
+import { useNoteDetailQuery } from "@/client/features/notes/api";
 import { useSparkDetailQuery } from "@/client/features/sparks/api";
 import { sparkTitle } from "@/shared/schemas/spark";
 import {
+  noteToShredContext,
   skillShredderInputSchema,
   type SkillShredderResult,
   type SkillShredResponse,
@@ -35,7 +44,7 @@ import {
 import {
   useCreateSkillShredMutation,
   useDeleteSkillShredMutation,
-  useGenerateSkillMutation,
+  useRetrySkillShredMutation,
   useSkillShredsQuery,
 } from "./api";
 
@@ -46,10 +55,12 @@ const TARGET_TIMES: { value: number; label: string }[] = [
 ];
 
 const STATUS_LABELS: Record<SkillShredStatus, string> = {
+  generating: "Crafting...",
   draft: "Draft",
   spike_done: "Spike done",
   building: "Building",
   completed: "Completed",
+  failed: "Failed",
   archived: "Archived",
 };
 
@@ -68,9 +79,13 @@ function StatusBadge({ status }: { status: SkillShredStatus }) {
             ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
             : status === "spike_done"
               ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
-              : status === "archived"
-                ? "bg-muted text-muted-foreground"
-                : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+              : status === "generating"
+                ? "animate-pulse bg-primary/15 text-primary"
+                : status === "failed"
+                  ? "bg-destructive/15 text-destructive"
+                  : status === "archived"
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
       )}
     >
       {STATUS_LABELS[status]}
@@ -83,14 +98,17 @@ export function ShredInputDialog({
   onOpenChange,
   initialTopic,
   initialContext,
+  noteId,
+  noteTitle,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialTopic?: string;
   initialContext?: string;
+  noteId?: string;
+  noteTitle?: string;
 }) {
   const navigate = useNavigate();
-  const generateMutation = useGenerateSkillMutation();
   const createMutation = useCreateSkillShredMutation();
 
   const [topic, setTopic] = useState(initialTopic ?? "");
@@ -107,7 +125,7 @@ export function ShredInputDialog({
     setError(null);
   }, [open, initialTopic, initialContext]);
 
-  const pending = generateMutation.isPending || createMutation.isPending;
+  const pending = createMutation.isPending;
 
   const handleGenerate = () => {
     setError(null);
@@ -121,27 +139,22 @@ export function ShredInputDialog({
       return;
     }
 
-    generateMutation.mutate(parsed.data, {
-      onSuccess: (blueprint) => {
-        createMutation.mutate(
-          {
-            topic: parsed.data.topic,
-            currentContext: parsed.data.currentContext,
-            targetTimeMinutes: parsed.data.targetTimeMinutes,
-            blueprint,
-          },
-          {
-            onSuccess: (shred) => {
-              onOpenChange(false);
-              toast.success("Topic shredded into a toy project");
-              navigate(`/skill-shredder/${shred.id}`);
-            },
-            onError: (mutationError) => setError(mutationError.message),
-          },
-        );
+    createMutation.mutate(
+      {
+        topic: parsed.data.topic,
+        currentContext: parsed.data.currentContext,
+        targetTimeMinutes: parsed.data.targetTimeMinutes,
+        noteId,
       },
-      onError: (mutationError) => setError(mutationError.message),
-    });
+      {
+        onSuccess: (shred) => {
+          onOpenChange(false);
+          toast.success("Shredding your topic — crafting a toy project...");
+          navigate(`/skill-shredder/${shred.id}`);
+        },
+        onError: (mutationError) => setError(mutationError.message),
+      },
+    );
   };
 
   return (
@@ -159,6 +172,12 @@ export function ShredInputDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {noteTitle ? (
+            <p className="text-xs text-muted-foreground">
+              Creating practice from:{" "}
+              <span className="font-medium text-foreground">{noteTitle}</span>
+            </p>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="skill-topic">What do you want to learn?</Label>
             <Input
@@ -222,11 +241,7 @@ export function ShredInputDialog({
               ) : (
                 <Sparkles className="size-4" />
               )}
-              {generateMutation.isPending
-                ? "Shredding..."
-                : createMutation.isPending
-                  ? "Saving..."
-                  : "Shred it"}
+              {createMutation.isPending ? "Shredding..." : "Shred it"}
             </Button>
           </DialogFooter>
         </div>
@@ -242,11 +257,19 @@ function ShredCard({
   shred: SkillShredResponse;
   onDelete: (shred: SkillShredResponse) => void;
 }) {
-  const total = totalStepCount(shred.blueprint);
+  const retryMutation = useRetrySkillShredMutation();
+  const generating = shred.status === "generating";
+  const failed = shred.status === "failed";
+  const total = shred.blueprint ? totalStepCount(shred.blueprint) : 0;
   const done = shred.completedSteps.length;
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border bg-card p-4",
+        failed && "border-destructive/40",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <Link
           to={`/skill-shredder/${shred.id}`}
@@ -254,7 +277,11 @@ function ShredCard({
         >
           <h3 className="truncate font-medium hover:underline">{shred.topic}</h3>
           <p className="line-clamp-2 text-sm text-muted-foreground">
-            {shred.toyProjectTitle}
+            {generating
+              ? "AI is crafting your toy project... (usually 15–30 seconds)"
+              : failed
+                ? (shred.errorMessage ?? "Generation failed. Try again.")
+                : shred.toyProjectTitle}
           </p>
         </Link>
         <Button
@@ -269,17 +296,43 @@ function ShredCard({
 
       <div className="flex items-center justify-between gap-3">
         <StatusBadge status={shred.status} />
-        <span className="text-xs text-muted-foreground">
-          {done}/{total} steps done
-        </span>
+        {generating ? (
+          <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+        ) : failed ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
+            disabled={retryMutation.isPending}
+            onClick={() =>
+              retryMutation.mutate(shred.id, {
+                onSuccess: () => toast.success("Retrying generation..."),
+                onError: (error) => toast.error(error.message),
+              })
+            }
+          >
+            {retryMutation.isPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="size-3.5" />
+            )}
+            Retry
+          </Button>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {done}/{total} steps done
+          </span>
+        )}
       </div>
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
-        />
-      </div>
+      {!generating && !failed ? (
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -289,24 +342,26 @@ export function SkillShredderPage() {
   const deleteMutation = useDeleteSkillShredMutation();
   const [searchParams, setSearchParams] = useSearchParams();
   const sparkId = searchParams.get("spark") ?? undefined;
+  const noteId = searchParams.get("note") ?? undefined;
   const { data: spark } = useSparkDetailQuery(sparkId ?? "");
+  const { data: note } = useNoteDetailQuery(noteId ?? "");
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (sparkId) {
+    if (sparkId || noteId) {
       setDialogOpen(true);
     }
-  }, [sparkId]);
+  }, [sparkId, noteId]);
 
   const handleDialogChange = (open: boolean) => {
     setDialogOpen(open);
-    if (!open && sparkId) {
+    if (!open && (sparkId || noteId)) {
       setSearchParams({}, { replace: true });
     }
   };
 
   const openBlankDialog = () => {
-    if (sparkId) {
+    if (sparkId || noteId) {
       setSearchParams({}, { replace: true });
     }
     setDialogOpen(true);
@@ -384,10 +439,22 @@ export function SkillShredderPage() {
       <ShredInputDialog
         open={dialogOpen}
         onOpenChange={handleDialogChange}
-        initialTopic={spark ? sparkTitle(spark.content, 200) : undefined}
-        initialContext={
-          spark ? spark.content.slice(0, 500) : undefined
+        initialTopic={
+          note
+            ? note.title.slice(0, 200)
+            : spark
+              ? sparkTitle(spark.content, 200)
+              : undefined
         }
+        initialContext={
+          note
+            ? noteToShredContext(note.content, 500)
+            : spark
+              ? spark.content.slice(0, 500)
+              : undefined
+        }
+        noteId={noteId}
+        noteTitle={note?.title}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import {
   SkillShredderError,
   generateSkillShredder,
 } from "@/worker/lib/ai-client";
+import { noteToShredContext } from "@/shared/schemas/skill-shredder";
 
 function completionWith(content: string, status = 200): Response {
   return new Response(
@@ -122,5 +123,90 @@ describe("generateSkillShredder", () => {
     await expect(
       generateSkillShredder(env, "WebSockets in Cloudflare Workers", undefined),
     ).rejects.toBeInstanceOf(SkillShredderError);
+  });
+
+  it("passes note context into the user prompt", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(completionWith(BLUEPRINT_JSON));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateSkillShredder(
+      env,
+      "Raft consensus",
+      "Raft is a leader-based consensus algorithm.",
+      60,
+    );
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(init.body)) as {
+      messages: { role: string; content: string }[];
+    };
+    const user = body.messages.find((message) => message.role === "user");
+    expect(user?.content).toContain("Reference material");
+    expect(user?.content).toContain("Raft is a leader-based consensus algorithm.");
+  });
+
+  it("sends gateway identity headers from the environment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(completionWith(BLUEPRINT_JSON));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateSkillShredder(
+      env,
+      "WebSockets in Cloudflare Workers",
+      undefined,
+    );
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(init.headers);
+    expect(headers.get("HTTP-Referer")).toBe(env.APP_URL);
+    expect(headers.get("X-Title")).toBe(env.APP_NAME);
+  });
+
+  it("falls back to safe gateway headers when the environment omits them", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(completionWith(BLUEPRINT_JSON));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const envWithoutApp = {
+      ...env,
+      APP_URL: undefined,
+      APP_NAME: undefined,
+    } as unknown as typeof env;
+
+    await generateSkillShredder(
+      envWithoutApp,
+      "WebSockets in Cloudflare Workers",
+      undefined,
+    );
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(init.headers);
+    expect(headers.get("HTTP-Referer")).toBe("https://pdevlog.pages.dev");
+    expect(headers.get("X-Title")).toBe("pdevlog");
+  });
+});
+
+describe("noteToShredContext", () => {
+  it("strips markdown and caps the length", () => {
+    const markdown = [
+      "# Raft Consensus",
+      "",
+      "![diagram](https://example.com/d.png)",
+      "",
+      "Use `AppendEntries` and a [leader](https://example.com/leader).",
+      "",
+      "```ts",
+      "const term = 1;",
+      "```",
+      "",
+      "a".repeat(800),
+    ].join("\n");
+
+    const context = noteToShredContext(markdown, 500);
+
+    expect(context).toContain("Raft Consensus");
+    expect(context).toContain("AppendEntries");
+    expect(context).not.toContain("#");
+    expect(context).not.toContain("```");
+    expect(context).not.toContain("](http");
+    expect(context.length).toBeLessThanOrEqual(500);
   });
 });

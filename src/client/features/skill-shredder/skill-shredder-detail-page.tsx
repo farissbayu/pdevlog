@@ -1,6 +1,8 @@
 import {
+  AlertCircle,
   ArrowLeft,
   Ban,
+  BookOpen,
   Brain,
   Check,
   ClipboardCopy,
@@ -35,6 +37,7 @@ import {
   type BragLogPrefill,
 } from "@/client/features/brag-logs/brag-log-form";
 import { useCreateTagMutation, useTagsQuery } from "@/client/features/tags/api";
+import { useNoteDetailQuery } from "@/client/features/notes/api";
 import {
   CHALLENGE_STEP_KEY,
   SPIKE_STEP_KEY,
@@ -45,6 +48,7 @@ import {
 import {
   useDeleteSkillShredMutation,
   useExportSkillNoteMutation,
+  useRetrySkillShredMutation,
   useSkillShredQuery,
   useUpdateSkillProgressMutation,
 } from "./api";
@@ -186,7 +190,6 @@ function SectionCard({
 }
 
 function BlueprintView({ shred }: { shred: SkillShredResponse }) {
-  const { blueprint, completedSteps } = shred;
   const progressMutation = useUpdateSkillProgressMutation();
   const exportMutation = useExportSkillNoteMutation();
   const { data: tags } = useTagsQuery();
@@ -194,6 +197,13 @@ function BlueprintView({ shred }: { shred: SkillShredResponse }) {
   const navigate = useNavigate();
   const [bragOpen, setBragOpen] = useState(false);
   const [prefill, setPrefill] = useState<BragLogPrefill | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+
+  const blueprint = shred.blueprint;
+  const { completedSteps } = shred;
+  if (!blueprint) {
+    return null;
+  }
 
   const completed = new Set(completedSteps);
 
@@ -216,14 +226,22 @@ function BlueprintView({ shred }: { shred: SkillShredResponse }) {
     }
   };
 
-  const handleExport = () => {
-    exportMutation.mutate(shred.id, {
-      onSuccess: (data) => {
-        toast.success("Exported to a TIL note");
-        navigate(`/notes/${data.noteId}`);
+  const runExport = (mode: "new" | "append") => {
+    exportMutation.mutate(
+      { id: shred.id, mode },
+      {
+        onSuccess: (data) => {
+          setExportOpen(false);
+          toast.success(
+            mode === "append"
+              ? "Appended to the source note"
+              : "Exported to a TIL note",
+          );
+          navigate(`/notes/${data.noteId}`);
+        },
+        onError: (error) => toast.error(error.message),
       },
-      onError: (error) => toast.error(error.message),
-    });
+    );
   };
 
   const openBragForm = async () => {
@@ -400,13 +418,13 @@ function BlueprintView({ shred }: { shred: SkillShredResponse }) {
             <Button asChild variant="outline">
               <Link to={`/notes/${shred.noteId}`}>
                 <FileText className="size-4" />
-                View TIL note
+                View linked note
               </Link>
             </Button>
           ) : null}
           <Button
             variant="outline"
-            onClick={handleExport}
+            onClick={() => (shred.noteId ? setExportOpen(true) : runExport("new"))}
             disabled={exportMutation.isPending}
           >
             {exportMutation.isPending ? (
@@ -414,7 +432,7 @@ function BlueprintView({ shred }: { shred: SkillShredResponse }) {
             ) : (
               <FileText className="size-4" />
             )}
-            {shred.noteId ? "Export again" : "Export to Note (TIL)"}
+            Export to Note (TIL)
           </Button>
           <Button onClick={openBragForm} disabled={createTag.isPending}>
             {createTag.isPending ? (
@@ -426,6 +444,33 @@ function BlueprintView({ shred }: { shred: SkillShredResponse }) {
           </Button>
         </div>
       </div>
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export to a note</DialogTitle>
+            <DialogDescription>
+              This shred is linked to a note. Append the toy project write-up to
+              that note, or create a separate TIL note.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button
+              variant="outline"
+              onClick={() => runExport("append")}
+              disabled={exportMutation.isPending}
+            >
+              Append to linked note
+            </Button>
+            <Button
+              onClick={() => runExport("new")}
+              disabled={exportMutation.isPending}
+            >
+              Create new note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <BragLogFormDialog
         open={bragOpen}
@@ -440,7 +485,9 @@ export function SkillShredderDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { data: shred, isPending, isError, refetch } = useSkillShredQuery(id);
+  const { data: sourceNote } = useNoteDetailQuery(shred?.noteId ?? "");
   const deleteMutation = useDeleteSkillShredMutation();
+  const retryMutation = useRetrySkillShredMutation();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleDelete = () => {
@@ -497,6 +544,15 @@ export function SkillShredderDetailPage() {
               {shred.topic}
             </h1>
             <StatusBadge status={shred.status} />
+            {shred.noteId ? (
+              <Link
+                to={`/notes/${shred.noteId}`}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <BookOpen className="size-4" />
+                Based on note: {sourceNote?.title ?? "linked note"}
+              </Link>
+            ) : null}
           </div>
           <Button
             variant="outline"
@@ -510,7 +566,50 @@ export function SkillShredderDetailPage() {
         </div>
       </div>
 
-      <BlueprintView shred={shred} />
+      {shred.status === "generating" ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">
+              Crafting your toy project...
+            </h2>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              The AI is designing "{shred.topic}". This usually takes 15–30
+              seconds. Feel free to switch tabs — it keeps running in the
+              background.
+            </p>
+          </div>
+        </div>
+      ) : shred.status === "failed" || !shred.blueprint ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-destructive/40 bg-card/50 px-6 py-16 text-center">
+          <AlertCircle className="size-8 text-destructive" />
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">Generation failed</h2>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              {shred.errorMessage ??
+                "Something went wrong while generating this shred."}
+            </p>
+          </div>
+          <Button
+            onClick={() =>
+              retryMutation.mutate(shred.id, {
+                onSuccess: () => toast.success("Retrying generation..."),
+                onError: (error) => toast.error(error.message),
+              })
+            }
+            disabled={retryMutation.isPending}
+          >
+            {retryMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <RotateCcw className="size-4" />
+            )}
+            Retry Generation
+          </Button>
+        </div>
+      ) : (
+        <BlueprintView shred={shred} />
+      )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

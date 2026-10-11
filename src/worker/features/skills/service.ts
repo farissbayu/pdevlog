@@ -11,7 +11,6 @@ import {
   type SkillMilestoneResponse,
   type SkillsListResponse,
 } from "@/shared/schemas/skills";
-import type { SyncCvSkillsResponse } from "@/shared/schemas/profile";
 import type { Database } from "@/worker/db";
 import {
   aiUsage,
@@ -598,7 +597,7 @@ export async function syncCvGrowth(
   db: Database,
   env: AppEnv["Bindings"],
   userId: string,
-): Promise<SyncCvSkillsResponse> {
+): Promise<void> {
   await ensureUserSkills(db, userId);
 
   const [profile] = await db
@@ -612,21 +611,19 @@ export async function syncCvGrowth(
     !profile.cvMarkdown ||
     profile.cvMarkdown.trim().length === 0
   ) {
-    return {
-      matchedMilestonesCount: 0,
-      newlyAchievedCount: 0,
-      unlockedMilestones: [],
-      message: "No CV markdown found. Please upload or paste your CV first.",
-    };
+    await db
+      .update(userProfiles)
+      .set({ cvAuditStatus: "idle", updatedAt: new Date() })
+      .where(eq(userProfiles.userId, userId));
+    return;
   }
 
   if (!env.AI_API_KEY) {
-    return {
-      matchedMilestonesCount: 0,
-      newlyAchievedCount: 0,
-      unlockedMilestones: [],
-      message: "AI service is not configured (missing AI_API_KEY).",
-    };
+    await db
+      .update(userProfiles)
+      .set({ cvAuditStatus: "failed", updatedAt: new Date() })
+      .where(eq(userProfiles.userId, userId));
+    return;
   }
 
   const { result } = await auditCvSkillEvidence(env, profile.cvMarkdown);
@@ -656,9 +653,6 @@ export async function syncCvGrowth(
       cvEvidenceByMilestone.set(ev.milestoneId, ev);
     }
   }
-
-  let newlyAchievedCount = 0;
-  const unlockedMilestones: SyncCvSkillsResponse["unlockedMilestones"] = [];
 
   for (const match of result.matches) {
     const skill = skillBySlug.get(match.pillarSlug);
@@ -702,25 +696,13 @@ export async function syncCvGrowth(
             updatedAt: new Date(),
           })
           .where(eq(skillMilestones.id, milestone.id));
-        newlyAchievedCount++;
       }
-
-      unlockedMilestones.push({
-        milestoneId: milestone.id,
-        title: milestone.title,
-        pillarSlug: match.pillarSlug,
-        level: match.level,
-        quoteSnippet: match.quoteSnippet,
-        aiReasoning: match.reasoning,
-      });
     }
   }
 
-  return {
-    matchedMilestonesCount: result.matches.length,
-    newlyAchievedCount,
-    unlockedMilestones,
-    message: `Successfully analyzed CV and mapped ${result.matches.length} milestones (${newlyAchievedCount} newly achieved).`,
-  };
+  await db
+    .update(userProfiles)
+    .set({ cvAuditStatus: "audited", updatedAt: new Date() })
+    .where(eq(userProfiles.userId, userId));
 }
 

@@ -4,8 +4,6 @@ import { extractText } from "unpdf";
 
 import {
   skillInsightsSchema,
-  type AnalyzeSkillsResponse,
-  type CvUploadResponse,
   type SkillInsights,
   type UpdateProfileRequest,
   type UserProfileResponse,
@@ -67,10 +65,13 @@ function toProfileResponse(
     cvExtractedAt: profile.cvExtractedAt
       ? new Date(profile.cvExtractedAt).toISOString()
       : null,
+    cvParseStatus: profile.cvParseStatus,
+    cvAuditStatus: profile.cvAuditStatus,
     skillInsights: parseSkillInsights(profile.skillInsights),
     skillAnalyzedAt: profile.skillAnalyzedAt
       ? new Date(profile.skillAnalyzedAt).toISOString()
       : null,
+    insightsStatus: profile.insightsStatus,
     createdAt: new Date(profile.createdAt).toISOString(),
     updatedAt: new Date(profile.updatedAt).toISOString(),
   };
@@ -148,7 +149,7 @@ export async function extractAndSaveCv(
   env: AppEnv["Bindings"],
   user: UserRow,
   file: File,
-): Promise<CvUploadResponse> {
+): Promise<void> {
   await getOrCreateProfile(db, user);
 
   const isPdf =
@@ -209,6 +210,7 @@ export async function extractAndSaveCv(
     .set({
       cvMarkdown,
       cvExtractedAt: now,
+      cvParseStatus: "ready",
       updatedAt: now,
       ...(headline ? { headline } : {}),
       ...(bio ? { bio } : {}),
@@ -217,14 +219,6 @@ export async function extractAndSaveCv(
         : {}),
     })
     .where(eq(userProfiles.userId, user.id));
-
-  return {
-    cvMarkdown,
-    extractedAt: now.toISOString(),
-    headline,
-    bio,
-    suggestedStack,
-  };
 }
 
 export async function extractPersonaFromCv(
@@ -276,7 +270,7 @@ export async function analyzeAndSaveSkillInsights(
   db: Database,
   env: AppEnv["Bindings"],
   userId: string,
-): Promise<AnalyzeSkillsResponse> {
+): Promise<void> {
   const [profile] = await db
     .select()
     .from(userProfiles)
@@ -341,6 +335,7 @@ export async function analyzeAndSaveSkillInsights(
     .set({
       skillInsights: JSON.stringify(insights),
       skillAnalyzedAt: now,
+      insightsStatus: "ready",
       updatedAt: now,
       ...(!profile.headline ? { headline: insights.archetype } : {}),
     })
@@ -359,9 +354,4 @@ export async function analyzeAndSaveSkillInsights(
   } catch (err) {
     console.error("Failed to record AI usage for skill insights:", err);
   }
-
-  return {
-    insights,
-    message: "Successfully analyzed your engineering competencies!",
-  };
 }

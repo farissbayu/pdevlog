@@ -22,10 +22,20 @@ export async function fetchProfile(): Promise<UserProfileResponse> {
   return (await res.json()) as UserProfileResponse;
 }
 
+function isProcessing(profile?: UserProfileResponse): boolean {
+  return (
+    profile?.cvParseStatus === "processing" ||
+    profile?.cvAuditStatus === "auditing" ||
+    profile?.insightsStatus === "analyzing"
+  );
+}
+
 export const profileQueryOptions = () =>
   queryOptions({
     queryKey: profileKeys.detail(),
     queryFn: fetchProfile,
+    refetchInterval: (query) =>
+      isProcessing(query.state.data) ? 2500 : false,
   });
 
 export async function updateProfile(

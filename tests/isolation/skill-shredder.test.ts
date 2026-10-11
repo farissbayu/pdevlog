@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -87,21 +88,39 @@ async function request(
     headers.set("Content-Type", "application/json");
   }
 
-  return app.fetch(
+  const ctx = createExecutionContext();
+  const response = await app.fetch(
     new Request(`https://example.com${path}`, { ...init, headers }),
     env,
+    ctx,
   );
+  await waitOnExecutionContext(ctx);
+  return response;
+}
+
+async function createNote(
+  id: string,
+  ownerId: string,
+  content = "Raft consensus basics.",
+): Promise<void> {
+  const now = Date.now();
+  await env.DB.prepare(
+    "INSERT INTO notes (id, user_id, workspace_id, title, content, created_at, updated_at) VALUES (?, ?, NULL, ?, ?, ?, ?)",
+  )
+    .bind(id, ownerId, `Notes on ${id}`, content, now, now)
+    .run();
 }
 
 type ShredBody = {
   shred: {
     id: string;
     topic: string;
-    toyProjectTitle: string;
+    toyProjectTitle: string | null;
     status: string;
     completedSteps: string[];
     noteId: string | null;
-    blueprint: { milestones: { stepNumber: number }[] };
+    errorMessage?: string | null;
+    blueprint: { milestones: { stepNumber: number }[] } | null;
   };
 };
 
@@ -109,17 +128,25 @@ async function createShred(
   token: string,
   overrides: Record<string, unknown> = {},
 ): Promise<{ status: number; body: ShredBody }> {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(completionWith(JSON.stringify(BLUEPRINT))),
+  );
   const response = await request("/api/skill-shredder", token, {
     method: "POST",
     body: JSON.stringify({
       topic: "WebSockets in Cloudflare Workers",
       currentContext: "I know REST fetch",
       targetTimeMinutes: 60,
-      blueprint: BLUEPRINT,
       ...overrides,
     }),
   });
-  return { status: response.status, body: (await response.json()) as ShredBody };
+  const body = (await response.json()) as ShredBody;
+  if (response.status !== 202 || !body.shred) {
+    return { status: response.status, body };
+  }
+  const detail = await request(`/api/skill-shredder/${body.shred.id}`, token);
+  return { status: response.status, body: (await detail.json()) as ShredBody };
 }
 
 afterEach(() => {
@@ -127,34 +154,72 @@ afterEach(() => {
 });
 
 describe("skill shredder", () => {
-  it("generates a blueprint from the AI provider", async () => {
+  it("accepts a shred instantly and resolves the background draft", async () => {
     const token = await createUser("skill-generate");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(completionWith(JSON.stringify(BLUEPRINT))),
     );
 
-    const response = await request("/api/skill-shredder/generate", token, {
+    const response = await request("/api/skill-shredder", token, {
       method: "POST",
       body: JSON.stringify({
         topic: "WebSockets in Cloudflare Workers",
         targetTimeMinutes: 60,
       }),
     });
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      blueprint: { toyProjectTitle: string };
-    };
-    expect(body.blueprint.toyProjectTitle).toBe(
+    expect(response.status).toBe(202);
+    const body = (await response.json()) as ShredBody;
+    expect(body.shred.status).toBe("generating");
+    expect(body.shred.blueprint).toBeNull();
+
+    const detail = await request(`/api/skill-shredder/${body.shred.id}`, token);
+    const detailBody = (await detail.json()) as ShredBody;
+    expect(detailBody.shred.status).toBe("draft");
+    expect(detailBody.shred.toyProjectTitle).toBe(
       "2-client terminal walkie-talkie",
     );
+  });
+
+  it("marks a shred failed and supports retry", async () => {
+    const token = await createUser("skill-retry");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("provider down")),
+    );
+
+    const response = await request("/api/skill-shredder", token, {
+      method: "POST",
+      body: JSON.stringify({ topic: "WebSockets in Cloudflare Workers" }),
+    });
+    expect(response.status).toBe(202);
+    const body = (await response.json()) as ShredBody;
+
+    const failed = await request(`/api/skill-shredder/${body.shred.id}`, token);
+    const failedBody = (await failed.json()) as ShredBody;
+    expect(failedBody.shred.status).toBe("failed");
+    expect(failedBody.shred.errorMessage).toContain("AI request failed");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(completionWith(JSON.stringify(BLUEPRINT))),
+    );
+    const retry = await request(
+      `/api/skill-shredder/${body.shred.id}/retry`,
+      token,
+      { method: "POST" },
+    );
+    expect(retry.status).toBe(202);
+
+    const after = await request(`/api/skill-shredder/${body.shred.id}`, token);
+    expect(((await after.json()) as ShredBody).shred.status).toBe("draft");
   });
 
   it("persists, lists and deletes a shred for the owner", async () => {
     const token = await createUser("skill-owner");
 
     const created = await createShred(token);
-    expect(created.status).toBe(201);
+    expect(created.status).toBe(202);
     expect(created.body.shred.status).toBe("draft");
     expect(created.body.shred.toyProjectTitle).toContain("walkie-talkie");
 
@@ -233,6 +298,59 @@ describe("skill shredder", () => {
     expect(noteBody.note.content).toContain("Deliberate Practice Challenge");
   });
 
+  it("links a shred to an owned note and isolates foreign notes", async () => {
+    const tokenA = await createUser("skill-note-a");
+    const tokenB = await createUser("skill-note-b");
+    await createNote("note-a", "skill-note-a", "Raft consensus basics.");
+
+    const created = await createShred(tokenA, { noteId: "note-a" });
+    expect(created.status).toBe(202);
+    expect(created.body.shred.noteId).toBe("note-a");
+
+    const listByNote = (await (
+      await request("/api/skill-shredder?note_id=note-a", tokenA)
+    ).json()) as { shreds: unknown[] };
+    expect(listByNote.shreds).toHaveLength(1);
+
+    const listOther = (await (
+      await request("/api/skill-shredder?note_id=missing", tokenA)
+    ).json()) as { shreds: unknown[] };
+    expect(listOther.shreds).toHaveLength(0);
+
+    const foreign = await createShred(tokenB, { noteId: "note-a" });
+    expect(foreign.status).toBe(404);
+
+    const listB = (await (
+      await request("/api/skill-shredder?note_id=note-a", tokenB)
+    ).json()) as { shreds: unknown[] };
+    expect(listB.shreds).toHaveLength(0);
+  });
+
+  it("appends a completed shred to its source note", async () => {
+    const token = await createUser("skill-append");
+    await createNote("note-append", "skill-append", "Original note body.");
+
+    const created = await createShred(token, { noteId: "note-append" });
+    const id = created.body.shred.id;
+
+    const exported = await request(
+      `/api/skill-shredder/${id}/note?mode=append`,
+      token,
+      { method: "POST" },
+    );
+    expect(exported.status).toBe(201);
+    const exportBody = (await exported.json()) as { noteId: string };
+    expect(exportBody.noteId).toBe("note-append");
+
+    const note = (await (
+      await request("/api/notes/note-append", token)
+    ).json()) as { note: { content: string } };
+    expect(note.note.content).toContain("Original note body.");
+    expect(note.note.content).toContain(
+      "Hands-on Implementation (Toy Project)",
+    );
+  });
+
   it("blocks cross-user access with 404", async () => {
     const tokenA = await createUser("skill-user-a");
     const tokenB = await createUser("skill-user-b");
@@ -259,6 +377,13 @@ describe("skill shredder", () => {
     expect(
       (await request(`/api/skill-shredder/${id}`, tokenB, { method: "DELETE" }))
         .status,
+    ).toBe(404);
+    expect(
+      (
+        await request(`/api/skill-shredder/${id}/retry`, tokenB, {
+          method: "POST",
+        })
+      ).status,
     ).toBe(404);
 
     const listB = (await (

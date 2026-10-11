@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -26,10 +27,14 @@ async function request(
   const headers = new Headers(init?.headers);
   headers.set("Cookie", `${SESSION_COOKIE}=${token}`);
 
-  return app.fetch(
+  const ctx = createExecutionContext();
+  const response = await app.fetch(
     new Request(`https://example.com${path}`, { ...init, headers }),
     env,
+    ctx,
   );
+  await waitOnExecutionContext(ctx);
+  return response;
 }
 
 afterEach(() => {
@@ -131,29 +136,23 @@ describe("profile and CV skill mapping isolation tests", () => {
       body: formData,
     });
 
-    expect(uploadRes.status).toBe(200);
-    const body = (await uploadRes.json()) as {
-      cvMarkdown: string;
-      extractedAt: string;
-      headline: string;
-      bio: string;
-    };
+    expect(uploadRes.status).toBe(202);
+    const body = (await uploadRes.json()) as { status: string };
+    expect(body.status).toBe("processing");
 
-    expect(body.cvMarkdown).toContain("Jane Doe");
-    expect(body.cvMarkdown).toContain("optimistic client mutations");
-    expect(body.headline).toBe("Senior Product Engineer");
-    expect(body.bio).toBe("Specializing in optimistic client mutations.");
-
-    // Verify it is persisted in profile
+    // Verify it is persisted in profile after the background job completes
     const profileRes = await request("/api/profile", token);
     const profile = (await profileRes.json()) as {
       cvMarkdown: string;
       headline: string;
       bio: string;
+      cvParseStatus: string;
     };
     expect(profile.cvMarkdown).toContain("Jane Doe");
+    expect(profile.cvMarkdown).toContain("optimistic client mutations");
     expect(profile.headline).toBe("Senior Product Engineer");
     expect(profile.bio).toBe("Specializing in optimistic client mutations.");
+    expect(profile.cvParseStatus).toBe("ready");
   });
 
   it("extracts persona details (headline, bio, stack) from saved CV via POST /api/profile/persona/extract", async () => {
@@ -278,17 +277,11 @@ describe("profile and CV skill mapping isolation tests", () => {
       method: "POST",
     });
 
-    expect(syncRes.status).toBe(200);
-    const syncData = (await syncRes.json()) as {
-      matchedMilestonesCount: number;
-      newlyAchievedCount: number;
-      unlockedMilestones: { pillarSlug: string; level: number }[];
-    };
+    expect(syncRes.status).toBe(202);
+    const syncData = (await syncRes.json()) as { status: string };
+    expect(syncData.status).toBe("auditing");
 
-    expect(syncData.matchedMilestonesCount).toBe(2);
-    expect(syncData.newlyAchievedCount).toBe(2);
-
-    // Verify Skill Radar shows the CV evidence
+    // Verify Skill Radar shows the CV evidence after the background audit
     const skillsRes = await request("/api/skills", token);
     const skillsData = (await skillsRes.json()) as {
       skills: {
@@ -392,23 +385,11 @@ describe("profile and CV skill mapping isolation tests", () => {
       method: "POST",
     });
 
-    expect(analyzeRes.status).toBe(200);
-    const analyzeData = (await analyzeRes.json()) as {
-      insights: {
-        archetype: string;
-        strengths: { area: string }[];
-        growthAreas: { area: string }[];
-      };
-      message: string;
-    };
+    expect(analyzeRes.status).toBe(202);
+    const analyzeData = (await analyzeRes.json()) as { status: string };
+    expect(analyzeData.status).toBe("analyzing");
 
-    expect(analyzeData.insights.archetype).toBe(
-      "Product-Centric Fullstack Engineer",
-    );
-    expect(analyzeData.insights.strengths).toHaveLength(2);
-    expect(analyzeData.insights.growthAreas).toHaveLength(1);
-
-    // Verify GET /api/profile returns the saved skillInsights
+    // Verify GET /api/profile returns the saved skillInsights after the job
     const profileRes = await request("/api/profile", token);
     const profileData = (await profileRes.json()) as {
       headline: string;
@@ -417,13 +398,16 @@ describe("profile and CV skill mapping isolation tests", () => {
         strengths: { area: string }[];
       };
       skillAnalyzedAt: string | null;
+      insightsStatus: string;
     };
 
     expect(profileData.headline).toBe("Product-Centric Fullstack Engineer");
     expect(profileData.skillInsights.archetype).toBe(
       "Product-Centric Fullstack Engineer",
     );
+    expect(profileData.skillInsights.strengths).toHaveLength(2);
     expect(profileData.skillAnalyzedAt).not.toBeNull();
+    expect(profileData.insightsStatus).toBe("ready");
   });
 });
 

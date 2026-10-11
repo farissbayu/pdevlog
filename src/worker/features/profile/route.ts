@@ -7,7 +7,7 @@ import {
   type UpdateProfileRequest,
 } from "@/shared/schemas/profile";
 import { createDb } from "@/worker/db";
-import { users } from "@/worker/db/schema";
+import { userProfiles, users } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import { syncCvGrowth } from "@/worker/features/skills/service";
 
@@ -58,6 +58,17 @@ const updateProfileHandler = async (
   return c.json(profile);
 };
 
+async function markProfile(
+  db: ReturnType<typeof createDb>,
+  userId: string,
+  values: Partial<typeof userProfiles.$inferInsert>,
+): Promise<void> {
+  await db
+    .update(userProfiles)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(userProfiles.userId, userId));
+}
+
 const uploadCvHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
@@ -81,46 +92,87 @@ const uploadCvHandler = async (c: Context<AppEnv>) => {
     );
   }
 
-  try {
-    const result = await extractAndSaveCv(db, c.env, user, file);
-    return c.json(result);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to extract CV file.";
-    return c.json({ error: message }, 400);
-  }
+  await getOrCreateProfile(db, user);
+  await markProfile(db, userId, { cvParseStatus: "processing" });
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        await extractAndSaveCv(db, c.env, user, file);
+      } catch (error) {
+        console.error("POST /api/profile/cv/upload background error:", error);
+        await markProfile(db, userId, { cvParseStatus: "failed" });
+      }
+    })(),
+  );
+
+  return c.json({ status: "processing" }, 202);
 };
 
 const syncCvSkillsHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
-  try {
-    const result = await syncCvGrowth(db, c.env, userId);
-    return c.json(result);
-  } catch (error) {
-    console.error("POST /api/profile/cv/sync-skills error:", error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to sync skill mastery from CV.";
-    return c.json({ error: message }, 500);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
   }
+
+  await getOrCreateProfile(db, user);
+  await markProfile(db, userId, { cvAuditStatus: "auditing" });
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        await syncCvGrowth(db, c.env, userId);
+      } catch (error) {
+        console.error(
+          "POST /api/profile/cv/sync-skills background error:",
+          error,
+        );
+        await markProfile(db, userId, { cvAuditStatus: "failed" });
+      }
+    })(),
+  );
+
+  return c.json({ status: "auditing" }, 202);
 };
 
 const analyzeSkillsHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
-  try {
-    const result = await analyzeAndSaveSkillInsights(db, c.env, userId);
-    return c.json(result);
-  } catch (error) {
-    console.error("POST /api/profile/skills/analyze error:", error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to analyze engineering skills.";
-    return c.json({ error: message }, 500);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
   }
+
+  await getOrCreateProfile(db, user);
+  await markProfile(db, userId, { insightsStatus: "analyzing" });
+
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        await analyzeAndSaveSkillInsights(db, c.env, userId);
+      } catch (error) {
+        console.error(
+          "POST /api/profile/skills/analyze background error:",
+          error,
+        );
+        await markProfile(db, userId, { insightsStatus: "failed" });
+      }
+    })(),
+  );
+
+  return c.json({ status: "analyzing" }, 202);
 };
 
 const extractPersonaHandler = async (c: Context<AppEnv>) => {

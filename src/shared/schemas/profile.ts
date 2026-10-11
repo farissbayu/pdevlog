@@ -24,6 +24,30 @@ export const skillInsightsSchema = z.object({
 });
 export type SkillInsights = z.infer<typeof skillInsightsSchema>;
 
+export const cvParseStatusSchema = z.enum([
+  "idle",
+  "processing",
+  "ready",
+  "failed",
+]);
+export type CvParseStatus = z.infer<typeof cvParseStatusSchema>;
+
+export const cvAuditStatusSchema = z.enum([
+  "idle",
+  "auditing",
+  "audited",
+  "failed",
+]);
+export type CvAuditStatus = z.infer<typeof cvAuditStatusSchema>;
+
+export const insightsStatusSchema = z.enum([
+  "idle",
+  "analyzing",
+  "ready",
+  "failed",
+]);
+export type InsightsStatus = z.infer<typeof insightsStatusSchema>;
+
 export const userProfileResponseSchema = z.object({
   userId: z.string(),
   name: z.string(),
@@ -34,8 +58,11 @@ export const userProfileResponseSchema = z.object({
   primaryStack: z.array(z.string()),
   cvMarkdown: z.string().nullable(),
   cvExtractedAt: z.string().nullable(),
+  cvParseStatus: cvParseStatusSchema,
+  cvAuditStatus: cvAuditStatusSchema,
   skillInsights: skillInsightsSchema.nullable(),
   skillAnalyzedAt: z.string().nullable(),
+  insightsStatus: insightsStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -50,35 +77,17 @@ export const updateProfileRequestSchema = z.object({
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 
 export const cvUploadResponseSchema = z.object({
-  cvMarkdown: z.string(),
-  extractedAt: z.string(),
-  headline: z.string().nullable(),
-  bio: z.string().nullable().optional(),
-  suggestedStack: z.array(z.string()),
-  pageCount: z.number().int().optional(),
+  status: cvParseStatusSchema,
 });
 export type CvUploadResponse = z.infer<typeof cvUploadResponseSchema>;
 
 export const analyzeSkillsResponseSchema = z.object({
-  insights: skillInsightsSchema,
-  message: z.string(),
+  status: insightsStatusSchema,
 });
 export type AnalyzeSkillsResponse = z.infer<typeof analyzeSkillsResponseSchema>;
 
 export const syncCvSkillsResponseSchema = z.object({
-  matchedMilestonesCount: z.number().int(),
-  newlyAchievedCount: z.number().int(),
-  unlockedMilestones: z.array(
-    z.object({
-      milestoneId: z.string(),
-      title: z.string(),
-      pillarSlug: z.string(),
-      level: z.number().int(),
-      quoteSnippet: z.string(),
-      aiReasoning: z.string(),
-    }),
-  ),
-  message: z.string(),
+  status: cvAuditStatusSchema,
 });
 export type SyncCvSkillsResponse = z.infer<typeof syncCvSkillsResponseSchema>;
 

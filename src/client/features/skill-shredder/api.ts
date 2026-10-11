@@ -8,9 +8,6 @@ import {
 import { client, parseApiError } from "@/client/lib/api";
 import type {
   CreateSkillShredInput,
-  SkillShredderInput,
-  SkillShredderResponse,
-  SkillShredderResult,
   SkillShredDetailResponse,
   SkillShredListResponse,
   SkillShredNoteResponse,
@@ -19,18 +16,10 @@ import type {
 } from "@/shared/schemas/skill-shredder";
 
 const SKILL_KEY = ["skill-shredder"] as const;
+const POLL_INTERVAL_MS = 2500;
 
-export async function generateSkillBlueprint(
-  input: SkillShredderInput,
-): Promise<SkillShredderResult> {
-  const response = await client.api["skill-shredder"].generate.$post({
-    json: input,
-  });
-  if (!response.ok) {
-    throw await parseApiError(response, "Failed to shred the topic");
-  }
-  const data = (await response.json()) as SkillShredderResponse;
-  return data.blueprint;
+function isGenerating(shred: SkillShredResponse | undefined): boolean {
+  return shred?.status === "generating";
 }
 
 export async function createSkillShred(
@@ -44,8 +33,12 @@ export async function createSkillShred(
   return data.shred;
 }
 
-export async function fetchSkillShreds(): Promise<SkillShredResponse[]> {
-  const response = await client.api["skill-shredder"].$get();
+export async function fetchSkillShreds(
+  noteId?: string,
+): Promise<SkillShredResponse[]> {
+  const response = await client.api["skill-shredder"].$get({
+    query: noteId ? { note_id: noteId } : {},
+  });
   if (!response.ok) {
     throw await parseApiError(response, "Failed to load skill shreds");
   }
@@ -83,14 +76,27 @@ export async function updateSkillProgress(
 
 export async function exportSkillToNote(
   id: string,
+  mode: "new" | "append" = "new",
 ): Promise<SkillShredNoteResponse> {
   const response = await client.api["skill-shredder"][":id"].note.$post({
     param: { id },
+    query: { mode },
   });
   if (!response.ok) {
     throw await parseApiError(response, "Failed to export to a note");
   }
   return (await response.json()) as SkillShredNoteResponse;
+}
+
+export async function retrySkillShred(id: string): Promise<SkillShredResponse> {
+  const response = await client.api["skill-shredder"][":id"].retry.$post({
+    param: { id },
+  });
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to retry generation");
+  }
+  const data = (await response.json()) as SkillShredDetailResponse;
+  return data.shred;
 }
 
 export async function deleteSkillShred(id: string): Promise<void> {
@@ -102,28 +108,29 @@ export async function deleteSkillShred(id: string): Promise<void> {
   }
 }
 
-export const skillShredsQueryOptions = queryOptions({
-  queryKey: [...SKILL_KEY, "list"],
-  queryFn: fetchSkillShreds,
-});
+export const skillShredsQueryOptions = (noteId?: string) =>
+  queryOptions({
+    queryKey: [...SKILL_KEY, "list", noteId ?? "all"],
+    queryFn: () => fetchSkillShreds(noteId),
+    refetchInterval: (query) =>
+      query.state.data?.some(isGenerating) ? POLL_INTERVAL_MS : false,
+  });
 
 export const skillShredQueryOptions = (id: string) =>
   queryOptions({
     queryKey: [...SKILL_KEY, "detail", id],
     queryFn: () => fetchSkillShred(id),
     enabled: Boolean(id),
+    refetchInterval: (query) =>
+      isGenerating(query.state.data) ? POLL_INTERVAL_MS : false,
   });
 
-export function useSkillShredsQuery() {
-  return useQuery(skillShredsQueryOptions);
+export function useSkillShredsQuery(noteId?: string) {
+  return useQuery(skillShredsQueryOptions(noteId));
 }
 
 export function useSkillShredQuery(id: string) {
   return useQuery(skillShredQueryOptions(id));
-}
-
-export function useGenerateSkillMutation() {
-  return useMutation({ mutationFn: generateSkillBlueprint });
 }
 
 export function useCreateSkillShredMutation() {
@@ -132,6 +139,18 @@ export function useCreateSkillShredMutation() {
   return useMutation({
     mutationFn: createSkillShred,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SKILL_KEY });
+    },
+  });
+}
+
+export function useRetrySkillShredMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: retrySkillShred,
+    onSuccess: (shred) => {
+      queryClient.setQueryData([...SKILL_KEY, "detail", shred.id], shred);
       queryClient.invalidateQueries({ queryKey: SKILL_KEY });
     },
   });
@@ -159,7 +178,8 @@ export function useExportSkillNoteMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: exportSkillToNote,
+    mutationFn: ({ id, mode }: { id: string; mode?: "new" | "append" }) =>
+      exportSkillToNote(id, mode),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: SKILL_KEY });
       queryClient.invalidateQueries({ queryKey: ["notes"] });

@@ -54,7 +54,6 @@ const appNavItems: NavItem[] = [
   { label: "Skill Shredder", icon: Scissors, to: "/skill-shredder" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
   { label: "Tags", icon: Tags, to: "/tags" },
-  { label: "Profile", icon: User, to: "/profile" },
   { label: "Settings", icon: Settings, to: "/settings" },
 ];
 

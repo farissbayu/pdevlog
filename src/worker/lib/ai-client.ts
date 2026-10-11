@@ -119,6 +119,28 @@ function resolveBaseUrl(baseUrl: string | undefined): string {
     : value;
 }
 
+const DEFAULT_APP_URL = "https://pdevlog.pages.dev";
+const DEFAULT_APP_NAME = "pdevlog";
+
+type CreateAiClientOptions = {
+  maxRetries?: number;
+};
+
+function getAiClient(
+  env: AppEnv["Bindings"],
+  options: CreateAiClientOptions = {},
+): OpenAI {
+  return new OpenAI({
+    apiKey: env.AI_API_KEY,
+    baseURL: resolveBaseUrl(env.AI_BASE_URL),
+    maxRetries: options.maxRetries ?? 2,
+    defaultHeaders: {
+      "HTTP-Referer": env.APP_URL || DEFAULT_APP_URL,
+      "X-Title": env.APP_NAME || DEFAULT_APP_NAME,
+    },
+  });
+}
+
 function buildUserPrompt(content: string, tagOptions: TagOption[]): string {
   if (tagOptions.length === 0) {
     return content;
@@ -136,10 +158,7 @@ export async function generateStarBreakdown(
   content: string,
   tagOptions: TagOption[] = [],
 ): Promise<StarBreakdownResult> {
-  const client = new OpenAI({
-    apiKey: env.AI_API_KEY,
-    baseURL: resolveBaseUrl(env.AI_BASE_URL),
-  });
+  const client = getAiClient(env);
 
   const validTagIds = new Set(tagOptions.map((tag) => tag.id));
   const schema = starBreakdownSchema.extend({
@@ -202,15 +221,17 @@ export async function generateStarBreakdown(
   };
 }
 
+const SHREDDER_REQUEST_TIMEOUT_MS = 60_000;
+
 function buildSkillUserPrompt(
   topic: string,
   currentContext: string | undefined,
   targetTimeMinutes: number,
 ): string {
   const context = currentContext
-    ? `What I already understand: ${currentContext}\n\n`
+    ? `Reference material & what I understand from my notes:\n"""\n${currentContext}\n"""\n\n`
     : "";
-  return `I have about ${targetTimeMinutes} minutes to learn today.\n\n${context}What I want to learn: ${topic}`;
+  return `I have about ${targetTimeMinutes} minutes for deliberate practice today.\n\n${context}Topic to prove and implement hands-on: ${topic}`;
 }
 
 export async function generateSkillShredder(
@@ -219,10 +240,7 @@ export async function generateSkillShredder(
   currentContext: string | undefined,
   targetTimeMinutes = 60,
 ): Promise<SkillShredderGeneration> {
-  const client = new OpenAI({
-    apiKey: env.AI_API_KEY,
-    baseURL: resolveBaseUrl(env.AI_BASE_URL),
-  });
+  const client = getAiClient(env);
 
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
@@ -253,7 +271,7 @@ export async function generateSkillShredder(
   let totalTokens = 0;
   try {
     const completion = await client.chat.completions.parse(requestParams, {
-      timeout: REQUEST_TIMEOUT_MS,
+      timeout: SHREDDER_REQUEST_TIMEOUT_MS,
     });
     const message = completion.choices[0]?.message;
     parsed = (message?.parsed as SkillShredderResult | null | undefined) ?? null;
@@ -324,10 +342,7 @@ export async function auditSkillEvidence(
   env: AppEnv["Bindings"],
   entry: { title: string; content: string; tags?: string[] },
 ): Promise<SkillAuditResult> {
-  const client = new OpenAI({
-    apiKey: env.AI_API_KEY,
-    baseURL: resolveBaseUrl(env.AI_BASE_URL),
-  });
+  const client = getAiClient(env);
 
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
@@ -427,11 +442,7 @@ export async function extractAndFormatResume(
   env: AppEnv["Bindings"],
   rawText: string,
 ): Promise<ResumeExtractionResult> {
-  const client = new OpenAI({
-    apiKey: env.AI_API_KEY,
-    baseURL: resolveBaseUrl(env.AI_BASE_URL),
-    maxRetries: 0,
-  });
+  const client = getAiClient(env, { maxRetries: 0 });
 
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
@@ -511,11 +522,7 @@ export async function auditCvSkillEvidence(
   env: AppEnv["Bindings"],
   cvMarkdown: string,
 ): Promise<CvAuditResult> {
-  const client = new OpenAI({
-    apiKey: env.AI_API_KEY,
-    baseURL: resolveBaseUrl(env.AI_BASE_URL),
-    maxRetries: 0,
-  });
+  const client = getAiClient(env, { maxRetries: 0 });
 
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
@@ -608,11 +615,7 @@ export async function analyzeDeveloperCompetencies(
   cvMarkdown: string,
   devlogContext?: string,
 ): Promise<SkillInsightsResult> {
-  const client = new OpenAI({
-    apiKey: env.AI_API_KEY,
-    baseURL: resolveBaseUrl(env.AI_BASE_URL),
-    maxRetries: 0,
-  });
+  const client = getAiClient(env, { maxRetries: 0 });
 
   const promptContent = [
     "Developer CV / Resume:",

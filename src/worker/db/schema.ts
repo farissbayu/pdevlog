@@ -301,10 +301,12 @@ export const aiUsage = sqliteTable(
 );
 
 export const skillShredStatuses = [
+  "generating",
   "draft",
   "spike_done",
   "building",
   "completed",
+  "failed",
   "archived",
 ] as const;
 
@@ -320,11 +322,12 @@ export const skillShreds = sqliteTable(
     topic: text("topic").notNull(),
     currentContext: text("current_context"),
     targetTimeMinutes: integer("target_time_minutes").notNull().default(60),
-    toyProjectTitle: text("toy_project_title").notNull(),
-    blueprintJson: text("blueprint_json").notNull(),
+    toyProjectTitle: text("toy_project_title"),
+    blueprintJson: text("blueprint_json"),
     status: text("status", { enum: skillShredStatuses })
       .notNull()
-      .default("draft"),
+      .default("generating"),
+    errorMessage: text("error_message"),
     spikeCompletedAt: integer("spike_completed_at", { mode: "timestamp_ms" }),
     completedStepsJson: text("completed_steps_json").notNull().default("[]"),
     challengeCompletedAt: integer("challenge_completed_at", {
@@ -552,6 +555,30 @@ export const milestoneEvidences = sqliteTable(
   ],
 );
 
+export const cvParseStatuses = [
+  "idle",
+  "processing",
+  "ready",
+  "failed",
+] as const;
+export type CvParseStatus = (typeof cvParseStatuses)[number];
+
+export const cvAuditStatuses = [
+  "idle",
+  "auditing",
+  "audited",
+  "failed",
+] as const;
+export type CvAuditStatus = (typeof cvAuditStatuses)[number];
+
+export const insightsStatuses = [
+  "idle",
+  "analyzing",
+  "ready",
+  "failed",
+] as const;
+export type InsightsStatus = (typeof insightsStatuses)[number];
+
 export const userProfiles = sqliteTable("user_profiles", {
   userId: text("user_id")
     .primaryKey()
@@ -561,8 +588,17 @@ export const userProfiles = sqliteTable("user_profiles", {
   primaryStack: text("primary_stack"),
   cvMarkdown: text("cv_markdown"),
   cvExtractedAt: integer("cv_extracted_at", { mode: "timestamp_ms" }),
+  cvParseStatus: text("cv_parse_status", { enum: cvParseStatuses })
+    .notNull()
+    .default("idle"),
+  cvAuditStatus: text("cv_audit_status", { enum: cvAuditStatuses })
+    .notNull()
+    .default("idle"),
   skillInsights: text("skill_insights"),
   skillAnalyzedAt: integer("skill_analyzed_at", { mode: "timestamp_ms" }),
+  insightsStatus: text("insights_status", { enum: insightsStatuses })
+    .notNull()
+    .default("idle"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

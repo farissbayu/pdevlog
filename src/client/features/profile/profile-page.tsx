@@ -120,6 +120,11 @@ export function ProfilePage() {
     );
   }
 
+  const uploading =
+    uploadCvMutation.isPending || profile.cvParseStatus === "processing";
+  const analyzing =
+    analyzeSkillsMutation.isPending || profile.insightsStatus === "analyzing";
+
   const handleTabChange = (newTab: ProfileTab) => {
     setSearchParams(
       (prev) => {
@@ -179,23 +184,10 @@ export function ProfilePage() {
     if (!selectedFile) return;
 
     uploadCvMutation.mutate(selectedFile, {
-      onSuccess: (res) => {
-        setCvMarkdown(res.cvMarkdown);
-        if (res.headline) {
-          setHeadline(res.headline);
-        }
-        if (res.bio) {
-          setBio(res.bio);
-        }
-        if (res.suggestedStack && res.suggestedStack.length > 0) {
-          const merged = Array.from(
-            new Set([...primaryStack, ...res.suggestedStack]),
-          );
-          setPrimaryStack(merged);
-        }
+      onSuccess: () => {
         setSelectedFile(null);
         toast.success(
-          "CV uploaded and formatted! Persona details & Executive Bio updated.",
+          "CV uploaded. Extracting & formatting in the background...",
         );
       },
       onError: (err) => {
@@ -242,7 +234,7 @@ export function ProfilePage() {
 
     analyzeSkillsMutation.mutate(undefined, {
       onSuccess: () => {
-        toast.success("Successfully analyzed your engineering competencies!");
+        toast.success("Analyzing your engineering competencies...");
       },
       onError: (err) => {
         toast.error(err.message || "Failed to analyze skills");
@@ -386,7 +378,7 @@ export function ProfilePage() {
           insights={profile.skillInsights}
           analyzedAt={profile.skillAnalyzedAt}
           onAnalyze={handleAnalyzeSkills}
-          isAnalyzing={analyzeSkillsMutation.isPending}
+          isAnalyzing={analyzing}
           onNavigateToCv={() => handleTabChange("cv")}
           hasCvContent={Boolean(cvMarkdown && cvMarkdown.trim().length >= 50)}
         />
@@ -459,15 +451,15 @@ export function ProfilePage() {
                   type="button"
                   size="sm"
                   onClick={handleUploadCv}
-                  disabled={uploadCvMutation.isPending}
+                  disabled={uploading}
                   className="gap-1.5"
                 >
-                  {uploadCvMutation.isPending ? (
+                  {uploading ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
                     <Sparkles className="size-4" />
                   )}
-                  Extract &amp; Format to Markdown
+                  {uploading ? "Extracting..." : "Extract & Format to Markdown"}
                 </Button>
               )}
             </div>
@@ -496,17 +488,19 @@ export function ProfilePage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <Button
                     onClick={handleAnalyzeSkills}
-                    disabled={analyzeSkillsMutation.isPending}
+                    disabled={analyzing}
                     className="gap-2"
                   >
-                    {analyzeSkillsMutation.isPending ? (
+                    {analyzing ? (
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
                       <Sparkles className="size-4" />
                     )}
-                    {profile.skillInsights
-                      ? "Re-analyze Skills"
-                      : "Analyze Skills & Growth"}
+                    {analyzing
+                      ? "Analyzing..."
+                      : profile.skillInsights
+                        ? "Re-analyze Skills"
+                        : "Analyze Skills & Growth"}
                   </Button>
                   <Button
                     variant="outline"
@@ -522,7 +516,7 @@ export function ProfilePage() {
               </div>
 
               {/* Live Processing Indicator */}
-              {analyzeSkillsMutation.isPending && (
+              {analyzing && (
                 <div className="mt-4 flex items-center gap-2.5 rounded-lg border border-primary/20 bg-background/80 p-3 text-xs text-muted-foreground animate-pulse">
                   <Loader2 className="size-4 animate-spin text-primary shrink-0" />
                   <span>
