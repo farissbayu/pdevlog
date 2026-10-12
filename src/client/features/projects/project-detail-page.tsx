@@ -81,6 +81,21 @@ function groupBy(
   return [...groups.entries()];
 }
 
+function formatShippedDate(isoString: string | null): string {
+  if (!isoString) {
+    return "Unreleased";
+  }
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    return "Unreleased";
+  }
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export function ProjectDetailPage() {
   const { workspaceId = "", projectId = "" } = useParams();
   const navigate = useNavigate();
@@ -131,7 +146,14 @@ export function ProjectDetailPage() {
     [items],
   );
   const shippedItems = useMemo(
-    () => items.filter((item) => item.status === "shipped"),
+    () =>
+      items
+        .filter((item) => item.status === "shipped")
+        .sort((a, b) => {
+          const timeA = a.shippedAt ? new Date(a.shippedAt).getTime() : 0;
+          const timeB = b.shippedAt ? new Date(b.shippedAt).getTime() : 0;
+          return timeB - timeA;
+        }),
     [items],
   );
 
@@ -140,7 +162,7 @@ export function ProjectDetailPage() {
     [backlogItems],
   );
   const changelogGroups = useMemo(
-    () => groupBy(shippedItems, (item) => item.shippedVersion ?? "Unreleased"),
+    () => groupBy(shippedItems, (item) => formatShippedDate(item.shippedAt)),
     [shippedItems],
   );
 
@@ -521,26 +543,29 @@ export function ProjectDetailPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {changelogGroups.map(([version, groupItems]) => (
-              <div key={version} className="space-y-2">
-                <h2 className="text-sm font-semibold">
-                  {version}
-                  {groupItems[0]?.shippedAt ? (
-                    <span className="ml-2 font-normal text-muted-foreground">
-                      {new Date(groupItems[0].shippedAt).toLocaleDateString(
-                        undefined,
-                        { year: "numeric", month: "short", day: "numeric" },
-                      )}
-                    </span>
-                  ) : null}
+            {changelogGroups.map(([dateLabel, groupItems]) => (
+              <div key={dateLabel} className="space-y-2">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <span>{dateLabel}</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {groupItems.length} {groupItems.length === 1 ? "item" : "items"}
+                  </span>
                 </h2>
                 <ul className="space-y-2 border-l pl-4">
                   {groupItems.map((item) => (
                     <li key={item.id} className="flex items-center gap-3">
                       <KindChip kind={item.kind} />
-                      <span className="min-w-0 flex-1 truncate text-sm">
-                        {item.title}
-                      </span>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <span className="truncate text-sm">{item.title}</span>
+                        {item.shippedVersion ? (
+                          <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="text-muted-foreground/40">|</span>
+                            <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                              {item.shippedVersion}
+                            </span>
+                          </span>
+                        ) : null}
+                      </div>
                       {item.bragLogId ? (
                         <Link
                           to={`/brag-logs/${item.bragLogId}`}
