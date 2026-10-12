@@ -6,7 +6,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   LogOut,
-  Menu,
+  MoreHorizontal,
   NotebookPen,
   Scissors,
   Settings,
@@ -33,7 +33,7 @@ import {
 } from "@/client/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/client/components/theme-toggle";
 import { meQueryOptions, useLogoutMutation } from "@/client/features/auth/api";
-import { SparksProvider } from "@/client/features/sparks/sparks-provider";
+import { SparksProvider, useSparks } from "@/client/features/sparks/sparks-provider";
 import type { UserResponse } from "@/shared/schemas/auth";
 
 const SIDEBAR_STORAGE_KEY = "pdevlog-sidebar-collapsed";
@@ -274,8 +274,9 @@ function MobileHeader({
   user: UserResponse;
   mode: SidebarMode;
 }) {
-  const logoutMutation = useLogoutMutation();
-  const items = mode === "admin" ? adminNavItems : appNavItems;
+  // Navigation items and logout mutation commented out while testing bottom navbar
+  // const logoutMutation = useLogoutMutation();
+  // const items = mode === "admin" ? adminNavItems : appNavItems;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
@@ -291,6 +292,13 @@ function MobileHeader({
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
+        <UserMenu user={user} align="end" compact={true} />
+
+        {/* =========================================================================
+         * [CURRENT NAVIGATION - COMMENTED OUT TO TEST BOTTOM NAVBAR]
+         * To revert, uncomment this block and remove AppMobileBottomNav / AdminMobileBottomNav.
+         * See plan: docs/plan/mobile-bottom-navbar.md
+         * =========================================================================
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -321,8 +329,220 @@ function MobileHeader({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        */}
       </div>
     </header>
+  );
+}
+
+function AppMobileBottomNav() {
+  const sparks = useSparks();
+  const logoutMutation = useLogoutMutation();
+
+  return (
+    <nav
+      aria-label="Mobile navigation"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t bg-background/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden"
+    >
+      <NavLink
+        to="/dashboard"
+        end
+        className={({ isActive }) =>
+          cn(
+            "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+            isActive
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )
+        }
+      >
+        <LayoutDashboard className="size-5 shrink-0" />
+        <span>Dashboard</span>
+      </NavLink>
+
+      <NavLink
+        to="/workspaces"
+        className={({ isActive }) =>
+          cn(
+            "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+            isActive
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )
+        }
+      >
+        <FolderKanban className="size-5 shrink-0" />
+        <span>Workspaces</span>
+      </NavLink>
+
+      {/* Center Quick Spark Capture Button */}
+      <button
+        type="button"
+        onClick={() => sparks.openCapture()}
+        aria-label="Capture Spark"
+        className="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        <div className="-mt-3 flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-95">
+          <Sparkles className="size-5" />
+        </div>
+        <span>Spark</span>
+      </button>
+
+      <NavLink
+        to="/notes"
+        className={({ isActive }) =>
+          cn(
+            "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+            isActive
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )
+        }
+      >
+        <NotebookPen className="size-5 shrink-0" />
+        <span>Notes</span>
+      </NavLink>
+
+      {/* More Options Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <MoreHorizontal className="size-5 shrink-0" />
+            <span>More</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="mb-2 w-52">
+          <DropdownMenuItem asChild>
+            <Link to="/brag-logs" className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <span>Brag Logs</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/skill-shredder" className="flex items-center gap-2">
+              <Scissors className="size-4" />
+              <span>Skill Shredder</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/sparks" className="flex items-center gap-2">
+              <Sparkles className="size-4" />
+              <span>Sparks Feed</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/tags" className="flex items-center gap-2">
+              <Tags className="size-4" />
+              <span>Tags</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/profile" className="flex items-center gap-2">
+              <User className="size-4" />
+              <span>Profile & CV</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/settings" className="flex items-center gap-2">
+              <Settings className="size-4" />
+              <span>Settings</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={logoutMutation.isPending}
+            onClick={() => logoutMutation.mutate()}
+          >
+            <LogOut className="size-4" />
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
+  );
+}
+
+function AdminMobileBottomNav({ user }: { user: UserResponse }) {
+  const logoutMutation = useLogoutMutation();
+
+  return (
+    <nav
+      aria-label="Mobile admin navigation"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t bg-background/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-backdrop-filter:bg-background/80 md:hidden"
+    >
+      <NavLink
+        to="/admin"
+        end
+        className={({ isActive }) =>
+          cn(
+            "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+            isActive
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )
+        }
+      >
+        <Shield className="size-5 shrink-0" />
+        <span>Overview</span>
+      </NavLink>
+
+      <NavLink
+        to="/admin/users"
+        className={({ isActive }) =>
+          cn(
+            "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
+            isActive
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )
+        }
+      >
+        <Users className="size-5 shrink-0" />
+        <span>Users</span>
+      </NavLink>
+
+      <Link
+        to="/dashboard"
+        className="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <LayoutDashboard className="size-5 shrink-0" />
+        <span>App</span>
+      </Link>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <MoreHorizontal className="size-5 shrink-0" />
+            <span>More</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="mb-2 w-52">
+          <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/profile" className="flex items-center gap-2">
+              <User className="size-4" />
+              <span>Profile & CV</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={logoutMutation.isPending}
+            onClick={() => logoutMutation.mutate()}
+          >
+            <LogOut className="size-4" />
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
   );
 }
 
@@ -372,10 +592,12 @@ export function AppLayout() {
             collapsed ? "md:pl-16" : "md:pl-56",
           )}
         >
-          <div className="mx-auto w-full max-w-5xl p-6">
+          <div className="mx-auto w-full max-w-5xl p-6 pb-24 md:pb-6">
             <Outlet />
           </div>
         </main>
+
+        <AppMobileBottomNav />
       </div>
     </SparksProvider>
   );
@@ -410,10 +632,12 @@ export function AdminLayout() {
           collapsed ? "md:pl-16" : "md:pl-56",
         )}
       >
-        <div className="mx-auto w-full max-w-5xl p-6">
+        <div className="mx-auto w-full max-w-5xl p-6 pb-24 md:pb-6">
           <Outlet />
         </div>
       </main>
+
+      <AdminMobileBottomNav user={user} />
     </div>
   );
 }

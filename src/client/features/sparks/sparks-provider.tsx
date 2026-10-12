@@ -75,7 +75,7 @@ export function SparksProvider({ children }: { children: ReactNode }) {
         aria-label="Capture a spark"
         title="Capture a spark (⌘/Ctrl+K)"
         onClick={() => openCapture()}
-        className="fixed right-6 bottom-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="fixed right-6 bottom-6 z-40 hidden items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:inline-flex"
       >
         <Sparkles className="size-4" />
         <span className="hidden sm:inline">Spark</span>
