@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { attachmentResponseSchema } from "./attachment";
 import { paginationMetaSchema } from "./pagination";
+import { projectStatusSchema } from "./project";
 import {
   sourceInputSchema,
   sourceResponseSchema,
@@ -10,16 +11,25 @@ import {
 import { tagResponseSchema } from "./tag";
 import { workspaceResponseSchema } from "./workspace";
 
+export const noteProjectSummarySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  name: z.string(),
+  status: projectStatusSchema,
+});
+
 const noteFieldsSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   content: z.string().trim().min(1, "Content is required").max(100000),
   workspace_id: z.string().min(1).nullable().optional(),
+  project_id: z.string().min(1).nullable().optional(),
   tag_ids: z.array(z.string().min(1)).optional(),
   sources: z.array(sourceInputSchema).max(20).optional(),
 });
 
 export const createNoteSchema = noteFieldsSchema.extend({
   spark_id: z.string().min(1).optional(),
+  project_item_id: z.string().min(1).optional(),
   carry_attachments: z.boolean().optional(),
 });
 
@@ -33,6 +43,8 @@ export const noteResponseSchema = z.object({
   content: z.string(),
   workspaceId: z.string().nullable(),
   workspace: workspaceResponseSchema.nullable(),
+  projectId: z.string().nullable(),
+  project: noteProjectSummarySchema.nullable(),
   tags: z.array(tagResponseSchema),
   sources: z.array(sourceResponseSchema),
   attachments: z.array(attachmentResponseSchema),
@@ -51,6 +63,7 @@ export const noteDetailResponseSchema = z.object({
 
 export type NoteSourceInput = SourceInput;
 export type NoteSourceResponse = z.infer<typeof noteSourceResponseSchema>;
+export type NoteProjectSummary = z.infer<typeof noteProjectSummarySchema>;
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
 export type NoteResponse = z.infer<typeof noteResponseSchema>;

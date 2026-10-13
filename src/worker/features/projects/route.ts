@@ -36,6 +36,7 @@ import {
 } from "@/shared/schemas/project";
 import { createDb, type Database } from "@/worker/db";
 import {
+  notes,
   projectItems,
   projects,
   sparks,
@@ -61,7 +62,11 @@ const listItemsQuerySchema = z.object({
 
 function toProjectResponse(
   project: ProjectRow,
-  counts: { backlog: number; shipped: number } = { backlog: 0, shipped: 0 },
+  counts: { backlog: number; shipped: number; notes: number } = {
+    backlog: 0,
+    shipped: 0,
+    notes: 0,
+  },
 ): ProjectResponse {
   return {
     id: project.id,
@@ -74,6 +79,7 @@ function toProjectResponse(
     status: project.status,
     backlogCount: counts.backlog,
     shippedCount: counts.shipped,
+    noteCount: counts.notes,
     createdAt: new Date(project.createdAt).toISOString(),
     updatedAt: new Date(project.updatedAt).toISOString(),
   };
@@ -148,6 +154,32 @@ async function loadItemCounts(
   return map;
 }
 
+async function loadNoteCounts(
+  db: Database,
+  projectIds: string[],
+  userId: string,
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (projectIds.length === 0) {
+    return map;
+  }
+
+  const rows = await db
+    .select({ projectId: notes.projectId, value: count() })
+    .from(notes)
+    .where(
+      and(eq(notes.userId, userId), inArray(notes.projectId, projectIds)),
+    )
+    .groupBy(notes.projectId);
+
+  for (const row of rows) {
+    if (row.projectId) {
+      map.set(row.projectId, row.value);
+    }
+  }
+  return map;
+}
+
 async function validateWorkspaceOwnership(
   db: Database,
   workspaceId: string,
@@ -203,10 +235,18 @@ const listProjects = async (
     rows.map((row) => row.id),
     userId,
   );
+  const noteCounts = await loadNoteCounts(
+    db,
+    rows.map((row) => row.id),
+    userId,
+  );
 
   return c.json({
     projects: rows.map((row) =>
-      toProjectResponse(row, counts.get(row.id) ?? { backlog: 0, shipped: 0 }),
+      toProjectResponse(row, {
+        ...(counts.get(row.id) ?? { backlog: 0, shipped: 0 }),
+        notes: noteCounts.get(row.id) ?? 0,
+      }),
     ),
     pagination: buildPaginationMeta(total, page, pageSize),
   });
@@ -259,8 +299,12 @@ const getProject = async (c: Context<AppEnv, "/:id">) => {
   }
 
   const counts = await loadItemCounts(db, [id], userId);
+  const noteCounts = await loadNoteCounts(db, [id], userId);
   return c.json({
-    project: toProjectResponse(project, counts.get(id) ?? { backlog: 0, shipped: 0 }),
+    project: toProjectResponse(project, {
+      ...(counts.get(id) ?? { backlog: 0, shipped: 0 }),
+      notes: noteCounts.get(id) ?? 0,
+    }),
   });
 };
 
@@ -292,8 +336,12 @@ const updateProjectHandler = async (
 
   const updated = await findOwnedProject(db, id, userId);
   const counts = await loadItemCounts(db, [id], userId);
+  const noteCounts = await loadNoteCounts(db, [id], userId);
   return c.json({
-    project: toProjectResponse(updated!, counts.get(id) ?? { backlog: 0, shipped: 0 }),
+    project: toProjectResponse(updated!, {
+      ...(counts.get(id) ?? { backlog: 0, shipped: 0 }),
+      notes: noteCounts.get(id) ?? 0,
+    }),
   });
 };
 

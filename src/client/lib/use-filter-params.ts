@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 export type FilterParams = {
   q: string;
   workspaceId: string;
+  projectId: string;
   tagIds: string[];
   from: string;
   to: string;
@@ -17,6 +18,7 @@ export type FilterParamsApi = {
   hasActiveFilters: boolean;
   setQuery: (value: string) => void;
   setWorkspaceId: (value: string) => void;
+  setProjectId: (value: string) => void;
   toggleTag: (tagId: string) => void;
   setFrom: (value: string) => void;
   setTo: (value: string) => void;
@@ -30,6 +32,7 @@ const DEBOUNCE_MS = 300;
 export const EMPTY_FILTERS: FilterParams = {
   q: "",
   workspaceId: "",
+  projectId: "",
   tagIds: [],
   from: "",
   to: "",
@@ -38,6 +41,7 @@ export const EMPTY_FILTERS: FilterParams = {
 };
 
 export const UNASSIGNED_WORKSPACE = "none";
+export const UNASSIGNED_PROJECT = "none";
 
 export function buildFilterQuery(
   filters: FilterParams,
@@ -45,6 +49,7 @@ export function buildFilterQuery(
   const query: Record<string, string | string[]> = {};
   if (filters.q) query.q = filters.q;
   if (filters.workspaceId) query.workspace_id = filters.workspaceId;
+  if (filters.projectId) query.project_id = filters.projectId;
   if (filters.tagIds.length > 0) query.tag_id = filters.tagIds;
   if (filters.from) query.from = filters.from;
   if (filters.to) query.to = filters.to;
@@ -62,6 +67,7 @@ function readFilters(params: URLSearchParams): FilterParams {
   return {
     q: params.get("q") ?? "",
     workspaceId: params.get("workspaceId") ?? "",
+    projectId: params.get("projectId") ?? "",
     tagIds: params
       .getAll("tag")
       .map((value) => value.trim())
@@ -167,9 +173,27 @@ export function useFilterParams(): FilterParamsApi {
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
+  const setWorkspaceId = (value: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set("workspaceId", value);
+        } else {
+          next.delete("workspaceId");
+        }
+        next.delete("projectId");
+        next.delete("page");
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
   const hasActiveFilters =
     queryInput.trim().length > 0 ||
     filters.workspaceId.length > 0 ||
+    filters.projectId.length > 0 ||
     filters.tagIds.length > 0 ||
     filters.from.length > 0 ||
     filters.to.length > 0 ||
@@ -180,7 +204,8 @@ export function useFilterParams(): FilterParamsApi {
     query: queryInput,
     hasActiveFilters,
     setQuery: setQueryInput,
-    setWorkspaceId: (value) => updateParam("workspaceId", value),
+    setWorkspaceId,
+    setProjectId: (value) => updateParam("projectId", value),
     toggleTag,
     setFrom: (value) => updateParam("from", value),
     setTo: (value) => updateParam("to", value),

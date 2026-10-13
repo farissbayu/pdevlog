@@ -8,6 +8,7 @@ import {
   GitBranch,
   Globe,
   Loader2,
+  NotebookPen,
   Pencil,
   Plus,
   Rocket,
@@ -15,10 +16,12 @@ import {
   Trophy,
 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { cn } from "cn";
 import { toast } from "sonner";
 
+import { PaginationControls } from "@/client/components/pagination";
+import { SearchInput } from "@/client/components/search-input";
 import { Button } from "@/client/components/ui/button";
 import {
   Dialog,
@@ -37,6 +40,9 @@ import {
   SelectValue,
 } from "@/client/components/ui/select";
 import { BragLogFormDialog } from "@/client/features/brag-logs/brag-log-form";
+import { useNotesQuery } from "@/client/features/notes/api";
+import { NoteList, NoteListSkeleton } from "@/client/features/notes/note-list";
+import { EMPTY_FILTERS } from "@/client/lib/use-filter-params";
 import type {
   ProjectItemKind,
   ProjectItemResponse,
@@ -119,7 +125,12 @@ export function ProjectDetailPage() {
   const deleteItemMutation = useDeleteProjectItemMutation();
   const deleteProjectMutation = useDeleteProjectMutation();
 
-  const [tab, setTab] = useState<"backlog" | "changelog">("backlog");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<"backlog" | "changelog" | "notes">(
+    searchParams.get("tab") === "notes" ? "notes" : "backlog",
+  );
+  const [notesSearch, setNotesSearch] = useState("");
+  const [notesPage, setNotesPage] = useState(1);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<ProjectItemKind>("feat");
   const [targetVersion, setTargetVersion] = useState("Next");
@@ -137,6 +148,16 @@ export function ProjectDetailPage() {
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+
+  const notesQuery = useNotesQuery({
+    ...EMPTY_FILTERS,
+    workspaceId: project?.workspaceId ?? "",
+    projectId,
+    q: notesSearch,
+    page: notesPage,
+  });
+  const projectNotes = notesQuery.data?.notes ?? [];
+  const notesPagination = notesQuery.data?.pagination;
 
   const backlogItems = useMemo(
     () =>
@@ -284,9 +305,10 @@ export function ProjectDetailPage() {
     );
   }
 
-  const tabs: { value: "backlog" | "changelog"; label: string }[] = [
+  const tabs: { value: "backlog" | "changelog" | "notes"; label: string }[] = [
     { value: "backlog", label: `Backlog & Plan (${backlogItems.length})` },
     { value: "changelog", label: `Changelog (${shippedItems.length})` },
+    { value: "notes", label: `Notes (${project.noteCount})` },
   ];
 
   return (
@@ -493,6 +515,29 @@ export function ProjectDetailPage() {
                         <span className="min-w-0 flex-1 truncate text-sm">
                           {item.title}
                         </span>
+                        {item.noteId ? (
+                          <Link
+                            to={`/notes/${item.noteId}`}
+                            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            <NotebookPen className="size-3.5" />
+                            Note
+                          </Link>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Write note"
+                            title="Write note"
+                            asChild
+                          >
+                            <Link
+                              to={`/notes/new?workspace=${project.workspaceId}&project=${project.id}&projectItem=${item.id}`}
+                            >
+                              <NotebookPen className="size-4" />
+                            </Link>
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -566,6 +611,29 @@ export function ProjectDetailPage() {
                           </span>
                         ) : null}
                       </div>
+                      {item.noteId ? (
+                        <Link
+                          to={`/notes/${item.noteId}`}
+                          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          <NotebookPen className="size-3.5" />
+                          Note
+                        </Link>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 shrink-0 px-2 text-xs"
+                          asChild
+                        >
+                          <Link
+                            to={`/notes/new?workspace=${project.workspaceId}&project=${project.id}&projectItem=${item.id}`}
+                          >
+                            <NotebookPen className="size-3.5" />
+                            Write note
+                          </Link>
+                        </Button>
+                      )}
                       {item.bragLogId ? (
                         <Link
                           to={`/brag-logs/${item.bragLogId}`}
@@ -592,6 +660,87 @@ export function ProjectDetailPage() {
             ))}
           </div>
         )
+      ) : null}
+
+      {tab === "notes" ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchInput
+              value={notesSearch}
+              onChange={(event) => {
+                setNotesSearch(event.target.value);
+                setNotesPage(1);
+              }}
+              placeholder="Search project notes..."
+              aria-label="Search project notes"
+              className="w-full sm:min-w-[200px] sm:w-auto sm:flex-1"
+            />
+            <Button asChild className="shrink-0">
+              <Link
+                to={`/notes/new?workspace=${project.workspaceId}&project=${project.id}`}
+              >
+                <NotebookPen className="size-4" />
+                New note
+              </Link>
+            </Button>
+          </div>
+
+          {notesQuery.isPending ? <NoteListSkeleton /> : null}
+
+          {notesQuery.isError ? (
+            <div className="flex flex-col items-center gap-3 rounded-lg border bg-card px-6 py-10 text-center">
+              <p className="text-sm text-muted-foreground">
+                Failed to load notes.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => void notesQuery.refetch()}
+              >
+                Try again
+              </Button>
+            </div>
+          ) : null}
+
+          {!notesQuery.isPending &&
+          !notesQuery.isError &&
+          projectNotes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed bg-card/50 px-6 py-16 text-center">
+              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+                <NotebookPen className="size-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">No project notes yet</h2>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Capture architecture decisions, spike findings, or docs for
+                  this project.
+                </p>
+              </div>
+              <Button asChild>
+                <Link
+                  to={`/notes/new?workspace=${project.workspaceId}&project=${project.id}`}
+                >
+                  <NotebookPen className="size-4" />
+                  Create first note
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+
+          {!notesQuery.isPending &&
+          !notesQuery.isError &&
+          projectNotes.length > 0 ? (
+            <>
+              <NoteList notes={projectNotes} />
+              {notesPagination ? (
+                <PaginationControls
+                  page={notesPagination.page}
+                  totalPages={notesPagination.totalPages}
+                  onPageChange={setNotesPage}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </div>
       ) : null}
 
       <ProjectFormDialog

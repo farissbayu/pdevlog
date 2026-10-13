@@ -14,6 +14,7 @@ const dateSchema = z
 const searchSchema = z.string().trim().max(200).optional();
 
 export const UNASSIGNED_WORKSPACE = "none";
+export const UNASSIGNED_PROJECT = "none";
 
 const baseFilterSchema = z
   .object({
@@ -26,7 +27,9 @@ const baseFilterSchema = z
   .extend(paginationQuerySchema.shape);
 
 export const logFilterSchema = baseFilterSchema;
-export const noteFilterSchema = baseFilterSchema;
+export const noteFilterSchema = baseFilterSchema.extend({
+  project_id: z.string().min(1).optional(),
+});
 
 export const sparkFilterSchema = z
   .object({

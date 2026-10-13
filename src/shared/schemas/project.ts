@@ -87,6 +87,7 @@ export const projectResponseSchema = z.object({
   status: projectStatusSchema,
   backlogCount: z.number().int(),
   shippedCount: z.number().int(),
+  noteCount: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

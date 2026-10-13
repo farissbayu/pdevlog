@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -48,6 +49,7 @@ import {
 } from "@/client/features/sources/source-editor";
 import { extractSourcesFromText } from "@/client/features/sources/url-extractor";
 import { useTagsQuery } from "@/client/features/tags/api";
+import { useProjectsQuery } from "@/client/features/projects/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
   MAX_ATTACHMENT_SIZE,
@@ -122,10 +124,14 @@ function initialSources(
 function NoteEditorForm({
   note,
   presetWorkspaceId,
+  presetProjectId,
+  projectItemId,
   spark,
 }: {
   note: NoteResponse | null;
   presetWorkspaceId: string;
+  presetProjectId: string;
+  projectItemId: string;
   spark?: SparkResponse | null;
 }) {
   const isEditing = Boolean(note);
@@ -143,6 +149,24 @@ function NoteEditorForm({
   const [workspaceId, setWorkspaceId] = useState(
     note?.workspaceId ?? presetWorkspaceId ?? "",
   );
+  const [projectId, setProjectId] = useState(
+    note?.projectId ?? presetProjectId ?? "",
+  );
+  const { data: workspaceProjectsData } = useProjectsQuery(workspaceId);
+  const workspaceProjects = workspaceProjectsData?.projects;
+
+  useEffect(() => {
+    if (!workspaceId || !workspaceProjects) {
+      return;
+    }
+    if (note && projectId === note.projectId) {
+      return;
+    }
+    if (projectId && !workspaceProjects.some((project) => project.id === projectId)) {
+      // shortcut: checks only the first projects page; a preset project off-page gets cleared. Paginate if a workspace can exceed the page size.
+      setProjectId("");
+    }
+  }, [workspaceId, workspaceProjects, projectId, note]);
   const [tagIds, setTagIds] = useState<string[]>(
     note?.tags.map((tag) => tag.id) ??
       spark?.tags.map((tag) => tag.id) ??
@@ -194,13 +218,15 @@ function NoteEditorForm({
   const totalCount = visibleAttachments.length + pending.length;
 
   const backTo =
-    isEditing && note
-      ? `/notes/${note.id}`
-      : spark
-        ? "/sparks"
-        : presetWorkspaceId
-          ? `/workspaces/${presetWorkspaceId}`
-          : "/workspaces";
+    spark
+      ? "/sparks"
+      : workspaceId && projectId
+        ? `/workspaces/${workspaceId}/projects/${projectId}?tab=notes`
+        : isEditing && note
+          ? `/notes/${note.id}`
+          : presetWorkspaceId
+            ? `/workspaces/${presetWorkspaceId}`
+            : "/workspaces";
 
   const insertAtCursor = (snippet: string) => {
     const textarea = contentRef.current;
@@ -352,9 +378,13 @@ function NoteEditorForm({
       title: title.trim(),
       content,
       workspace_id: workspaceId || null,
+      project_id: workspaceId ? projectId || null : null,
       tag_ids: tagIds,
       sources: normalizeSourceDrafts(sources),
       ...(spark && !note ? { spark_id: spark.id } : {}),
+      ...(!note && projectItemId && workspaceId
+        ? { project_item_id: projectItemId }
+        : {}),
     };
 
     const onError = (mutationError: Error) =>
@@ -479,14 +509,16 @@ function NoteEditorForm({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="note-workspace">Workspace</Label>
             <Select
               value={workspaceId || "none"}
-              onValueChange={(value) =>
-                setWorkspaceId(value === "none" ? "" : value)
-              }
+              onValueChange={(value) => {
+                const nextWorkspaceId = value === "none" ? "" : value;
+                setWorkspaceId(nextWorkspaceId);
+                setProjectId("");
+              }}
             >
               <SelectTrigger id="note-workspace" className="w-full">
                 <SelectValue placeholder="Select workspace" />
@@ -496,6 +528,33 @@ function NoteEditorForm({
                 {(workspaces ?? []).map((workspace) => (
                   <SelectItem key={workspace.id} value={workspace.id}>
                     {workspace.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="note-project">Project</Label>
+            <Select
+              value={projectId || "none"}
+              onValueChange={(value) =>
+                setProjectId(value === "none" ? "" : value)
+              }
+              disabled={!workspaceId}
+            >
+              <SelectTrigger id="note-project" className="w-full">
+                <SelectValue
+                  placeholder={
+                    workspaceId ? "No project" : "Select a workspace first"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No project</SelectItem>
+                {(workspaceProjects ?? []).map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -689,6 +748,8 @@ export function NoteEditorPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const presetWorkspaceId = searchParams.get("workspace") ?? "";
+  const presetProjectId = searchParams.get("project") ?? "";
+  const projectItemId = searchParams.get("projectItem") ?? "";
   const sparkId = searchParams.get("spark") ?? "";
   const isEditing = Boolean(id);
   const noteQuery = useNoteDetailQuery(id ?? "");
@@ -750,6 +811,8 @@ export function NoteEditorPage() {
       key={noteQuery.data?.id ?? spark?.id ?? "new"}
       note={noteQuery.data ?? null}
       presetWorkspaceId={presetWorkspaceId}
+      presetProjectId={presetProjectId}
+      projectItemId={projectItemId}
       spark={spark}
     />
   );

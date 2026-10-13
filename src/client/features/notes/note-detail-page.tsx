@@ -9,6 +9,7 @@ import {
   Loader2,
   NotebookPen,
   Pencil,
+  Rocket,
   Scissors,
   Trash2,
   Zap,
@@ -73,9 +74,11 @@ export function NoteDetailPage() {
       onSuccess: () => {
         setDeleteOpen(false);
         navigate(
-          data.workspace
-            ? `/workspaces/${data.workspace.id}`
-            : "/notes",
+          data.workspace && data.project
+            ? `/workspaces/${data.workspace.id}/projects/${data.project.id}?tab=notes`
+            : data.workspace
+              ? `/workspaces/${data.workspace.id}`
+              : "/notes",
         );
         toast.success("Note deleted");
       },
@@ -119,20 +122,36 @@ export function NoteDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
         <Link
-          to={
-            data.workspace
-              ? `/workspaces/${data.workspace.id}`
-              : "/notes"
-          }
-          className="inline-flex max-w-full items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          to="/notes"
+          className="inline-flex shrink-0 items-center gap-1 hover:text-foreground"
         >
           <ArrowLeft className="size-4 shrink-0" />
-          <span className="truncate">
-            {data.workspace ? data.workspace.name : "Notes"}
-          </span>
+          Notes
         </Link>
+        {data.workspace ? (
+          <>
+            <span className="shrink-0">/</span>
+            <Link
+              to={`/workspaces/${data.workspace.id}`}
+              className="max-w-[10rem] truncate hover:text-foreground"
+            >
+              {data.workspace.name}
+            </Link>
+          </>
+        ) : null}
+        {data.workspace && data.project ? (
+          <>
+            <span className="shrink-0">/</span>
+            <Link
+              to={`/workspaces/${data.workspace.id}/projects/${data.project.id}?tab=notes`}
+              className="max-w-[10rem] truncate hover:text-foreground"
+            >
+              {data.project.name}
+            </Link>
+          </>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -161,6 +180,15 @@ export function NoteDetailPage() {
             ) : null}
             {data.workspace ? (
               <span className="truncate">{data.workspace.name}</span>
+            ) : null}
+            {data.workspaceId && data.project ? (
+              <Link
+                to={`/workspaces/${data.workspaceId}/projects/${data.project.id}`}
+                className="inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                <Rocket className="size-3.5 shrink-0" />
+                {data.project.name}
+              </Link>
             ) : null}
           </div>
           {data.tags.length > 0 ? (

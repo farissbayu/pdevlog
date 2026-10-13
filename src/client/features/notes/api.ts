@@ -120,6 +120,7 @@ export function useCreateNoteMutation() {
     mutationFn: createNote,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: NOTES_KEY });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["sparks"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -134,6 +135,7 @@ export function useUpdateNoteMutation() {
       updateNote(id, input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: NOTES_KEY });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({
         queryKey: [...NOTES_KEY, variables.id],
       });
@@ -148,6 +150,7 @@ export function useDeleteNoteMutation() {
     mutationFn: deleteNote,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: NOTES_KEY });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

@@ -1,0 +1,2 @@
+ALTER TABLE `notes` ADD `project_id` text REFERENCES projects(id) ON UPDATE no action ON DELETE set null;--> statement-breakpoint
+CREATE INDEX `notes_user_id_project_id_idx` ON `notes` (`user_id`,`project_id`);

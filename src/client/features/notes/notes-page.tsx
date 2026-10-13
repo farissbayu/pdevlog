@@ -4,8 +4,12 @@ import { FilterBar } from "@/client/components/filter-bar";
 import { PaginationControls } from "@/client/components/pagination";
 import { Button } from "@/client/components/ui/button";
 import { useTagsQuery } from "@/client/features/tags/api";
+import { useProjectsQuery } from "@/client/features/projects/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
-import { useFilterParams } from "@/client/lib/use-filter-params";
+import {
+  UNASSIGNED_WORKSPACE,
+  useFilterParams,
+} from "@/client/lib/use-filter-params";
 
 import { useNotesQuery } from "./api";
 import {
@@ -23,6 +27,12 @@ export function NotesPage() {
   const pagination = data?.pagination;
   const { data: tags = [] } = useTagsQuery();
   const { data: workspaces = [] } = useWorkspacesQuery();
+  const { data: projectsData } = useProjectsQuery(
+    filterApi.filters.workspaceId !== UNASSIGNED_WORKSPACE
+      ? filterApi.filters.workspaceId
+      : "",
+  );
+  const projects = projectsData?.projects ?? [];
 
   return (
     <div className="space-y-6">
@@ -41,6 +51,7 @@ export function NotesPage() {
         api={filterApi}
         tags={tags}
         workspaces={workspaces}
+        projects={projects}
         searchPlaceholder="Search notes..."
       />
 

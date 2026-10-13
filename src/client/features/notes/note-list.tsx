@@ -1,4 +1,4 @@
-import { AlertTriangle, Link2 } from "lucide-react";
+import { AlertTriangle, Link2, Rocket } from "lucide-react";
 import { Link } from "react-router";
 
 import { Button } from "@/client/components/ui/button";
@@ -106,6 +106,12 @@ export function NoteList({ notes }: NoteListProps) {
               ) : null}
               {note.workspace ? (
                 <span className="truncate">{note.workspace.name}</span>
+              ) : null}
+              {note.project ? (
+                <span className="inline-flex items-center gap-1 truncate">
+                  <Rocket className="size-3 shrink-0" />
+                  {note.project.name}
+                </span>
               ) : null}
               {noteSourceCount(note) > 0 ? (
                 <span className="inline-flex items-center gap-1">

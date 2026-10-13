@@ -19,6 +19,7 @@ import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
 import {
+  UNASSIGNED_PROJECT,
   UNASSIGNED_WORKSPACE,
   noteFilterSchema,
   normalizeTagIds,
@@ -32,6 +33,7 @@ import {
   createNoteSchema,
   updateNoteSchema,
   type CreateNoteInput,
+  type NoteProjectSummary,
   type NoteResponse,
   type UpdateNoteInput,
 } from "@/shared/schemas/notes";
@@ -42,12 +44,16 @@ import { createDb, type Database } from "@/worker/db";
 import {
   notes,
   noteTags,
+  projectItems,
+  projects,
   sources,
   sparks,
   tags,
   workspaces,
   type AttachmentRow,
   type NoteRow,
+  type ProjectItemRow,
+  type ProjectRow,
   type SourceOwnerType,
   type SourceRow,
   type TagRow,
@@ -114,9 +120,19 @@ function toSourceResponse(source: SourceRow): SourceResponse {
   };
 }
 
+function toProjectSummary(project: ProjectRow): NoteProjectSummary {
+  return {
+    id: project.id,
+    workspaceId: project.workspaceId,
+    name: project.name,
+    status: project.status,
+  };
+}
+
 function toNoteResponse(
   note: NoteRow,
   workspace: WorkspaceRow | null,
+  project: ProjectRow | null,
   workspaceSources: SourceRow[],
   noteTagsList: TagRow[],
   sourceRows: SourceRow[] = [],
@@ -130,6 +146,8 @@ function toNoteResponse(
     workspace: workspace
       ? toWorkspaceResponse(workspace, workspaceSources)
       : null,
+    projectId: note.projectId,
+    project: project ? toProjectSummary(project) : null,
     tags: noteTagsList.map(toTagResponse),
     sources: sourceRows.map(toSourceResponse),
     attachments: attachmentRows.map(toAttachmentResponse),
@@ -302,6 +320,109 @@ function touchWorkspaceStatement(
     .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)));
 }
 
+async function findOwnedProject(
+  db: Database,
+  projectId: string,
+  userId: string,
+): Promise<ProjectRow | undefined> {
+  const [project] = await db
+    .select()
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
+    .limit(1);
+  return project;
+}
+
+async function loadProject(
+  db: Database,
+  projectId: string | null,
+  userId: string,
+): Promise<ProjectRow | null> {
+  if (!projectId) {
+    return null;
+  }
+  return (await findOwnedProject(db, projectId, userId)) ?? null;
+}
+
+function touchProjectStatement(
+  db: Database,
+  projectId: string,
+  userId: string,
+  now: Date,
+) {
+  return db
+    .update(projects)
+    .set({ updatedAt: now })
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+}
+
+type ScopeResolution =
+  | { ok: true; workspaceId: string | null; projectId: string | null }
+  | { ok: false; status: 400 | 404; error: string };
+
+async function resolveAndGuardNoteScope(
+  db: Database,
+  userId: string,
+  input: { workspace_id?: string | null; project_id?: string | null },
+  existing?: { workspaceId: string | null; projectId: string | null },
+): Promise<ScopeResolution> {
+  if (
+    input.workspace_id !== undefined &&
+    input.workspace_id !== null &&
+    !(await validateWorkspaceOwnership(db, input.workspace_id, userId))
+  ) {
+    return { ok: false, status: 404, error: "Workspace not found" };
+  }
+
+  let targetWorkspaceId =
+    input.workspace_id !== undefined
+      ? input.workspace_id
+      : (existing?.workspaceId ?? null);
+
+  let targetProjectId: string | null;
+  if (input.project_id !== undefined) {
+    targetProjectId = input.project_id;
+  } else if (
+    existing &&
+    input.workspace_id !== undefined &&
+    input.workspace_id !== existing.workspaceId
+  ) {
+    targetProjectId = null;
+  } else {
+    targetProjectId = existing?.projectId ?? null;
+  }
+
+  if (targetProjectId !== null) {
+    const project = await findOwnedProject(db, targetProjectId, userId);
+    if (!project) {
+      return { ok: false, status: 404, error: "Project not found" };
+    }
+    if (input.workspace_id === null) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Cannot attach a project to a note without a workspace",
+      };
+    }
+    if (targetWorkspaceId === null && input.workspace_id === undefined) {
+      targetWorkspaceId = project.workspaceId;
+    }
+    if (project.workspaceId !== targetWorkspaceId) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Project does not belong to the selected workspace",
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    workspaceId: targetWorkspaceId,
+    projectId: targetProjectId,
+  };
+}
+
 const listNotes = async (
   c: Context<AppEnv, "/", QueryInput<NoteFilterInput>>,
 ) => {
@@ -350,6 +471,12 @@ const listNotes = async (
     conditions.push(eq(notes.workspaceId, filters.workspace_id));
   }
 
+  if (filters.project_id === UNASSIGNED_PROJECT) {
+    conditions.push(isNull(notes.projectId));
+  } else if (filters.project_id) {
+    conditions.push(eq(notes.projectId, filters.project_id));
+  }
+
   if (filters.from) {
     conditions.push(gte(notes.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
   }
@@ -375,7 +502,7 @@ const listNotes = async (
   const { page, pageSize } = parsePagination(filters);
 
   const query = db
-    .select({ note: notes, workspace: workspaces })
+    .select({ note: notes, workspace: workspaces, project: projects })
     .from(notes)
     .leftJoin(
       workspaces,
@@ -383,6 +510,10 @@ const listNotes = async (
         eq(notes.workspaceId, workspaces.id),
         eq(workspaces.userId, userId),
       ),
+    )
+    .leftJoin(
+      projects,
+      and(eq(notes.projectId, projects.id), eq(projects.userId, userId)),
     )
     .where(where)
     .orderBy(
@@ -434,6 +565,7 @@ const listNotes = async (
       toNoteResponse(
         row.note,
         row.workspace,
+        row.project,
         row.note.workspaceId
           ? (sourcesByWorkspaceId.get(row.note.workspaceId) ?? [])
           : [],
@@ -453,15 +585,46 @@ const createNoteHandler = async (
   const input = c.req.valid("json");
   const db = createDb(c.env.DB);
 
-  const workspaceId = input.workspace_id ?? null;
+  const scope: ScopeResolution = await resolveAndGuardNoteScope(db, userId, {
+    workspace_id: input.workspace_id,
+    project_id: input.project_id,
+  });
+  if (scope.ok === false) {
+    return c.json({ error: scope.error }, scope.status);
+  }
+
+  const workspaceId = scope.workspaceId;
+  const projectId = scope.projectId;
   const tagIds = [...new Set(input.tag_ids ?? [])];
   const sourceInputs = input.sources ?? [];
 
-  if (!(await validateWorkspaceOwnership(db, workspaceId, userId))) {
-    return c.json({ error: "Workspace not found" }, 404);
-  }
   if (!(await validateTagOwnership(db, tagIds, userId))) {
     return c.json({ error: "Tag not found" }, 404);
+  }
+
+  const projectItemId = input.project_item_id;
+  let ownedProjectItem: ProjectItemRow | undefined;
+  if (projectItemId) {
+    const [item] = await db
+      .select()
+      .from(projectItems)
+      .where(
+        and(
+          eq(projectItems.id, projectItemId),
+          eq(projectItems.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!item) {
+      return c.json({ error: "Project item not found" }, 404);
+    }
+    if (projectId && item.projectId !== projectId) {
+      return c.json(
+        { error: "Project item does not belong to the selected project" },
+        400,
+      );
+    }
+    ownedProjectItem = item;
   }
 
   const sparkId = input.spark_id;
@@ -483,6 +646,7 @@ const createNoteHandler = async (
     id: noteId,
     userId,
     workspaceId,
+    projectId,
     title: input.title,
     content: input.content,
     createdAt: now,
@@ -513,6 +677,22 @@ const createNoteHandler = async (
   ];
   if (workspaceId) {
     statements.push(touchWorkspaceStatement(db, workspaceId, userId, now));
+  }
+  if (projectId) {
+    statements.push(touchProjectStatement(db, projectId, userId, now));
+  }
+  if (ownedProjectItem) {
+    statements.push(
+      db
+        .update(projectItems)
+        .set({ noteId, updatedAt: now })
+        .where(
+          and(
+            eq(projectItems.id, ownedProjectItem.id),
+            eq(projectItems.userId, userId),
+          ),
+        ),
+    );
   }
   if (sparkId) {
     statements.push(
@@ -548,6 +728,7 @@ const createNoteHandler = async (
     .limit(1);
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
+  const project = await loadProject(db, created.projectId, userId);
   const createdTags = await loadTagsForNote(db, created.id, userId);
   const createdSources = await loadSources(db, "note", created.id, userId);
   const createdWorkspaceSources = created.workspaceId
@@ -568,6 +749,7 @@ const createNoteHandler = async (
       note: toNoteResponse(
         created,
         workspace,
+        project,
         createdWorkspaceSources,
         createdTags,
         createdSources,
@@ -590,6 +772,7 @@ const getNote = async (c: Context<AppEnv, "/:id">) => {
   }
 
   const workspace = await loadWorkspace(db, note.workspaceId, userId);
+  const project = await loadProject(db, note.projectId, userId);
   const noteTagsList = await loadTagsForNote(db, note.id, userId);
   const sourceRows = await loadSources(db, "note", note.id, userId);
   const workspaceSources = note.workspaceId
@@ -606,6 +789,7 @@ const getNote = async (c: Context<AppEnv, "/:id">) => {
     note: toNoteResponse(
       note,
       workspace,
+      project,
       workspaceSources,
       noteTagsList,
       sourceRows,
@@ -632,23 +816,27 @@ const updateNoteHandler = async (
   const hasSources = input.sources !== undefined;
   const sourceInputs = input.sources ?? [];
 
-  if (
-    input.workspace_id !== undefined &&
-    !(await validateWorkspaceOwnership(db, input.workspace_id, userId))
-  ) {
-    return c.json({ error: "Workspace not found" }, 404);
+  const scope = await resolveAndGuardNoteScope(
+    db,
+    userId,
+    { workspace_id: input.workspace_id, project_id: input.project_id },
+    { workspaceId: owned.workspaceId, projectId: owned.projectId },
+  );
+  if (scope.ok === false) {
+    return c.json({ error: scope.error }, scope.status);
   }
   if (hasTagIds && !(await validateTagOwnership(db, tagIds, userId))) {
     return c.json({ error: "Tag not found" }, 404);
   }
 
   const now = new Date();
-  const updates: Partial<NoteRow> = { updatedAt: now };
+  const updates: Partial<NoteRow> = {
+    updatedAt: now,
+    workspaceId: scope.workspaceId,
+    projectId: scope.projectId,
+  };
   if (input.title !== undefined) updates.title = input.title;
   if (input.content !== undefined) updates.content = input.content;
-  if (input.workspace_id !== undefined) {
-    updates.workspaceId = input.workspace_id ?? null;
-  }
 
   const updateNote = db
     .update(notes)
@@ -695,13 +883,19 @@ const updateNoteHandler = async (
     );
   }
 
-  const targetWorkspaceId =
-    input.workspace_id !== undefined ? input.workspace_id : owned.workspaceId;
+  const targetWorkspaceId = scope.workspaceId;
   const touchedWorkspaces = new Set<string>();
   if (owned.workspaceId) touchedWorkspaces.add(owned.workspaceId);
   if (targetWorkspaceId) touchedWorkspaces.add(targetWorkspaceId);
   for (const workspaceId of touchedWorkspaces) {
     statements.push(touchWorkspaceStatement(db, workspaceId, userId, now));
+  }
+
+  const touchedProjects = new Set<string>();
+  if (owned.projectId) touchedProjects.add(owned.projectId);
+  if (scope.projectId) touchedProjects.add(scope.projectId);
+  for (const projectId of touchedProjects) {
+    statements.push(touchProjectStatement(db, projectId, userId, now));
   }
 
   await db.batch(
@@ -724,6 +918,7 @@ const updateNoteHandler = async (
     .limit(1);
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
+  const project = await loadProject(db, updated.projectId, userId);
   const updatedTags = await loadTagsForNote(db, updated.id, userId);
   const updatedSources = await loadSources(db, "note", updated.id, userId);
   const updatedWorkspaceSources = updated.workspaceId
@@ -740,6 +935,7 @@ const updateNoteHandler = async (
     note: toNoteResponse(
       updated,
       workspace,
+      project,
       updatedWorkspaceSources,
       updatedTags,
       updatedSources,
@@ -771,6 +967,11 @@ const deleteNoteHandler = async (c: Context<AppEnv, "/:id">) => {
   if (owned.workspaceId) {
     statements.push(
       touchWorkspaceStatement(db, owned.workspaceId, userId, new Date()),
+    );
+  }
+  if (owned.projectId) {
+    statements.push(
+      touchProjectStatement(db, owned.projectId, userId, new Date()),
     );
   }
 

@@ -13,14 +13,19 @@ import {
   DropdownMenuTrigger,
 } from "@/client/components/ui/dropdown-menu";
 import type { FilterParamsApi } from "@/client/lib/use-filter-params";
-import { UNASSIGNED_WORKSPACE } from "@/client/lib/use-filter-params";
+import {
+  UNASSIGNED_PROJECT,
+  UNASSIGNED_WORKSPACE,
+} from "@/client/lib/use-filter-params";
 import type { TagResponse } from "@/shared/schemas/tag";
+import type { ProjectResponse } from "@/shared/schemas/project";
 import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 
 type FilterBarProps = {
   api: FilterParamsApi;
   tags: TagResponse[];
   workspaces?: WorkspaceResponse[];
+  projects?: ProjectResponse[];
   searchPlaceholder?: string;
 };
 
@@ -28,12 +33,20 @@ export function FilterBar({
   api,
   tags,
   workspaces,
+  projects,
   searchPlaceholder = "Search...",
 }: FilterBarProps) {
   const { filters, hasActiveFilters } = api;
   const selectedWorkspace = workspaces?.find(
     (workspace) => workspace.id === filters.workspaceId,
   );
+  const selectedProject = projects?.find(
+    (project) => project.id === filters.projectId,
+  );
+  const showProjects =
+    Boolean(projects) &&
+    Boolean(filters.workspaceId) &&
+    filters.workspaceId !== UNASSIGNED_WORKSPACE;
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
@@ -85,6 +98,51 @@ export function FilterBar({
                   onSelect={() => api.setWorkspaceId(workspace.id)}
                 >
                   {workspace.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+
+        {showProjects ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="min-w-0 flex-1 justify-between sm:flex-initial"
+              >
+                <span className="min-w-0 truncate">
+                  {filters.projectId === UNASSIGNED_PROJECT
+                    ? "Unassigned"
+                    : selectedProject
+                      ? selectedProject.name
+                      : "All projects"}
+                </span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
+              <DropdownMenuLabel>Project</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={filters.projectId === ""}
+                onSelect={() => api.setProjectId("")}
+              >
+                All projects
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={filters.projectId === UNASSIGNED_PROJECT}
+                onSelect={() => api.setProjectId(UNASSIGNED_PROJECT)}
+              >
+                Unassigned
+              </DropdownMenuCheckboxItem>
+              {(projects ?? []).map((project) => (
+                <DropdownMenuCheckboxItem
+                  key={project.id}
+                  checked={filters.projectId === project.id}
+                  onSelect={() => api.setProjectId(project.id)}
+                >
+                  {project.name}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>

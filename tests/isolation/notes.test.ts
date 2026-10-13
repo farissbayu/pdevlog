@@ -57,6 +57,19 @@ async function createTag(token: string, name: string): Promise<string> {
   return body.tag.id;
 }
 
+async function createProject(
+  token: string,
+  workspaceId: string,
+  name = "pdevlog",
+): Promise<string> {
+  const response = await request("/api/projects", token, {
+    method: "POST",
+    body: JSON.stringify({ workspace_id: workspaceId, name }),
+  });
+  const body = (await response.json()) as { project: { id: string } };
+  return body.project.id;
+}
+
 type NoteSource = {
   id: string;
   url: string | null;
@@ -75,6 +88,13 @@ type NoteBody = {
       id: string;
       name: string;
       sources: NoteSource[];
+    } | null;
+    projectId: string | null;
+    project: {
+      id: string;
+      workspaceId: string;
+      name: string;
+      status: string;
     } | null;
     tags: { id: string; name: string }[];
     sources: NoteSource[];
@@ -496,6 +516,145 @@ describe("note isolation and relation ownership", () => {
     expect(unassigned.notes.map((note) => note.id)).toContain(
       created.body.note.id,
     );
+  });
+
+  it("attaches a note to an owned project in the same workspace", async () => {
+    const token = await createUser("note-project-owner");
+    const workspaceId = await createWorkspace(token, "Databases");
+    const projectId = await createProject(token, workspaceId);
+
+    const created = await createNote(token, {
+      workspace_id: workspaceId,
+      project_id: projectId,
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.note.workspaceId).toBe(workspaceId);
+    expect(created.body.note.projectId).toBe(projectId);
+    expect(created.body.note.project?.name).toBe("pdevlog");
+
+    const detail = await request(`/api/notes/${created.body.note.id}`, token);
+    const detailBody = (await detail.json()) as NoteBody;
+    expect(detailBody.note.projectId).toBe(projectId);
+    expect(detailBody.note.project?.workspaceId).toBe(workspaceId);
+  });
+
+  it("derives the workspace from the project when workspace_id is omitted", async () => {
+    const token = await createUser("note-project-derive");
+    const workspaceId = await createWorkspace(token, "Databases");
+    const projectId = await createProject(token, workspaceId);
+
+    const created = await createNote(token, { project_id: projectId });
+    expect(created.status).toBe(201);
+    expect(created.body.note.workspaceId).toBe(workspaceId);
+    expect(created.body.note.projectId).toBe(projectId);
+  });
+
+  it("rejects a project that belongs to another workspace", async () => {
+    const token = await createUser("note-project-mismatch");
+    const workspaceA = await createWorkspace(token, "A");
+    const workspaceB = await createWorkspace(token, "B");
+    const projectA = await createProject(token, workspaceA);
+
+    const created = await createNote(token, {
+      workspace_id: workspaceB,
+      project_id: projectA,
+    });
+    expect(created.status).toBe(400);
+
+    const noteInB = await createNote(token, { workspace_id: workspaceB });
+    const moved = await request(`/api/notes/${noteInB.body.note.id}`, token, {
+      method: "PUT",
+      body: JSON.stringify({ project_id: projectA }),
+    });
+    expect(moved.status).toBe(400);
+  });
+
+  it("rejects a project attached with workspace_id null", async () => {
+    const token = await createUser("note-project-null-ws");
+    const workspaceId = await createWorkspace(token, "Databases");
+    const projectId = await createProject(token, workspaceId);
+
+    const created = await createNote(token, {
+      workspace_id: null,
+      project_id: projectId,
+    });
+    expect(created.status).toBe(400);
+  });
+
+  it("rejects a project owned by another user with 404", async () => {
+    const tokenA = await createUser("note-project-a");
+    const tokenB = await createUser("note-project-b");
+    const workspaceA = await createWorkspace(tokenA, "A");
+    const workspaceB = await createWorkspace(tokenB, "B");
+    const projectA = await createProject(tokenA, workspaceA);
+
+    const withWorkspace = await createNote(tokenB, {
+      workspace_id: workspaceB,
+      project_id: projectA,
+    });
+    expect(withWorkspace.status).toBe(404);
+
+    const withoutWorkspace = await createNote(tokenB, {
+      project_id: projectA,
+    });
+    expect(withoutWorkspace.status).toBe(404);
+  });
+
+  it("detaches the project when the note moves to another workspace", async () => {
+    const token = await createUser("note-project-detach");
+    const workspaceA = await createWorkspace(token, "A");
+    const workspaceB = await createWorkspace(token, "B");
+    const projectA = await createProject(token, workspaceA);
+
+    const created = await createNote(token, {
+      workspace_id: workspaceA,
+      project_id: projectA,
+    });
+    expect(created.status).toBe(201);
+
+    const moved = await request(`/api/notes/${created.body.note.id}`, token, {
+      method: "PUT",
+      body: JSON.stringify({ workspace_id: workspaceB }),
+    });
+    expect(moved.status).toBe(200);
+    const movedBody = (await moved.json()) as NoteBody;
+    expect(movedBody.note.workspaceId).toBe(workspaceB);
+    expect(movedBody.note.projectId).toBeNull();
+  });
+
+  it("filters notes by project and nulls project_id when the project is deleted", async () => {
+    const token = await createUser("note-project-filter");
+    const workspaceId = await createWorkspace(token, "Databases");
+    const projectId = await createProject(token, workspaceId);
+
+    const attached = await createNote(token, {
+      workspace_id: workspaceId,
+      project_id: projectId,
+    });
+    await createNote(token, { workspace_id: workspaceId });
+
+    const filtered = (await (
+      await request(
+        `/api/notes?workspace_id=${workspaceId}&project_id=${projectId}`,
+        token,
+      )
+    ).json()) as { notes: { id: string }[] };
+    expect(filtered.notes.map((note) => note.id)).toEqual([
+      attached.body.note.id,
+    ]);
+
+    const deleted = await request(`/api/projects/${projectId}`, token, {
+      method: "DELETE",
+    });
+    expect(deleted.status).toBe(200);
+
+    const detail = await request(
+      `/api/notes/${attached.body.note.id}`,
+      token,
+    );
+    const detailBody = (await detail.json()) as NoteBody;
+    expect(detailBody.note.projectId).toBeNull();
+    expect(detailBody.note.workspaceId).toBe(workspaceId);
   });
 
   it("rejects unauthenticated access to notes", async () => {

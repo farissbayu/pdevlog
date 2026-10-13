@@ -121,6 +121,9 @@ export const notes = sqliteTable(
     workspaceId: text("workspace_id").references(() => workspaces.id, {
       onDelete: "cascade",
     }),
+    projectId: text("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
     title: text("title").notNull(),
     content: text("content").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -134,6 +137,10 @@ export const notes = sqliteTable(
     index("notes_user_id_workspace_id_idx").on(
       table.userId,
       table.workspaceId,
+    ),
+    index("notes_user_id_project_id_idx").on(
+      table.userId,
+      table.projectId,
     ),
   ],
 );
