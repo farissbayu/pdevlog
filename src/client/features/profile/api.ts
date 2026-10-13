@@ -21,11 +21,23 @@ export async function fetchProfile(): Promise<UserProfileResponse> {
   return (await res.json()) as UserProfileResponse;
 }
 
-function isProcessing(profile?: UserProfileResponse): boolean {
+// Background jobs are killed ~30s after the response; if the server has been
+// "processing" longer than this, treat it as dead so the UI never hangs forever.
+const PROCESSING_TTL_MS = 60_000;
+
+export function isProfileProcessing(
+  profile?: UserProfileResponse,
+): boolean {
+  if (!profile) {
+    return false;
+  }
+  const active =
+    profile.cvParseStatus === "processing" ||
+    profile.cvAuditStatus === "auditing" ||
+    profile.insightsStatus === "analyzing";
   return (
-    profile?.cvParseStatus === "processing" ||
-    profile?.cvAuditStatus === "auditing" ||
-    profile?.insightsStatus === "analyzing"
+    active &&
+    Date.now() - new Date(profile.updatedAt).getTime() < PROCESSING_TTL_MS
   );
 }
 
@@ -34,7 +46,7 @@ export const profileQueryOptions = () =>
     queryKey: profileKeys.detail(),
     queryFn: fetchProfile,
     refetchInterval: (query) =>
-      isProcessing(query.state.data) ? 2500 : false,
+      isProfileProcessing(query.state.data) ? 2500 : false,
   });
 
 export async function updateProfile(

@@ -26,6 +26,7 @@ import { Label } from "@/client/components/ui/label";
 import { Textarea } from "@/client/components/ui/textarea";
 
 import {
+  isProfileProcessing,
   profileQueryOptions,
   useAnalyzeSkillsMutation,
   useExtractPersonaMutation,
@@ -120,10 +121,13 @@ export function ProfilePage() {
     );
   }
 
+  const processing = isProfileProcessing(profile);
   const uploading =
-    uploadCvMutation.isPending || profile.cvParseStatus === "processing";
+    uploadCvMutation.isPending ||
+    (processing && profile.cvParseStatus === "processing");
   const analyzing =
-    analyzeSkillsMutation.isPending || profile.insightsStatus === "analyzing";
+    analyzeSkillsMutation.isPending ||
+    (processing && profile.insightsStatus === "analyzing");
 
   const handleTabChange = (newTab: ProfileTab) => {
     setSearchParams(
