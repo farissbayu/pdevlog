@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, X } from "lucide-react"
+import { Check, ChevronsUpDown, Loader2, Plus, X } from "lucide-react"
 import { cn } from "cn"
 
 import {
@@ -34,6 +34,7 @@ type MultiSelectProps = {
   disabled?: boolean
   id?: string
   "aria-label"?: string
+  onCreateOption?: (name: string) => Promise<string | void> | string | void
 }
 
 const MAX_VISIBLE_CHIPS = 3
@@ -49,8 +50,18 @@ function MultiSelect({
   disabled,
   id,
   "aria-label": ariaLabel,
+  onCreateOption,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState("")
+  const [isCreating, setIsCreating] = React.useState(false)
+
+  const trimmedSearch = search.trim()
+  const hasExactMatch = options.some(
+    (option) => option.label.toLowerCase() === trimmedSearch.toLowerCase()
+  )
+  const canCreate =
+    Boolean(onCreateOption) && trimmedSearch.length > 0 && !hasExactMatch
 
   const selected = value
     .map((item) => options.find((option) => option.value === item))
@@ -71,8 +82,32 @@ function MultiSelect({
     onChange(value.filter((item) => item !== optionValue))
   }
 
+  const handleCreate = async () => {
+    if (!onCreateOption || !trimmedSearch || isCreating) {
+      return
+    }
+    setIsCreating(true)
+    try {
+      const createdId = await onCreateOption(trimmedSearch)
+      if (typeof createdId === "string") {
+        onChange([...value, createdId])
+      }
+      setSearch("")
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) {
+          setSearch("")
+        }
+      }}
+    >
       <PopoverTrigger asChild>
         <div
           id={id}
@@ -133,9 +168,30 @@ function MultiSelect({
         className="w-[var(--radix-popover-trigger-width)] p-0"
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
+            {canCreate ? (
+              <CommandGroup>
+                <CommandItem
+                  value={`__create_${trimmedSearch}`}
+                  disabled={isCreating}
+                  onSelect={handleCreate}
+                  className="font-medium text-primary"
+                >
+                  {isCreating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Plus className="size-4" />
+                  )}
+                  Create &quot;{trimmedSearch}&quot;
+                </CommandItem>
+              </CommandGroup>
+            ) : null}
             <CommandGroup>
               {options.map((option) => {
                 const isSelected = value.includes(option.value)

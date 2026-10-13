@@ -13,7 +13,6 @@ import {
 } from "@/client/components/ui/dialog";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
-import { MultiSelect } from "@/client/components/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -22,7 +21,7 @@ import {
   SelectValue,
 } from "@/client/components/ui/select";
 import { Textarea } from "@/client/components/ui/textarea";
-import { useTagsQuery } from "@/client/features/tags/api";
+import { TagSelect } from "@/client/features/tags/tag-select";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
   createBragLogSchema,
@@ -79,7 +78,6 @@ export function BragLogFormDialog({
   const updateMutation = useUpdateBragLogMutation();
   const mutation = isEditing ? updateMutation : createMutation;
 
-  const { data: tags } = useTagsQuery();
   const { data: workspaces = [] } = useWorkspacesQuery();
   const generateMutation = useGenerateStarBreakdownMutation();
 
@@ -365,25 +363,7 @@ export function BragLogFormDialog({
 
           <div className="space-y-2">
             <Label htmlFor="brag-tags">Tags</Label>
-            {tags && tags.length > 0 ? (
-              <MultiSelect
-                id="brag-tags"
-                aria-label="Tags"
-                options={tags.map((tag) => ({
-                  value: tag.id,
-                  label: tag.name,
-                }))}
-                value={tagIds}
-                onChange={setTagIds}
-                placeholder="Select tags"
-                searchPlaceholder="Search tags..."
-                emptyMessage="No tag found."
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                No tags yet. Create tags to label this log.
-              </p>
-            )}
+            <TagSelect id="brag-tags" value={tagIds} onChange={setTagIds} />
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}

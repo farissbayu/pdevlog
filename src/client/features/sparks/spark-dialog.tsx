@@ -28,8 +28,7 @@ import {
   DialogTitle,
 } from "@/client/components/ui/dialog";
 import { Label } from "@/client/components/ui/label";
-import { MultiSelect } from "@/client/components/ui/multi-select";
-import { useTagsQuery } from "@/client/features/tags/api";
+import { TagSelect } from "@/client/features/tags/tag-select";
 import {
   MAX_STORAGE_PER_OWNER,
   type AttachmentResponse,
@@ -74,7 +73,6 @@ export function SparkDialog({
   const uploadMutation = useUploadSparkAttachmentMutation();
   const deleteAttachmentMutation = useDeleteAttachmentMutation();
   const mutation = isEditing ? updateMutation : createMutation;
-  const { data: tags } = useTagsQuery();
 
   const [content, setContent] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -365,22 +363,7 @@ export function SparkDialog({
 
           <div className="space-y-2">
             <Label htmlFor="spark-tags">Tags (optional)</Label>
-            {tags && tags.length > 0 ? (
-              <MultiSelect
-                id="spark-tags"
-                aria-label="Tags"
-                options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
-                value={tagIds}
-                onChange={setTagIds}
-                placeholder="Select tags"
-                searchPlaceholder="Search tags..."
-                emptyMessage="No tag found."
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                No tags yet. You can add tags later.
-              </p>
-            )}
+            <TagSelect id="spark-tags" value={tagIds} onChange={setTagIds} />
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}

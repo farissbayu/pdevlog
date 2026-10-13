@@ -26,7 +26,6 @@ import { AutoResizeTextarea } from "@/client/components/ui/auto-resize-textarea"
 import { Button } from "@/client/components/ui/button";
 import { Input } from "@/client/components/ui/input";
 import { Label } from "@/client/components/ui/label";
-import { MultiSelect } from "@/client/components/ui/multi-select";
 import {
   Select,
   SelectContent,
@@ -48,7 +47,7 @@ import {
   type SourceDraft,
 } from "@/client/features/sources/source-editor";
 import { extractSourcesFromText } from "@/client/features/sources/url-extractor";
-import { useTagsQuery } from "@/client/features/tags/api";
+import { TagSelect } from "@/client/features/tags/tag-select";
 import { useProjectsQuery } from "@/client/features/projects/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
@@ -140,7 +139,6 @@ function NoteEditorForm({
   const updateMutation = useUpdateNoteMutation();
 
   const { data: workspaces } = useWorkspacesQuery();
-  const { data: tags } = useTagsQuery();
 
   const [title, setTitle] = useState(
     note?.title ?? (spark ? sparkTitle(spark.content) : ""),
@@ -563,25 +561,7 @@ function NoteEditorForm({
 
           <div className="space-y-2">
             <Label htmlFor="note-tags">Tags</Label>
-            {tags && tags.length > 0 ? (
-              <MultiSelect
-                id="note-tags"
-                aria-label="Tags"
-                options={tags.map((tag) => ({
-                  value: tag.id,
-                  label: tag.name,
-                }))}
-                value={tagIds}
-                onChange={setTagIds}
-                placeholder="Select tags"
-                searchPlaceholder="Search tags..."
-                emptyMessage="No tag found."
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                No tags yet. Create tags to label this note.
-              </p>
-            )}
+            <TagSelect id="note-tags" value={tagIds} onChange={setTagIds} />
           </div>
         </div>
 
