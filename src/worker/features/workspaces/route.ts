@@ -21,13 +21,11 @@ import {
   buildPaginationMeta,
   parsePagination,
 } from "@/shared/schemas/pagination";
-import type { SourceResponse } from "@/shared/schemas/source";
 import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
   type CreateWorkspaceInput,
   type UpdateWorkspaceInput,
-  type WorkspaceResponse,
 } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
 import {
@@ -39,33 +37,10 @@ import {
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 
+import { toWorkspaceResponse } from "./helpers";
+
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
-
-function toSourceResponse(source: SourceRow): SourceResponse {
-  return {
-    id: source.id,
-    url: source.url,
-    label: source.label,
-    kind: source.kind,
-    locator: source.locator,
-  };
-}
-
-function toWorkspaceResponse(
-  workspace: WorkspaceRow,
-  sourceRows: SourceRow[] = [],
-): WorkspaceResponse {
-  return {
-    id: workspace.id,
-    name: workspace.name,
-    description: workspace.description,
-    type: workspace.type,
-    sources: sourceRows.map(toSourceResponse),
-    createdAt: new Date(workspace.createdAt).toISOString(),
-    updatedAt: new Date(workspace.updatedAt).toISOString(),
-  };
-}
 
 function loadWorkspaceSources(
   db: Database,

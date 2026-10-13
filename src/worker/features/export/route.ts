@@ -1,48 +1,19 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, gte, inArray, lte, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, lte, type SQL } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
 import {
   exportLogsQuerySchema,
   type ExportLogsQuery,
 } from "@/shared/schemas/settings";
-import { createDb, type Database } from "@/worker/db";
-import {
-  bragLogs,
-  bragTags,
-  tags,
-  workspaces,
-  type TagRow,
-} from "@/worker/db/schema";
+import { createDb } from "@/worker/db";
+import { bragLogs, workspaces, type TagRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { loadTagsByOwnerIds } from "@/worker/features/tags/helpers";
 
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 const EMPTY_VALUE = "—";
-
-async function loadTagsByLogIds(
-  db: Database,
-  logIds: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  const map = new Map<string, TagRow[]>();
-  if (logIds.length === 0) {
-    return map;
-  }
-
-  const rows = await db
-    .select({ bragLogId: bragTags.bragLogId, tag: tags })
-    .from(bragTags)
-    .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(and(inArray(bragTags.bragLogId, logIds), eq(tags.userId, userId)));
-
-  for (const row of rows) {
-    const list = map.get(row.bragLogId) ?? [];
-    list.push(row.tag);
-    map.set(row.bragLogId, list);
-  }
-  return map;
-}
 
 function formatTagNames(logTags: TagRow[]): string {
   if (logTags.length === 0) {
@@ -79,8 +50,9 @@ const exportBragLogs = async (
     .where(and(...conditions))
     .orderBy(desc(bragLogs.occurredAt), desc(bragLogs.createdAt));
 
-  const tagsByLogId = await loadTagsByLogIds(
+  const tagsByLogId = await loadTagsByOwnerIds(
     db,
+    "brag-log",
     rows.map((row) => row.log.id),
     userId,
   );

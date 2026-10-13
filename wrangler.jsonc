@@ -21,10 +21,6 @@
       "binding": "STORAGE",
       "bucket_name": "pdevlog-storage",
     },
-    {
-      "bucket_name": "pdevlog-storage",
-      "binding": "pdevlog_storage",
-    },
   ],
   "vars": {
     "ADMIN_EMAILS": "farissbay.dev@gmail.com",

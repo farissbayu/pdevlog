@@ -106,9 +106,20 @@ export async function getOrCreateProfile(
       createdAt: now,
       updatedAt: now,
     })
+    .onConflictDoNothing()
     .returning();
 
-  return toProfileResponse(user, created);
+  if (created) {
+    return toProfileResponse(user, created);
+  }
+
+  const [row] = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, user.id))
+    .limit(1);
+
+  return toProfileResponse(user, row);
 }
 
 export async function updateProfile(

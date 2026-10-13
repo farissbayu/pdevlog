@@ -225,7 +225,7 @@ const listProjects = async (
     .orderBy(desc(projects.updatedAt), desc(projects.id));
 
   const [rows, totalRows] = await Promise.all([
-    page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
+    query.limit(pageSize).offset(page === null ? 0 : (page - 1) * pageSize),
     db.select({ value: count() }).from(projects).where(where),
   ]);
   const total = totalRows[0]?.value ?? 0;

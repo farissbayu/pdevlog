@@ -148,6 +148,13 @@
       "when": 1791862858451,
       "tag": "0020_absent_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1791876464577,
+      "tag": "0021_narrow_firebrand",
+      "breakpoints": true
     }
   ]
 }

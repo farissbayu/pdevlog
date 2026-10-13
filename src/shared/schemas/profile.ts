@@ -86,11 +86,6 @@ export const analyzeSkillsResponseSchema = z.object({
 });
 export type AnalyzeSkillsResponse = z.infer<typeof analyzeSkillsResponseSchema>;
 
-export const syncCvSkillsResponseSchema = z.object({
-  status: cvAuditStatusSchema,
-});
-export type SyncCvSkillsResponse = z.infer<typeof syncCvSkillsResponseSchema>;
-
 export const resumeExtractionSchema = z.object({
   headline: z.string(),
   bio: z.string(),
@@ -99,25 +94,3 @@ export const resumeExtractionSchema = z.object({
 });
 export type ResumeExtraction = z.infer<typeof resumeExtractionSchema>;
 
-export const cvMilestoneEvidenceMatchSchema = z.object({
-  pillarSlug: z.enum([
-    "ui-craft",
-    "fullstack-data",
-    "product-sense",
-    "product-telemetry",
-    "velocity-ai",
-  ]),
-  level: z.number().int().min(1).max(5),
-  quoteSnippet: z.string(),
-  reasoning: z.string(),
-  confidenceScore: z.number().min(0).max(1),
-});
-export type CvMilestoneEvidenceMatch = z.infer<
-  typeof cvMilestoneEvidenceMatchSchema
->;
-
-export const cvSkillAuditResultSchema = z.object({
-  candidateOverview: z.string(),
-  matches: z.array(cvMilestoneEvidenceMatchSchema),
-});
-export type CvSkillAuditResult = z.infer<typeof cvSkillAuditResultSchema>;

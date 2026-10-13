@@ -11,8 +11,6 @@ import { exportRoute } from "@/worker/features/export/route";
 import { notesRoute } from "@/worker/features/notes/route";
 import { profileRoute } from "@/worker/features/profile/route";
 import { projectsRoute } from "@/worker/features/projects/route";
-import { skillsRoute } from "@/worker/features/skills/route";
-import { skillShredderRoute } from "@/worker/features/skill-shredder/route";
 import { sparksRoute } from "@/worker/features/sparks/route";
 import { tagsRoute } from "@/worker/features/tags/route";
 import { workspacesRoute } from "@/worker/features/workspaces/route";
@@ -29,10 +27,8 @@ const app = new Hono<AppEnv>()
   .route("/api/brag-logs", bragLogsRoute)
   .route("/api/notes", notesRoute)
   .route("/api/projects", projectsRoute)
-  .route("/api/skills", skillsRoute)
   .route("/api/attachments", attachmentsRoute)
   .route("/api/sparks", sparksRoute)
-  .route("/api/skill-shredder", skillShredderRoute)
 
   .route("/api/dashboard", dashboardRoute)
   .route("/api/export", exportRoute)

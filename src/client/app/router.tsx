@@ -18,8 +18,6 @@ import { NotesPage } from "@/client/features/notes/notes-page";
 import { ProfilePage } from "@/client/features/profile/profile-page";
 import { ProjectDetailPage } from "@/client/features/projects/project-detail-page";
 import { SettingsPage } from "@/client/features/settings/settings-page";
-import { SkillShredderDetailPage } from "@/client/features/skill-shredder/skill-shredder-detail-page";
-import { SkillShredderPage } from "@/client/features/skill-shredder/skill-shredder-page";
 import { SparksPage } from "@/client/features/sparks/sparks-page";
 import { TagsPage } from "@/client/features/tags/tags-page";
 import { WorkspaceDetailPage } from "@/client/features/workspaces/workspace-detail-page";
@@ -50,7 +48,6 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: "dashboard", element: <DashboardPage /> },
-      { path: "skills", element: <Navigate to="/profile?tab=skills" replace /> },
       { path: "workspaces", element: <WorkspacesPage /> },
       { path: "workspaces/:id", element: <WorkspaceDetailPage /> },
       {
@@ -63,8 +60,6 @@ export const router = createBrowserRouter([
       { path: "notes/new", element: <NoteEditorPage /> },
       { path: "notes/:id", element: <NoteDetailPage /> },
       { path: "notes/:id/edit", element: <NoteEditorPage /> },
-      { path: "skill-shredder", element: <SkillShredderPage /> },
-      { path: "skill-shredder/:id", element: <SkillShredderDetailPage /> },
       { path: "sparks", element: <SparksPage /> },
       { path: "tags", element: <TagsPage /> },
       { path: "profile", element: <ProfilePage /> },

@@ -13,6 +13,7 @@ type RateLimitOptions = {
 };
 
 const CLEANUP_THRESHOLD = 1000;
+const MAX_ENTRIES = 10_000;
 
 export function getClientIp(c: Context<AppEnv>): string {
   const connectingIp = c.req.header("CF-Connecting-IP");
@@ -48,6 +49,12 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler<AppEnv> 
 
     if (!entry || entry.resetAt <= now) {
       hits.set(key, { count: 1, resetAt: now + options.windowMs });
+      if (hits.size > MAX_ENTRIES) {
+        const oldest = hits.keys().next().value;
+        if (oldest !== undefined) {
+          hits.delete(oldest);
+        }
+      }
       return next();
     }
 

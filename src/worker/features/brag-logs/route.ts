@@ -35,10 +35,7 @@ import {
   buildPaginationMeta,
   parsePagination,
 } from "@/shared/schemas/pagination";
-import type { TagResponse } from "@/shared/schemas/tag";
-import type { WorkspaceResponse } from "@/shared/schemas/workspace";
-import { createDb, type Database } from "@/worker/db";
-import {
+import { createDb, type Database } from "@/worker/db";import {
   aiUsage,
   bragLogs,
   bragTags,
@@ -59,6 +56,13 @@ import {
   moveAttachments,
   toAttachmentResponse,
 } from "@/worker/features/attachments/helpers";
+import {
+  loadTagsByOwnerIds,
+  loadTagsForOwner,
+  toTagResponse,
+  validateTagOwnership,
+} from "@/worker/features/tags/helpers";
+import { toWorkspaceResponse } from "@/worker/features/workspaces/helpers";
 
 import {
   generateStarBreakdown,
@@ -69,26 +73,6 @@ import { rateLimit } from "@/worker/middleware/rate-limit";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
-
-function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
-  return {
-    id: workspace.id,
-    name: workspace.name,
-    description: workspace.description,
-    type: workspace.type,
-    sources: [],
-    createdAt: new Date(workspace.createdAt).toISOString(),
-    updatedAt: new Date(workspace.updatedAt).toISOString(),
-  };
-}
-
-function toTagResponse(tag: TagRow): TagResponse {
-  return {
-    id: tag.id,
-    name: tag.name,
-    createdAt: new Date(tag.createdAt).toISOString(),
-  };
-}
 
 function toBragLogResponse(
   log: BragLogRow,
@@ -126,43 +110,6 @@ async function findOwnedLog(
   return log;
 }
 
-async function loadTagsForLog(
-  db: Database,
-  logId: string,
-  userId: string,
-): Promise<TagRow[]> {
-  const rows = await db
-    .select({ tag: tags })
-    .from(bragTags)
-    .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(and(eq(bragTags.bragLogId, logId), eq(tags.userId, userId)));
-  return rows.map((row) => row.tag);
-}
-
-async function loadTagsByLogIds(
-  db: Database,
-  logIds: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  const map = new Map<string, TagRow[]>();
-  if (logIds.length === 0) {
-    return map;
-  }
-
-  const rows = await db
-    .select({ bragLogId: bragTags.bragLogId, tag: tags })
-    .from(bragTags)
-    .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(and(inArray(bragTags.bragLogId, logIds), eq(tags.userId, userId)));
-
-  for (const row of rows) {
-    const list = map.get(row.bragLogId) ?? [];
-    list.push(row.tag);
-    map.set(row.bragLogId, list);
-  }
-  return map;
-}
-
 async function loadWorkspace(
   db: Database,
   workspaceId: string | null,
@@ -193,22 +140,6 @@ async function validateWorkspaceOwnership(
     .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
     .limit(1);
   return Boolean(workspace);
-}
-
-async function validateTagOwnership(
-  db: Database,
-  tagIds: string[],
-  userId: string,
-): Promise<boolean> {
-  const uniqueIds = [...new Set(tagIds)];
-  if (uniqueIds.length === 0) {
-    return true;
-  }
-  const rows = await db
-    .select({ id: tags.id })
-    .from(tags)
-    .where(and(eq(tags.userId, userId), inArray(tags.id, uniqueIds)));
-  return rows.length === uniqueIds.length;
 }
 
 function touchWorkspaceStatement(
@@ -294,13 +225,14 @@ const listBragLogs = async (
     );
 
   const [rows, totalRows] = await Promise.all([
-    page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
+    query.limit(pageSize).offset(page === null ? 0 : (page - 1) * pageSize),
     db.select({ value: count() }).from(bragLogs).where(where),
   ]);
   const total = totalRows[0]?.value ?? 0;
 
-  const tagsByLogId = await loadTagsByLogIds(
+  const tagsByLogId = await loadTagsByOwnerIds(
     db,
+    "brag-log",
     rows.map((row) => row.log.id),
     userId,
   );
@@ -438,7 +370,7 @@ const createBragLogHandler = async (
     .limit(1);
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
-  const createdTags = await loadTagsForLog(db, created.id, userId);
+  const createdTags = await loadTagsForOwner(db, "brag-log", created.id, userId);
   const createdAttachments = await loadAttachments(
     db,
     "brag-log",
@@ -474,7 +406,7 @@ const getBragLog = async (c: Context<AppEnv, "/:id">) => {
   }
 
   const workspace = await loadWorkspace(db, log.workspaceId, userId);
-  const logTags = await loadTagsForLog(db, log.id, userId);
+  const logTags = await loadTagsForOwner(db, "brag-log", log.id, userId);
   const attachmentRows = await loadAttachments(db, "brag-log", log.id, userId);
 
   return c.json({
@@ -555,7 +487,7 @@ const updateBragLogHandler = async (
     .limit(1);
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
-  const updatedTags = await loadTagsForLog(db, updated.id, userId);
+  const updatedTags = await loadTagsForOwner(db, "brag-log", updated.id, userId);
   const updatedAttachments = await loadAttachments(
     db,
     "brag-log",
@@ -594,11 +526,11 @@ const deleteBragLogHandler = async (c: Context<AppEnv, "/:id">) => {
     );
   }
 
+  await deleteOwnedAttachments(db, c.env.STORAGE, "brag-log", id, userId);
+
   await db.batch(
     statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
   );
-
-  await deleteOwnedAttachments(db, c.env.STORAGE, "brag-log", id, userId);
 
   return c.json({ success: true });
 };

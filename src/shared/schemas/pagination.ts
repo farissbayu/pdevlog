@@ -47,10 +47,7 @@ export function buildPaginationMeta(
   page: number | null,
   pageSize: number,
 ): PaginationMeta {
-  if (page === null) {
-    return { page: 1, pageSize: total, total, totalPages: 1 };
-  }
-
+  const effectivePage = page ?? 1;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  return { page, pageSize, total, totalPages };
+  return { page: effectivePage, pageSize, total, totalPages };
 }

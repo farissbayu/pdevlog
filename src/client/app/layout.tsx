@@ -9,7 +9,6 @@ import {
   LogOut,
   MoreHorizontal,
   NotebookPen,
-  Scissors,
   Settings,
   Shield,
   Sparkles,
@@ -52,7 +51,6 @@ const appNavItems: NavItem[] = [
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Notes", icon: NotebookPen, to: "/notes" },
   { label: "Brag Logs", icon: FileText, to: "/brag-logs" },
-  { label: "Skill Shredder", icon: Scissors, to: "/skill-shredder" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
   { label: "Tags", icon: Tags, to: "/tags" },
   { label: "Guides", icon: BookOpen, to: "/guides" },
@@ -421,12 +419,6 @@ function AppMobileBottomNav() {
             <Link to="/brag-logs" className="flex items-center gap-2">
               <FileText className="size-4" />
               <span>Brag Logs</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/skill-shredder" className="flex items-center gap-2">
-              <Scissors className="size-4" />
-              <span>Skill Shredder</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>

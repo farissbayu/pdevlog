@@ -1,8 +1,6 @@
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
   Clock,
   FileDown,
   FileText,
@@ -10,9 +8,7 @@ import {
   NotebookPen,
   Pencil,
   Rocket,
-  Scissors,
   Trash2,
-  Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -29,11 +25,6 @@ import {
   DialogTitle,
 } from "@/client/components/ui/dialog";
 import { SourceList } from "@/client/features/sources/source-list";
-import {
-  StatusBadge,
-  totalStepCount,
-} from "@/client/features/skill-shredder/skill-shredder-page";
-import { useSkillShredsQuery } from "@/client/features/skill-shredder/api";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 
 import { useDeleteNoteMutation, useNoteDetailQuery } from "./api";
@@ -45,11 +36,8 @@ export function NoteDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { data, isPending, isError, refetch } = useNoteDetailQuery(id);
-  const { data: linkedShreds } = useSkillShredsQuery(id);
   const deleteMutation = useDeleteNoteMutation();
   const [deleteOpen, setDeleteOpen] = useState(false);
-
-  const linkedShred = linkedShreds?.[0];
 
   const headings = useMemo(
     () => (data ? extractHeadings(data.content) : []),
@@ -205,17 +193,6 @@ export function NoteDetailPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 sm:flex-initial"
-            asChild
-          >
-            <Link to={`/skill-shredder?note=${data.id}`}>
-              <Scissors className="size-4 shrink-0" />
-              <span className="truncate">Shred into Practice</span>
-            </Link>
-          </Button>
           <Button variant="outline" size="icon" className="shrink-0" asChild>
             <Link
               to={`/notes/${data.id}/print`}
@@ -246,35 +223,6 @@ export function NoteDetailPage() {
           </Button>
         </div>
       </div>
-
-      {linkedShred ? (
-        <Link
-          to={`/skill-shredder/${linkedShred.id}`}
-          className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4 transition-colors hover:bg-primary/10"
-        >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-            {linkedShred.status === "completed" ? (
-              <CheckCircle2 className="size-4" />
-            ) : (
-              <Zap className="size-4" />
-            )}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-              {linkedShred.status === "completed"
-                ? "Practice completed"
-                : "Active practice"}
-              <StatusBadge status={linkedShred.status} />
-            </span>
-            <span className="block truncate text-sm text-muted-foreground">
-              {linkedShred.toyProjectTitle} ·{" "}
-              {linkedShred.completedSteps.length}/
-              {totalStepCount(linkedShred.blueprint)} steps completed
-            </span>
-          </span>
-          <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-        </Link>
-      ) : null}
 
       <SourceList sources={data.sources} />
       {data.workspace && data.workspace.sources.length > 0 ? (

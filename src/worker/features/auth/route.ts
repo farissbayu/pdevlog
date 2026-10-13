@@ -105,9 +105,19 @@ async function upsertUser(
       createdAt: now,
       updatedAt: now,
     })
+    .onConflictDoNothing()
     .returning();
 
-  return created;
+  if (created) {
+    return created;
+  }
+
+  const [raced] = await db
+    .select()
+    .from(users)
+    .where(eq(users.googleSub, info.sub))
+    .limit(1);
+  return raced;
 }
 
 const googleHandler = (c: Context<AppEnv>) => {

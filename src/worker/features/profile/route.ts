@@ -6,10 +6,10 @@ import {
   updateProfileRequestSchema,
   type UpdateProfileRequest,
 } from "@/shared/schemas/profile";
-import { createDb } from "@/worker/db";
-import { userProfiles, users } from "@/worker/db/schema";
+import { createDb, type Database } from "@/worker/db";
+import { userProfiles, users, type UserRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
-import { syncCvGrowth } from "@/worker/features/skills/service";
+import { rateLimit } from "@/worker/middleware/rate-limit";
 
 import {
   analyzeAndSaveSkillInsights,
@@ -21,14 +21,19 @@ import {
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 
-const getProfileHandler = async (c: Context<AppEnv>) => {
-  const userId = c.get("userId");
-  const db = createDb(c.env.DB);
+async function loadUser(db: Database, userId: string): Promise<UserRow | null> {
   const [user] = await db
     .select()
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
+  return user ?? null;
+}
+
+const getProfileHandler = async (c: Context<AppEnv>) => {
+  const userId = c.get("userId");
+  const db = createDb(c.env.DB);
+  const user = await loadUser(db, userId);
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
@@ -43,11 +48,7 @@ const updateProfileHandler = async (
 ) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  const user = await loadUser(db, userId);
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
@@ -59,7 +60,7 @@ const updateProfileHandler = async (
 };
 
 async function markProfile(
-  db: ReturnType<typeof createDb>,
+  db: Database,
   userId: string,
   values: Partial<typeof userProfiles.$inferInsert>,
 ): Promise<void> {
@@ -72,11 +73,7 @@ async function markProfile(
 const uploadCvHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  const user = await loadUser(db, userId);
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
@@ -109,47 +106,10 @@ const uploadCvHandler = async (c: Context<AppEnv>) => {
   return c.json({ status: "processing" }, 202);
 };
 
-const syncCvSkillsHandler = async (c: Context<AppEnv>) => {
-  const userId = c.get("userId");
-  const db = createDb(c.env.DB);
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  if (!user) {
-    return c.json({ error: "User not found" }, 404);
-  }
-
-  await getOrCreateProfile(db, user);
-  await markProfile(db, userId, { cvAuditStatus: "auditing" });
-
-  c.executionCtx.waitUntil(
-    (async () => {
-      try {
-        await syncCvGrowth(db, c.env, userId);
-      } catch (error) {
-        console.error(
-          "POST /api/profile/cv/sync-skills background error:",
-          error,
-        );
-        await markProfile(db, userId, { cvAuditStatus: "failed" });
-      }
-    })(),
-  );
-
-  return c.json({ status: "auditing" }, 202);
-};
-
 const analyzeSkillsHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  const user = await loadUser(db, userId);
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
@@ -178,11 +138,7 @@ const analyzeSkillsHandler = async (c: Context<AppEnv>) => {
 const extractPersonaHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  const user = await loadUser(db, userId);
 
   if (!user) {
     return c.json({ error: "User not found" }, 404);
@@ -201,11 +157,11 @@ const extractPersonaHandler = async (c: Context<AppEnv>) => {
   }
 };
 
+const aiRateLimit = rateLimit({ limit: 10, windowMs: 60_000 });
+
 export const profileRoute = new Hono<AppEnv>()
   .get("/", getProfileHandler)
   .patch("/", zValidator("json", updateProfileRequestSchema), updateProfileHandler)
-  .post("/cv/upload", uploadCvHandler)
-  .post("/cv/sync-skills", syncCvSkillsHandler)
-  .post("/skills/analyze", analyzeSkillsHandler)
-  .post("/persona/extract", extractPersonaHandler);
-
+  .post("/cv/upload", aiRateLimit, uploadCvHandler)
+  .post("/skills/analyze", aiRateLimit, analyzeSkillsHandler)
+  .post("/persona/extract", aiRateLimit, extractPersonaHandler);

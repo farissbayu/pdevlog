@@ -43,7 +43,7 @@ import { ProjectFormDialog } from "@/client/features/projects/project-form-dialo
 import { useProjectsQuery } from "@/client/features/projects/api";
 import { SourceList } from "@/client/features/sources/source-list";
 import { EMPTY_FILTERS, useFilterParams } from "@/client/lib/use-filter-params";
-import { cn } from "@/client/lib/utils";
+import { cn } from "cn";
 import type { BragLogResponse } from "@/shared/schemas/brag-log";
 import type { ProjectResponse } from "@/shared/schemas/project";
 

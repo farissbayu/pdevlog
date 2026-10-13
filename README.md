@@ -43,7 +43,7 @@ with a D1 (SQLite) database.
 
 - [Bun](https://bun.sh)
 - A Cloudflare account (for deploy) — local development only needs Wrangler
-- A Google Cloud OAuth Client ID — see [docs/google-oauth-setup.md](docs/google-oauth-setup.md)
+- A Google Cloud OAuth Client ID (create one in the Google Cloud Console)
 - An OpenAI-compatible API key (for the AI STAR breakdown feature)
 
 ## Getting Started
@@ -71,9 +71,8 @@ with a D1 (SQLite) database.
    AI_MODEL="openai/gpt-4o-mini"
    ```
 
-   See [docs/google-oauth-setup.md](docs/google-oauth-setup.md) to create the
-   Google OAuth client. The authorized redirect URI must be exactly
-   `http://localhost:5173/api/auth/google/callback`.
+Create a Google OAuth client in the Google Cloud Console. The authorized redirect
+URI must be exactly `http://localhost:5173/api/auth/google/callback`.
 
 3. **Apply database migrations locally**
 
@@ -154,7 +153,7 @@ src/
     index.ts               # app entry, route mounting
 drizzle/                   # generated SQL migrations
 tests/                     # vitest suites
-docs/                      # OAuth and deployment guides
+docs/                      # design notes and user guides
 tasks/                     # CI/CD guide and backlog
 wrangler.jsonc             # Worker, D1, R2, assets config
 ```
@@ -177,8 +176,9 @@ wrangler.jsonc             # Worker, D1, R2, assets config
 
 ## API Overview
 
-All routes are prefixed with `/api`. Except for the auth and health routes,
-requests require a valid session cookie.
+All routes are prefixed with `/api`. Only `/api/auth/*` is unauthenticated;
+every other route — including `/api/health` — requires a valid session cookie and
+returns 401 without one.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
@@ -198,6 +198,17 @@ requests require a valid session cookie.
 | GET/PUT/DELETE | `/notes/:id` | Read/update/delete a note |
 | GET | `/dashboard` | Counts and recent workspaces |
 | GET | `/dashboard/recent` | Recent activity feed |
+| GET/PATCH | `/profile` | Read or update the developer profile |
+| POST | `/profile/cv/upload` | Upload a CV/PDF and extract Markdown (async, 202) |
+| POST | `/profile/skills/analyze` | Generate skill insights (async, 202) |
+| POST | `/profile/persona/extract` | Extract headline/bio/stack from the saved CV |
+| GET/POST | `/projects` | List or create projects |
+| GET/PUT/DELETE | `/projects/:id` | Read/update/delete a project |
+| GET/POST | `/projects/:id/items` | List or create project items |
+| PUT | `/projects/:id/items/:itemId` | Update a project item |
+| POST | `/projects/:id/items/:itemId/ship` | Mark a project item shipped |
+| DELETE | `/projects/:id/items/:itemId` | Delete a project item |
+| GET | `/projects/:id/changelog/export` | Export a project changelog as Markdown |
 | GET/POST | `/sparks` | List (filter/search/paginate) or create sparks |
 | GET | `/sparks/random` | Recall a random open spark |
 | GET/PUT/DELETE | `/sparks/:id` | Read/update/delete a spark |
@@ -211,10 +222,10 @@ requests require a valid session cookie.
 
 ## Deployment
 
-Deployment to Cloudflare Workers is documented in
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). CI/CD runs typecheck, tests, remote
-D1 migrations, and deploy on every push to `main` via
-[.github/workflows/deploy.yml](.github/workflows/deploy.yml).
+Deployment to Cloudflare Workers runs in CI: every push to `main` runs typecheck,
+tests, remote D1 migrations, and deploy via
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml). To deploy manually,
+set `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` and run `bun run deploy`.
 
 ## License
 

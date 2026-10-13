@@ -15,25 +15,18 @@ import {
   createTagSchema,
   updateTagSchema,
   type CreateTagInput,
-  type TagResponse,
   type UpdateTagInput,
 } from "@/shared/schemas/tag";
 import { createDb } from "@/worker/db";
 import { tags, type TagRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 
+import { toTagResponse } from "./helpers";
+
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 const DUPLICATE_TAG_ERROR = "A tag with this name already exists";
-
-function toTagResponse(tag: TagRow): TagResponse {
-  return {
-    id: tag.id,
-    name: tag.name,
-    createdAt: new Date(tag.createdAt).toISOString(),
-  };
-}
 
 async function findOwnedTag(
   db: ReturnType<typeof createDb>,

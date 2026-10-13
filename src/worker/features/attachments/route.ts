@@ -13,14 +13,26 @@ function buildObjectHeaders(object: R2Object, range?: R2Range): Headers {
   headers.set("ETag", object.httpEtag);
   headers.set("Cache-Control", "private, max-age=31536000, immutable");
   headers.set("Accept-Ranges", "bytes");
-  if (range) {
-    const start = "offset" in range ? (range.offset ?? object.size - range.length) : 0;
-    const length = "length" in range && range.length ? range.length : object.size - start;
-    headers.set("Content-Range", `bytes ${start}-${start + length - 1}/${object.size}`);
-    headers.set("Content-Length", String(length));
-  } else {
+
+  if (!range) {
     headers.set("Content-Length", String(object.size));
+    return headers;
   }
+
+  const offset = "offset" in range ? range.offset : undefined;
+  const length = "length" in range ? range.length : undefined;
+  const start = Math.max(
+    0,
+    Math.min(offset ?? object.size - (length ?? object.size), object.size - 1),
+  );
+  const end = Math.min(
+    object.size - 1,
+    length !== undefined ? start + length - 1 : object.size - 1,
+  );
+  const contentLength = Math.max(0, end - start + 1);
+
+  headers.set("Content-Range", `bytes ${start}-${end}/${object.size}`);
+  headers.set("Content-Length", String(contentLength));
   return headers;
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { cn } from "@/client/lib/utils";
+import { cn } from "cn";
 
 export function Reveal({
   children,

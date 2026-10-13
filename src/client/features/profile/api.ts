@@ -4,7 +4,6 @@ import { client, parseApiError } from "@/client/lib/api";
 import type {
   AnalyzeSkillsResponse,
   CvUploadResponse,
-  SyncCvSkillsResponse,
   UpdateProfileRequest,
   UserProfileResponse,
 } from "@/shared/schemas/profile";
@@ -64,14 +63,6 @@ export async function uploadCvFile(file: File): Promise<CvUploadResponse> {
   }
 
   return (await res.json()) as CvUploadResponse;
-}
-
-export async function syncCvSkills(): Promise<SyncCvSkillsResponse> {
-  const res = await client.api.profile.cv["sync-skills"].$post();
-  if (!res.ok) {
-    throw await parseApiError(res, "Failed to sync skill mastery from CV");
-  }
-  return (await res.json()) as SyncCvSkillsResponse;
 }
 
 export function useUpdateProfileMutation() {

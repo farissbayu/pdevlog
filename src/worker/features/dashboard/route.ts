@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
 import type {
@@ -6,105 +6,14 @@ import type {
   RecentActivityResponse,
 } from "@/shared/schemas/dashboard";
 import { sparkTitle } from "@/shared/schemas/spark";
-import type { TagResponse } from "@/shared/schemas/tag";
-import type { WorkspaceResponse } from "@/shared/schemas/workspace";
-import { createDb, type Database } from "@/worker/db";
-import {
-  bragLogs,
-  bragTags,
-  notes,
-  noteTags,
-  sparkTags,
-  sparks,
-  tags,
-  workspaces,
-  type TagRow,
-  type WorkspaceRow,
-} from "@/worker/db/schema";
+import { createDb } from "@/worker/db";
+import { bragLogs, notes, sparks, workspaces } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { loadTagsByOwnerIds, toTagResponse } from "@/worker/features/tags/helpers";
+import { toWorkspaceResponse } from "@/worker/features/workspaces/helpers";
 
 const RECENT_WORKSPACES_LIMIT = 5;
 const RECENT_ACTIVITY_LIMIT = 5;
-
-function toWorkspaceResponse(workspace: WorkspaceRow): WorkspaceResponse {
-  return {
-    id: workspace.id,
-    name: workspace.name,
-    description: workspace.description,
-    type: workspace.type,
-    sources: [],
-    createdAt: new Date(workspace.createdAt).toISOString(),
-    updatedAt: new Date(workspace.updatedAt).toISOString(),
-  };
-}
-
-function toTagResponse(tag: TagRow): TagResponse {
-  return {
-    id: tag.id,
-    name: tag.name,
-    createdAt: new Date(tag.createdAt).toISOString(),
-  };
-}
-
-function groupTags<Key extends string>(
-  rows: { key: Key; tag: TagRow }[],
-): Map<Key, TagRow[]> {
-  const map = new Map<Key, TagRow[]>();
-  for (const row of rows) {
-    const list = map.get(row.key) ?? [];
-    list.push(row.tag);
-    map.set(row.key, list);
-  }
-  return map;
-}
-
-async function loadBragTags(
-  db: Database,
-  ids: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  if (ids.length === 0) {
-    return new Map();
-  }
-  const rows = await db
-    .select({ key: bragTags.bragLogId, tag: tags })
-    .from(bragTags)
-    .innerJoin(tags, eq(bragTags.tagId, tags.id))
-    .where(and(inArray(bragTags.bragLogId, ids), eq(tags.userId, userId)));
-  return groupTags(rows);
-}
-
-async function loadNoteTags(
-  db: Database,
-  ids: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  if (ids.length === 0) {
-    return new Map();
-  }
-  const rows = await db
-    .select({ key: noteTags.noteId, tag: tags })
-    .from(noteTags)
-    .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(and(inArray(noteTags.noteId, ids), eq(tags.userId, userId)));
-  return groupTags(rows);
-}
-
-async function loadSparkTags(
-  db: Database,
-  ids: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  if (ids.length === 0) {
-    return new Map();
-  }
-  const rows = await db
-    .select({ key: sparkTags.sparkId, tag: tags })
-    .from(sparkTags)
-    .innerJoin(tags, eq(sparkTags.tagId, tags.id))
-    .where(and(inArray(sparkTags.sparkId, ids), eq(tags.userId, userId)));
-  return groupTags(rows);
-}
 
 const getDashboard = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
@@ -143,7 +52,7 @@ const getDashboard = async (c: Context<AppEnv>) => {
       notes: noteCount[0]?.value ?? 0,
       sparks: sparkCount[0]?.value ?? 0,
     },
-    recentWorkspaces: recent.map(toWorkspaceResponse),
+    recentWorkspaces: recent.map((workspace) => toWorkspaceResponse(workspace)),
   });
 };
 
@@ -187,18 +96,21 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
   ]);
 
   const [logTags, noteTagsMap, sparkTagsMap] = await Promise.all([
-    loadBragTags(
+    loadTagsByOwnerIds(
       db,
+      "brag-log",
       logRows.map((row) => row.log.id),
       userId,
     ),
-    loadNoteTags(
+    loadTagsByOwnerIds(
       db,
+      "note",
       noteRows.map((row) => row.note.id),
       userId,
     ),
-    loadSparkTags(
+    loadTagsByOwnerIds(
       db,
+      "spark",
       sparkRows.map((row) => row.id),
       userId,
     ),

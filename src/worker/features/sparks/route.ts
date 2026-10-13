@@ -31,12 +31,10 @@ import {
   type SparkResponse,
   type UpdateSparkInput,
 } from "@/shared/schemas/spark";
-import type { TagResponse } from "@/shared/schemas/tag";
 import { createDb, type Database } from "@/worker/db";
 import {
   sparkTags,
   sparks,
-  tags,
   type AttachmentRow,
   type SparkRow,
   type TagRow,
@@ -50,17 +48,15 @@ import {
   loadAttachmentsByOwnerIds,
   toAttachmentResponse,
 } from "@/worker/features/attachments/helpers";
+import {
+  loadTagsByOwnerIds,
+  loadTagsForOwner,
+  toTagResponse,
+  validateTagOwnership,
+} from "@/worker/features/tags/helpers";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
-
-function toTagResponse(tag: TagRow): TagResponse {
-  return {
-    id: tag.id,
-    name: tag.name,
-    createdAt: new Date(tag.createdAt).toISOString(),
-  };
-}
 
 function toSparkResponse(
   spark: SparkRow,
@@ -91,59 +87,6 @@ async function findOwnedSpark(
     .where(and(eq(sparks.id, id), eq(sparks.userId, userId)))
     .limit(1);
   return spark;
-}
-
-async function loadTagsForSpark(
-  db: Database,
-  sparkId: string,
-  userId: string,
-): Promise<TagRow[]> {
-  const rows = await db
-    .select({ tag: tags })
-    .from(sparkTags)
-    .innerJoin(tags, eq(sparkTags.tagId, tags.id))
-    .where(and(eq(sparkTags.sparkId, sparkId), eq(tags.userId, userId)));
-  return rows.map((row) => row.tag);
-}
-
-async function loadTagsBySparkIds(
-  db: Database,
-  sparkIds: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  const map = new Map<string, TagRow[]>();
-  if (sparkIds.length === 0) {
-    return map;
-  }
-
-  const rows = await db
-    .select({ sparkId: sparkTags.sparkId, tag: tags })
-    .from(sparkTags)
-    .innerJoin(tags, eq(sparkTags.tagId, tags.id))
-    .where(and(inArray(sparkTags.sparkId, sparkIds), eq(tags.userId, userId)));
-
-  for (const row of rows) {
-    const list = map.get(row.sparkId) ?? [];
-    list.push(row.tag);
-    map.set(row.sparkId, list);
-  }
-  return map;
-}
-
-async function validateTagOwnership(
-  db: Database,
-  tagIds: string[],
-  userId: string,
-): Promise<boolean> {
-  const uniqueIds = [...new Set(tagIds)];
-  if (uniqueIds.length === 0) {
-    return true;
-  }
-  const rows = await db
-    .select({ id: tags.id })
-    .from(tags)
-    .where(and(eq(tags.userId, userId), inArray(tags.id, uniqueIds)));
-  return rows.length === uniqueIds.length;
 }
 
 const listSparks = async (
@@ -198,13 +141,14 @@ const listSparks = async (
     .orderBy(desc(sparks.updatedAt), desc(sparks.createdAt), desc(sparks.id));
 
   const [rows, totalRows] = await Promise.all([
-    page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
+    query.limit(pageSize).offset(page === null ? 0 : (page - 1) * pageSize),
     db.select({ value: count() }).from(sparks).where(where),
   ]);
   const total = totalRows[0]?.value ?? 0;
 
-  const tagsBySparkId = await loadTagsBySparkIds(
+  const tagsBySparkId = await loadTagsByOwnerIds(
     db,
+    "spark",
     rows.map((row) => row.id),
     userId,
   );
@@ -264,7 +208,7 @@ const createSparkHandler = async (
     .from(sparks)
     .where(and(eq(sparks.id, sparkId), eq(sparks.userId, userId)))
     .limit(1);
-  const createdTags = await loadTagsForSpark(db, created.id, userId);
+  const createdTags = await loadTagsForOwner(db, "spark", created.id, userId);
 
   return c.json({ spark: toSparkResponse(created, createdTags, []) }, 201);
 };
@@ -284,7 +228,7 @@ const randomSparkHandler = async (c: Context<AppEnv, "/random">) => {
     return c.json({ error: "No sparks to recall" }, 404);
   }
 
-  const sparkTagList = await loadTagsForSpark(db, spark.id, userId);
+  const sparkTagList = await loadTagsForOwner(db, "spark", spark.id, userId);
   const attachmentRows = await loadAttachments(db, "spark", spark.id, userId);
   return c.json({
     spark: toSparkResponse(spark, sparkTagList, attachmentRows),
@@ -301,7 +245,7 @@ const getSpark = async (c: Context<AppEnv, "/:id">) => {
     return c.json({ error: "Spark not found" }, 404);
   }
 
-  const sparkTagList = await loadTagsForSpark(db, spark.id, userId);
+  const sparkTagList = await loadTagsForOwner(db, "spark", spark.id, userId);
   const attachmentRows = await loadAttachments(db, "spark", spark.id, userId);
   return c.json({
     spark: toSparkResponse(spark, sparkTagList, attachmentRows),
@@ -355,7 +299,7 @@ const updateSparkHandler = async (
     .from(sparks)
     .where(and(eq(sparks.id, id), eq(sparks.userId, userId)))
     .limit(1);
-  const updatedTags = await loadTagsForSpark(db, updated.id, userId);
+  const updatedTags = await loadTagsForOwner(db, "spark", updated.id, userId);
   const attachmentRows = await loadAttachments(db, "spark", updated.id, userId);
 
   return c.json({

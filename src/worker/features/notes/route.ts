@@ -37,9 +37,6 @@ import {
   type NoteResponse,
   type UpdateNoteInput,
 } from "@/shared/schemas/notes";
-import { type SourceResponse } from "@/shared/schemas/source";
-import type { TagResponse } from "@/shared/schemas/tag";
-import type { WorkspaceResponse } from "@/shared/schemas/workspace";
 import { createDb, type Database } from "@/worker/db";
 import {
   notes,
@@ -48,7 +45,6 @@ import {
   projects,
   sources,
   sparks,
-  tags,
   workspaces,
   type AttachmentRow,
   type NoteRow,
@@ -70,6 +66,16 @@ import {
   pruneUnreferencedAttachments,
   toAttachmentResponse,
 } from "@/worker/features/attachments/helpers";
+import {
+  loadTagsByOwnerIds,
+  loadTagsForOwner,
+  toTagResponse,
+  validateTagOwnership,
+} from "@/worker/features/tags/helpers";
+import {
+  toSourceResponse,
+  toWorkspaceResponse,
+} from "@/worker/features/workspaces/helpers";
 
 
 const ATTACHMENT_URL_PATTERN = /\/api\/attachments\/([A-Za-z0-9_-]+)/g;
@@ -86,39 +92,6 @@ function referencedAttachmentIds(content: string): Set<string> {
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
-
-function toWorkspaceResponse(
-  workspace: WorkspaceRow,
-  sourceRows: SourceRow[] = [],
-): WorkspaceResponse {
-  return {
-    id: workspace.id,
-    name: workspace.name,
-    description: workspace.description,
-    type: workspace.type,
-    sources: sourceRows.map(toSourceResponse),
-    createdAt: new Date(workspace.createdAt).toISOString(),
-    updatedAt: new Date(workspace.updatedAt).toISOString(),
-  };
-}
-
-function toTagResponse(tag: TagRow): TagResponse {
-  return {
-    id: tag.id,
-    name: tag.name,
-    createdAt: new Date(tag.createdAt).toISOString(),
-  };
-}
-
-function toSourceResponse(source: SourceRow): SourceResponse {
-  return {
-    id: source.id,
-    url: source.url,
-    label: source.label,
-    kind: source.kind,
-    locator: source.locator,
-  };
-}
 
 function toProjectSummary(project: ProjectRow): NoteProjectSummary {
   return {
@@ -167,47 +140,6 @@ async function findOwnedNote(
     .where(and(eq(notes.id, id), eq(notes.userId, userId)))
     .limit(1);
   return note;
-}
-
-async function loadTagsForNote(
-  db: Database,
-  noteId: string,
-  userId: string,
-): Promise<TagRow[]> {
-  const rows = await db
-    .select({ tag: tags })
-    .from(noteTags)
-    .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(
-      and(eq(noteTags.noteId, noteId), eq(tags.userId, userId)),
-    );
-  return rows.map((row) => row.tag);
-}
-
-async function loadTagsByNoteIds(
-  db: Database,
-  noteIds: string[],
-  userId: string,
-): Promise<Map<string, TagRow[]>> {
-  const map = new Map<string, TagRow[]>();
-  if (noteIds.length === 0) {
-    return map;
-  }
-
-  const rows = await db
-    .select({ noteId: noteTags.noteId, tag: tags })
-    .from(noteTags)
-    .innerJoin(tags, eq(noteTags.tagId, tags.id))
-    .where(
-      and(inArray(noteTags.noteId, noteIds), eq(tags.userId, userId)),
-    );
-
-  for (const row of rows) {
-    const list = map.get(row.noteId) ?? [];
-    list.push(row.tag);
-    map.set(row.noteId, list);
-  }
-  return map;
 }
 
 async function loadSources(
@@ -290,22 +222,6 @@ async function validateWorkspaceOwnership(
     .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
     .limit(1);
   return Boolean(workspace);
-}
-
-async function validateTagOwnership(
-  db: Database,
-  tagIds: string[],
-  userId: string,
-): Promise<boolean> {
-  const uniqueIds = [...new Set(tagIds)];
-  if (uniqueIds.length === 0) {
-    return true;
-  }
-  const rows = await db
-    .select({ id: tags.id })
-    .from(tags)
-    .where(and(eq(tags.userId, userId), inArray(tags.id, uniqueIds)));
-  return rows.length === uniqueIds.length;
 }
 
 function touchWorkspaceStatement(
@@ -523,7 +439,7 @@ const listNotes = async (
     );
 
   const [rows, totalRows] = await Promise.all([
-    page === null ? query : query.limit(pageSize).offset((page - 1) * pageSize),
+    query.limit(pageSize).offset(page === null ? 0 : (page - 1) * pageSize),
     db
       .select({ value: count() })
       .from(notes)
@@ -540,7 +456,7 @@ const listNotes = async (
     ),
   ];
 
-  const tagsByNoteId = await loadTagsByNoteIds(db, noteIds, userId);
+  const tagsByNoteId = await loadTagsByOwnerIds(db, "note", noteIds, userId);
   const sourcesByNoteId = await loadSourcesByOwnerIds(
     db,
     "note",
@@ -729,7 +645,7 @@ const createNoteHandler = async (
 
   const workspace = await loadWorkspace(db, created.workspaceId, userId);
   const project = await loadProject(db, created.projectId, userId);
-  const createdTags = await loadTagsForNote(db, created.id, userId);
+  const createdTags = await loadTagsForOwner(db, "note", created.id, userId);
   const createdSources = await loadSources(db, "note", created.id, userId);
   const createdWorkspaceSources = created.workspaceId
     ? await loadSources(db, "workspace", created.workspaceId, userId)
@@ -773,7 +689,7 @@ const getNote = async (c: Context<AppEnv, "/:id">) => {
 
   const workspace = await loadWorkspace(db, note.workspaceId, userId);
   const project = await loadProject(db, note.projectId, userId);
-  const noteTagsList = await loadTagsForNote(db, note.id, userId);
+  const noteTagsList = await loadTagsForOwner(db, "note", note.id, userId);
   const sourceRows = await loadSources(db, "note", note.id, userId);
   const workspaceSources = note.workspaceId
     ? await loadSources(db, "workspace", note.workspaceId, userId)
@@ -862,6 +778,7 @@ const updateNoteHandler = async (
           and(
             eq(sources.ownerType, "note"),
             eq(sources.ownerId, id),
+            eq(sources.userId, userId),
           ),
         ),
     );
@@ -919,7 +836,7 @@ const updateNoteHandler = async (
 
   const workspace = await loadWorkspace(db, updated.workspaceId, userId);
   const project = await loadProject(db, updated.projectId, userId);
-  const updatedTags = await loadTagsForNote(db, updated.id, userId);
+  const updatedTags = await loadTagsForOwner(db, "note", updated.id, userId);
   const updatedSources = await loadSources(db, "note", updated.id, userId);
   const updatedWorkspaceSources = updated.workspaceId
     ? await loadSources(db, "workspace", updated.workspaceId, userId)
@@ -958,7 +875,11 @@ const deleteNoteHandler = async (c: Context<AppEnv, "/:id">) => {
     db
       .delete(sources)
       .where(
-        and(eq(sources.ownerType, "note"), eq(sources.ownerId, id)),
+        and(
+          eq(sources.ownerType, "note"),
+          eq(sources.ownerId, id),
+          eq(sources.userId, userId),
+        ),
       ),
     db
       .delete(notes)
@@ -975,16 +896,16 @@ const deleteNoteHandler = async (c: Context<AppEnv, "/:id">) => {
     );
   }
 
-  await db.batch(
-    statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
-  );
-
   await deleteOwnedAttachments(
     db,
     c.env.STORAGE,
     "note",
     id,
     userId,
+  );
+
+  await db.batch(
+    statements as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]],
   );
 
   return c.json({ success: true });
