@@ -231,7 +231,7 @@ export function DashboardPage() {
         </div>
 
         <Button asChild variant="outline" size="sm" className="gap-1.5">
-          <Link to="/guides">
+          <Link to="/guides" target="_blank" rel="noreferrer">
             <BookOpen className="size-4 text-primary" />
             <span>Guides</span>
           </Link>

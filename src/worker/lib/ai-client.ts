@@ -18,7 +18,9 @@ import type { AppEnv } from "@/worker/env";
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const REQUEST_TIMEOUT_MS = 30_000;
-const CV_REQUEST_TIMEOUT_MS = 90_000;
+// keep under the ~30s waitUntil budget so a timeout rejects and gets persisted
+// as "failed" before the isolate is killed
+const CV_REQUEST_TIMEOUT_MS = 25_000;
 
 const SYSTEM_PROMPT = [
   "You help software professionals turn rough notes about their work into a",

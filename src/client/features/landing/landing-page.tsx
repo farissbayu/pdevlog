@@ -505,6 +505,8 @@ export function LandingPage() {
             </a>
             <Link
               to="/guides"
+              target="_blank"
+              rel="noreferrer"
               className="font-medium text-foreground transition-colors hover:text-primary">
               Guides
             </Link>

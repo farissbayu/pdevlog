@@ -30,6 +30,11 @@ async function loadUser(db: Database, userId: string): Promise<UserRow | null> {
   return user ?? null;
 }
 
+// Background AI jobs run in waitUntil(), which Workers cancel ~30s after the
+// response. If that happens the status never leaves "processing"/"analyzing",
+// so the client polls forever; fail stale jobs on read to unstick it.
+const STALE_JOB_MS = 60_000;
+
 const getProfileHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
@@ -40,6 +45,35 @@ const getProfileHandler = async (c: Context<AppEnv>) => {
   }
 
   const profile = await getOrCreateProfile(db, user);
+
+  const stale =
+    Date.now() - new Date(profile.updatedAt).getTime() > STALE_JOB_MS;
+  if (
+    stale &&
+    (profile.cvParseStatus === "processing" ||
+      profile.cvAuditStatus === "auditing" ||
+      profile.insightsStatus === "analyzing")
+  ) {
+    const patch: Partial<typeof userProfiles.$inferInsert> = {
+      ...(profile.cvParseStatus === "processing"
+        ? { cvParseStatus: "failed" }
+        : {}),
+      ...(profile.cvAuditStatus === "auditing"
+        ? { cvAuditStatus: "failed" }
+        : {}),
+      ...(profile.insightsStatus === "analyzing"
+        ? { insightsStatus: "failed" }
+        : {}),
+    };
+    await markProfile(db, userId, patch);
+    return c.json({
+      ...profile,
+      cvParseStatus: patch.cvParseStatus ?? profile.cvParseStatus,
+      cvAuditStatus: patch.cvAuditStatus ?? profile.cvAuditStatus,
+      insightsStatus: patch.insightsStatus ?? profile.insightsStatus,
+    });
+  }
+
   return c.json(profile);
 };
 
