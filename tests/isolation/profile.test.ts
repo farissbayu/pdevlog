@@ -1,11 +1,17 @@
 import { env } from "cloudflare:workers";
-import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+import {
+  createExecutionContext,
+  createMessageBatch,
+  getQueueResult,
+  waitOnExecutionContext,
+} from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   SESSION_COOKIE,
   createSessionToken,
 } from "@/worker/features/auth/session";
+import type { AiJobMessage } from "@/worker/features/profile/queue";
 import app from "@/worker/index";
 
 async function createUser(id: string): Promise<string> {
@@ -35,6 +41,15 @@ async function request(
   );
   await waitOnExecutionContext(ctx);
   return response;
+}
+
+async function runQueuedAiJob(body: AiJobMessage): Promise<void> {
+  const batch = createMessageBatch<AiJobMessage>("pdevlog-ai-jobs", [
+    { id: crypto.randomUUID(), timestamp: new Date(), attempts: 1, body },
+  ]);
+  const ctx = createExecutionContext();
+  await app.queue(batch, env, ctx);
+  await getQueueResult(batch, ctx);
 }
 
 afterEach(() => {
@@ -140,7 +155,20 @@ describe("profile and CV skill mapping isolation tests", () => {
     const body = (await uploadRes.json()) as { status: string };
     expect(body.status).toBe("processing");
 
-    // Verify it is persisted in profile after the background job completes
+    const listed = await env.STORAGE.list({
+      prefix: "cv-uploads/profile-user-3/",
+    });
+    const key = listed.objects[0]?.key;
+    expect(key).toBeDefined();
+    await runQueuedAiJob({
+      kind: "cv",
+      userId: "profile-user-3",
+      key: key as string,
+      name: "resume.md",
+      type: "text/markdown",
+    });
+
+    // Verify it is persisted in profile after the queued job completes
     const profileRes = await request("/api/profile", token);
     const profile = (await profileRes.json()) as {
       cvMarkdown: string;
@@ -284,6 +312,8 @@ describe("profile and CV skill mapping isolation tests", () => {
     expect(analyzeRes.status).toBe(202);
     const analyzeData = (await analyzeRes.json()) as { status: string };
     expect(analyzeData.status).toBe("analyzing");
+
+    await runQueuedAiJob({ kind: "skills", userId: "profile-user-5" });
 
     // Verify GET /api/profile returns the saved skillInsights after the job
     const profileRes = await request("/api/profile", token);

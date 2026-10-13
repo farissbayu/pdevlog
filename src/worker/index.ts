@@ -10,6 +10,7 @@ import { dashboardRoute } from "@/worker/features/dashboard/route";
 import { exportRoute } from "@/worker/features/export/route";
 import { notesRoute } from "@/worker/features/notes/route";
 import { profileRoute } from "@/worker/features/profile/route";
+import { handleAiJobBatch } from "@/worker/features/profile/queue";
 import { projectsRoute } from "@/worker/features/projects/route";
 import { sparksRoute } from "@/worker/features/sparks/route";
 import { tagsRoute } from "@/worker/features/tags/route";
@@ -46,4 +47,7 @@ const app = new Hono<AppEnv>()
 
 export type AppType = typeof app;
 
-export default app;
+export default {
+  fetch: app.fetch,
+  queue: handleAiJobBatch,
+};

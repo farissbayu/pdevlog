@@ -14,6 +14,7 @@ import {
   bragLogs,
   notes,
   userProfiles,
+  users,
   type UserProfileRow,
   type UserRow,
 } from "@/worker/db/schema";
@@ -75,6 +76,29 @@ function toProfileResponse(
     createdAt: new Date(profile.createdAt).toISOString(),
     updatedAt: new Date(profile.updatedAt).toISOString(),
   };
+}
+
+export async function loadUser(
+  db: Database,
+  userId: string,
+): Promise<UserRow | null> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return user ?? null;
+}
+
+export async function markProfile(
+  db: Database,
+  userId: string,
+  values: Partial<typeof userProfiles.$inferInsert>,
+): Promise<void> {
+  await db
+    .update(userProfiles)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(userProfiles.userId, userId));
 }
 
 export async function getOrCreateProfile(

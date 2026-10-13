@@ -22,9 +22,9 @@ const REQUEST_TIMEOUT_MS = 30_000;
 // Workers may cancel ~30s after the response, so the status self-heals via
 // STALE_JOB_MS in the profile route if the isolate is killed first.
 const CV_REQUEST_TIMEOUT_MS = 60_000;
-// OpenRouter reasoning budget. These calls only extract structured JSON, so
-// "low" cuts generation time; raise to "medium"/"high" if quality suffers.
-const REASONING_EFFORT = "low";
+// OpenRouter reasoning budget; null skips the param (needed for non-reasoning
+// models like gpt-4o-mini). Set to "low"/"none" when AI_MODEL is a reasoning model.
+const REASONING_EFFORT: string | null = null;
 
 const SYSTEM_PROMPT = [
   "You help software professionals turn rough notes about their work into a",
@@ -242,7 +242,7 @@ async function runStructuredCompletion<T>({
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
     temperature,
-    reasoning: { effort: REASONING_EFFORT },
+    ...(REASONING_EFFORT ? { reasoning: { effort: REASONING_EFFORT } } : {}),
     response_format: zodResponseFormat(schema, schemaName),
     messages: [
       { role: "system" as const, content: system },
@@ -357,7 +357,7 @@ export async function extractAndFormatResume(
     schema: resumeExtractionSchema,
     schemaName: "resume_extraction",
     system: RESUME_EXTRACTOR_SYSTEM_PROMPT,
-    user: `Raw Extracted Resume Content:\n\n${rawText.slice(0, 15_000)}`,
+    user: `Raw Extracted Resume Content:\n\n${rawText.slice(0, 8_000)}`,
     temperature: 0.1,
     timeoutMs: CV_REQUEST_TIMEOUT_MS,
     maxRetries: 0,
@@ -375,7 +375,7 @@ export async function analyzeDeveloperCompetencies(
 ): Promise<SkillInsightsResult> {
   const promptContent = [
     "Developer CV / Resume:",
-    cvMarkdown.slice(0, 15_000),
+    cvMarkdown.slice(0, 8_000),
     devlogContext
       ? `\nRecent Devlog & Accomplishments:\n${devlogContext.slice(0, 5_000)}`
       : "",

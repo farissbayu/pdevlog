@@ -1,38 +1,29 @@
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
+import { nanoid } from "nanoid";
 
 import {
   updateProfileRequestSchema,
   type UpdateProfileRequest,
 } from "@/shared/schemas/profile";
-import { createDb, type Database } from "@/worker/db";
-import { userProfiles, users, type UserRow } from "@/worker/db/schema";
+import { createDb } from "@/worker/db";
+import { userProfiles } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import { rateLimit } from "@/worker/middleware/rate-limit";
 
 import {
-  analyzeAndSaveSkillInsights,
-  extractAndSaveCv,
   extractPersonaFromCv,
   getOrCreateProfile,
+  loadUser,
+  markProfile,
   updateProfile,
 } from "./service";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 
-async function loadUser(db: Database, userId: string): Promise<UserRow | null> {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  return user ?? null;
-}
-
-// Background AI jobs run in waitUntil(), which Workers cancel ~30s after the
-// response. If that happens the status never leaves "processing"/"analyzing",
-// so the client polls forever; fail stale jobs on read to unstick it.
+// Safety net: if a queued AI job never finishes (consumer crash, poisoned
+// message), the status would stay "processing"/"analyzing" and the client would
+// poll forever. Fail anything older than this on read so it unsticks itself.
 const STALE_JOB_MS = 120_000;
 
 const getProfileHandler = async (c: Context<AppEnv>) => {
@@ -93,17 +84,6 @@ const updateProfileHandler = async (
   return c.json(profile);
 };
 
-async function markProfile(
-  db: Database,
-  userId: string,
-  values: Partial<typeof userProfiles.$inferInsert>,
-): Promise<void> {
-  await db
-    .update(userProfiles)
-    .set({ ...values, updatedAt: new Date() })
-    .where(eq(userProfiles.userId, userId));
-}
-
 const uploadCvHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
   const db = createDb(c.env.DB);
@@ -123,19 +103,20 @@ const uploadCvHandler = async (c: Context<AppEnv>) => {
     );
   }
 
+  const key = `cv-uploads/${userId}/${nanoid()}`;
+  await c.env.STORAGE.put(key, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  });
+
   await getOrCreateProfile(db, user);
   await markProfile(db, userId, { cvParseStatus: "processing" });
-
-  c.executionCtx.waitUntil(
-    (async () => {
-      try {
-        await extractAndSaveCv(db, c.env, user, file);
-      } catch (error) {
-        console.error("POST /api/profile/cv/upload background error:", error);
-        await markProfile(db, userId, { cvParseStatus: "failed" });
-      }
-    })(),
-  );
+  await c.env.AI_QUEUE.send({
+    kind: "cv",
+    userId,
+    key,
+    name: file.name,
+    type: file.type,
+  });
 
   return c.json({ status: "processing" }, 202);
 };
@@ -151,20 +132,7 @@ const analyzeSkillsHandler = async (c: Context<AppEnv>) => {
 
   await getOrCreateProfile(db, user);
   await markProfile(db, userId, { insightsStatus: "analyzing" });
-
-  c.executionCtx.waitUntil(
-    (async () => {
-      try {
-        await analyzeAndSaveSkillInsights(db, c.env, userId);
-      } catch (error) {
-        console.error(
-          "POST /api/profile/skills/analyze background error:",
-          error,
-        );
-        await markProfile(db, userId, { insightsStatus: "failed" });
-      }
-    })(),
-  );
+  await c.env.AI_QUEUE.send({ kind: "skills", userId });
 
   return c.json({ status: "analyzing" }, 202);
 };
