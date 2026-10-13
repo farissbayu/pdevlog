@@ -25,7 +25,7 @@
   "vars": {
     "ADMIN_EMAILS": "farissbay.dev@gmail.com",
     "AI_BASE_URL": "https://openrouter.ai/api/v1/chat/completions",
-    "AI_MODEL": "openai/gpt-oss-120b",
+    "AI_MODEL": "openai/gpt-4o-mini",
     "APP_NAME": "pdevlog",
     "APP_URL": "https://pdevlog.farissbay.my.id",
   },
