@@ -219,14 +219,23 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <LayoutDashboard className="size-6 text-primary" />
-          Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Your latest activity at a glance.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <LayoutDashboard className="size-6 text-primary" />
+            Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Your latest activity at a glance.
+          </p>
+        </div>
+
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <Link to="/guides">
+            <BookOpen className="size-4 text-primary" />
+            <span>Guides</span>
+          </Link>
+        </Button>
       </div>
 
       {isPending ? <DashboardSkeleton /> : null}

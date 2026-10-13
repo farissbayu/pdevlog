@@ -503,6 +503,11 @@ export function LandingPage() {
             <a href="#faq" className="transition-colors hover:text-foreground">
               FAQ
             </a>
+            <Link
+              to="/guides"
+              className="font-medium text-foreground transition-colors hover:text-primary">
+              Guides
+            </Link>
           </nav>
 
           <div className="flex items-center gap-1.5">

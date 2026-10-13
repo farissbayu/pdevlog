@@ -9,6 +9,7 @@ import { LoginPage } from "@/client/features/auth/login-page";
 import { BragLogDetailPage } from "@/client/features/brag-logs/brag-log-detail-page";
 import { BragLogsPage } from "@/client/features/brag-logs/brag-logs-page";
 import { DashboardPage } from "@/client/features/dashboard/dashboard-page";
+import { GuidesPage } from "@/client/features/guides/guides-page";
 import { LandingPage } from "@/client/features/landing/landing-page";
 import { NoteDetailPage } from "@/client/features/notes/note-detail-page";
 import { NoteEditorPage } from "@/client/features/notes/note-editor";
@@ -32,6 +33,14 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/guides",
+    element: <GuidesPage />,
+  },
+  {
+    path: "/guides/:slug",
+    element: <GuidesPage />,
   },
   {
     element: (

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  BookOpen,
   ChevronsLeft,
   ChevronsRight,
   FileText,
@@ -54,6 +55,7 @@ const appNavItems: NavItem[] = [
   { label: "Skill Shredder", icon: Scissors, to: "/skill-shredder" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
   { label: "Tags", icon: Tags, to: "/tags" },
+  { label: "Guides", icon: BookOpen, to: "/guides" },
   { label: "Settings", icon: Settings, to: "/settings" },
 ];
 
@@ -440,6 +442,12 @@ function AppMobileBottomNav() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/guides" className="flex items-center gap-2">
+              <BookOpen className="size-4" />
+              <span>Guides</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to="/profile" className="flex items-center gap-2">
               <User className="size-4" />
