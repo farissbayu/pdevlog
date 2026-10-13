@@ -43,9 +43,12 @@ export function noteSourceCount(note: NoteResponse): number {
 
 export function NoteListSkeleton() {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((index) => (
-        <li key={index} className="space-y-3 rounded-lg border bg-card p-5">
+        <li
+          key={index}
+          className="min-w-0 space-y-3 rounded-lg border bg-card p-4 sm:p-5"
+        >
           <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
           <div className="h-3 w-3/5 animate-pulse rounded bg-muted" />
           <div className="h-5 w-24 animate-pulse rounded-full bg-muted" />
@@ -80,11 +83,11 @@ type NoteListProps = {
 
 export function NoteList({ notes }: NoteListProps) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {notes.map((note) => (
         <li
           key={note.id}
-          className="rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+          className="min-w-0 rounded-lg border bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-md sm:p-5"
         >
           <div className="min-w-0 space-y-2">
             <Link
@@ -93,7 +96,7 @@ export function NoteList({ notes }: NoteListProps) {
             >
               {note.title}
             </Link>
-            <p className="line-clamp-2 text-sm text-muted-foreground">
+            <p className="line-clamp-2 break-words text-sm text-muted-foreground">
               {noteExcerpt(note.content) || "Empty note"}
             </p>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -101,7 +104,9 @@ export function NoteList({ notes }: NoteListProps) {
               {note.workspace ? (
                 <WorkspaceTypeBadge type={note.workspace.type} />
               ) : null}
-              {note.workspace ? <span>{note.workspace.name}</span> : null}
+              {note.workspace ? (
+                <span className="truncate">{note.workspace.name}</span>
+              ) : null}
               {noteSourceCount(note) > 0 ? (
                 <span className="inline-flex items-center gap-1">
                   <Link2 className="size-3" />

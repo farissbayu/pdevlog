@@ -240,6 +240,8 @@
   font-size: 0.9375rem;
   line-height: 1.75;
   color: var(--foreground);
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: break-word;
 }
 
@@ -264,15 +266,25 @@
 }
 
 .markdown-body h1 {
-  font-size: 1.6rem;
+  font-size: 1.35rem;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
 }
 
 .markdown-body h2 {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 40rem) {
+  .markdown-body h1 {
+    font-size: 1.6rem;
+  }
+
+  .markdown-body h2 {
+    font-size: 1.35rem;
+  }
 }
 
 .markdown-body h3 {
@@ -291,6 +303,7 @@
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 2px;
+  overflow-wrap: anywhere;
 }
 
 .markdown-body ul,
@@ -345,11 +358,13 @@
   background: var(--md-inline-code-bg);
   padding: 0.15em 0.35em;
   border-radius: 0.3rem;
+  overflow-wrap: anywhere;
 }
 
 .markdown-body pre {
   margin: 1em 0;
   padding: 1rem;
+  max-width: 100%;
   overflow-x: auto;
   background: var(--md-code-bg);
   border: 1px solid var(--md-code-border);

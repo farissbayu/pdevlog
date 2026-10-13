@@ -107,7 +107,7 @@ export function NoteToc({ headings }: { headings: NoteHeading[] }) {
               href={`#${heading.id}`}
               style={{ paddingLeft: `${(heading.level - 1) * 0.75 + 0.75}rem` }}
               className={cn(
-                "-ml-px block border-l py-0.5 text-sm transition-colors",
+                "-ml-px block border-l py-0.5 text-sm break-words transition-colors",
                 activeId === heading.id
                   ? "border-primary font-medium text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",

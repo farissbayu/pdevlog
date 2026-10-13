@@ -575,7 +575,7 @@ export function AppLayout() {
 
   return (
     <SparksProvider>
-      <div className="min-h-svh bg-background">
+      <div className="min-h-svh overflow-x-clip bg-background">
         <MobileHeader user={user} mode="app" />
 
         <SidebarChrome
@@ -592,7 +592,7 @@ export function AppLayout() {
             collapsed ? "md:pl-16" : "md:pl-56",
           )}
         >
-          <div className="mx-auto w-full max-w-5xl p-6 pb-24 md:pb-6">
+          <div className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 sm:px-6 md:pb-6">
             <Outlet />
           </div>
         </main>
@@ -615,7 +615,7 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="min-h-svh bg-background">
+    <div className="min-h-svh overflow-x-clip bg-background">
       <MobileHeader user={user} mode="admin" />
 
       <SidebarChrome
@@ -632,7 +632,7 @@ export function AdminLayout() {
           collapsed ? "md:pl-16" : "md:pl-56",
         )}
       >
-        <div className="mx-auto w-full max-w-5xl p-6 pb-24 md:pb-6">
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 sm:px-6 md:pb-6">
           <Outlet />
         </div>
       </main>

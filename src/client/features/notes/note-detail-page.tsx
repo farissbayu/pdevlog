@@ -126,29 +126,31 @@ export function NoteDetailPage() {
               ? `/workspaces/${data.workspace.id}`
               : "/notes"
           }
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex max-w-full items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
-          {data.workspace ? data.workspace.name : "Notes"}
+          <ArrowLeft className="size-4 shrink-0" />
+          <span className="truncate">
+            {data.workspace ? data.workspace.name : "Notes"}
+          </span>
         </Link>
       </div>
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <NotebookPen className="size-6 text-primary" />
-            {data.title}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-2">
+          <h1 className="flex items-start gap-2 text-xl font-semibold sm:text-2xl">
+            <NotebookPen className="mt-1 size-5 shrink-0 text-primary sm:size-6" />
+            <span className="min-w-0 break-words">{data.title}</span>
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Updated {formatNoteDate(data.updatedAt)}</span>
             {stats ? (
               <>
                 <span className="inline-flex items-center gap-1">
-                  <Clock className="size-3.5" />
+                  <Clock className="size-3.5 shrink-0" />
                   {stats.readingMinutes} min read
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <FileText className="size-3.5" />
+                  <FileText className="size-3.5 shrink-0" />
                   {stats.words.toLocaleString()}{" "}
                   {stats.words === 1 ? "word" : "words"}
                 </span>
@@ -157,7 +159,9 @@ export function NoteDetailPage() {
             {data.workspace ? (
               <WorkspaceTypeBadge type={data.workspace.type} />
             ) : null}
-            {data.workspace ? <span>{data.workspace.name}</span> : null}
+            {data.workspace ? (
+              <span className="truncate">{data.workspace.name}</span>
+            ) : null}
           </div>
           {data.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
@@ -172,14 +176,19 @@ export function NoteDetailPage() {
             </div>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 sm:flex-initial"
+            asChild
+          >
             <Link to={`/skill-shredder?note=${data.id}`}>
-              <Scissors className="size-4" />
-              Shred into Practice
+              <Scissors className="size-4 shrink-0" />
+              <span className="truncate">Shred into Practice</span>
             </Link>
           </Button>
-          <Button variant="outline" size="icon" asChild>
+          <Button variant="outline" size="icon" className="shrink-0" asChild>
             <Link
               to={`/notes/${data.id}/print`}
               aria-label="Download PDF"
@@ -188,7 +197,7 @@ export function NoteDetailPage() {
               <FileDown className="size-4" />
             </Link>
           </Button>
-          <Button variant="outline" size="icon" asChild>
+          <Button variant="outline" size="icon" className="shrink-0" asChild>
             <Link
               to={`/notes/${data.id}/edit`}
               aria-label="Edit note"
@@ -200,6 +209,7 @@ export function NoteDetailPage() {
           <Button
             variant="destructive"
             size="icon"
+            className="shrink-0"
             aria-label="Delete note"
             title="Delete note"
             onClick={() => setDeleteOpen(true)}
@@ -222,7 +232,7 @@ export function NoteDetailPage() {
             )}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2 text-sm font-medium">
+            <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
               {linkedShred.status === "completed"
                 ? "Practice completed"
                 : "Active practice"}
@@ -246,7 +256,7 @@ export function NoteDetailPage() {
         />
       ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_14rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-10">
         <div className="min-w-0 space-y-6">
           {headings.length > 0 ? (
             <details className="rounded-lg border bg-card px-4 py-3 lg:hidden">
@@ -259,7 +269,7 @@ export function NoteDetailPage() {
             </details>
           ) : null}
 
-          <article className="rounded-lg border bg-card p-6">
+          <article className="min-w-0 overflow-hidden rounded-lg border bg-card p-4 sm:p-6">
             <MarkdownRenderer content={data.content} />
           </article>
         </div>

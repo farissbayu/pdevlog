@@ -44,9 +44,9 @@ export function SourceList({ sources, title = "Sources" }: SourceListProps) {
           const body = (
             <>
               <SourceIcon kind={source.kind} />
-              <span className="truncate">{label}</span>
+              <span className="min-w-0 truncate">{label}</span>
               {source.locator ? (
-                <span className="shrink-0 text-muted-foreground">
+                <span className="max-w-[40%] shrink-0 truncate text-muted-foreground">
                   · {source.locator}
                 </span>
               ) : null}

@@ -422,7 +422,7 @@ function NoteEditorForm({
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-14 z-20 -mx-6 -mt-6 flex flex-wrap items-center justify-between gap-4 border-b bg-background/95 px-6 py-3 backdrop-blur md:top-0">
+      <div className="sticky top-14 z-20 -mx-4 -mt-6 flex flex-wrap items-center justify-between gap-4 border-b bg-background/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 md:top-0">
         <Link
           to={backTo}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

@@ -43,19 +43,24 @@ export function FilterBar({
           onChange={(event) => api.setQuery(event.target.value)}
           placeholder={searchPlaceholder}
           aria-label="Search"
-          className="min-w-[200px] flex-1"
+          className="w-full sm:min-w-[200px] sm:w-auto sm:flex-1"
         />
 
         {workspaces ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="justify-between">
-                {filters.workspaceId === UNASSIGNED_WORKSPACE
-                  ? "Unassigned"
-                  : selectedWorkspace
-                    ? selectedWorkspace.name
-                    : "All workspaces"}
-                <ChevronDown className="size-4 text-muted-foreground" />
+              <Button
+                variant="outline"
+                className="min-w-0 flex-1 justify-between sm:flex-initial"
+              >
+                <span className="min-w-0 truncate">
+                  {filters.workspaceId === UNASSIGNED_WORKSPACE
+                    ? "Unassigned"
+                    : selectedWorkspace
+                      ? selectedWorkspace.name
+                      : "All workspaces"}
+                </span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
@@ -88,11 +93,16 @@ export function FilterBar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="justify-between">
-              {filters.tagIds.length > 0
-                ? `Tags (${filters.tagIds.length})`
-                : "All tags"}
-              <ChevronDown className="size-4 text-muted-foreground" />
+            <Button
+              variant="outline"
+              className="min-w-0 flex-1 justify-between sm:flex-initial"
+            >
+              <span className="min-w-0 truncate">
+                {filters.tagIds.length > 0
+                  ? `Tags (${filters.tagIds.length})`
+                  : "All tags"}
+              </span>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
@@ -127,24 +137,26 @@ export function FilterBar({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
         <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <CalendarDays className="size-4" />
+          <CalendarDays className="size-4 shrink-0" />
           Date range
         </span>
-        <DatePicker
-          value={filters.from}
-          onChange={api.setFrom}
-          placeholder="From date"
-          className="h-8 w-40"
-        />
-        <span className="text-muted-foreground">to</span>
-        <DatePicker
-          value={filters.to}
-          onChange={api.setTo}
-          placeholder="To date"
-          className="h-8 w-40"
-        />
+        <div className="flex items-center gap-2">
+          <DatePicker
+            value={filters.from}
+            onChange={api.setFrom}
+            placeholder="From date"
+            className="h-8 min-w-0 flex-1 sm:w-40 sm:flex-initial"
+          />
+          <span className="shrink-0 text-muted-foreground">to</span>
+          <DatePicker
+            value={filters.to}
+            onChange={api.setTo}
+            placeholder="To date"
+            className="h-8 min-w-0 flex-1 sm:w-40 sm:flex-initial"
+          />
+        </div>
       </div>
 
       {filters.tagIds.length > 0 ? (
