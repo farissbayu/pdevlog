@@ -21,6 +21,9 @@ const REQUEST_TIMEOUT_MS = 30_000;
 // keep under the ~30s waitUntil budget so a timeout rejects and gets persisted
 // as "failed" before the isolate is killed
 const CV_REQUEST_TIMEOUT_MS = 25_000;
+// OpenRouter reasoning budget. These calls only extract structured JSON, so
+// "low" cuts generation time; raise to "medium"/"high" if quality suffers.
+const REASONING_EFFORT = "low";
 
 const SYSTEM_PROMPT = [
   "You help software professionals turn rough notes about their work into a",
@@ -238,6 +241,7 @@ async function runStructuredCompletion<T>({
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
     temperature,
+    reasoning: { effort: REASONING_EFFORT },
     response_format: zodResponseFormat(schema, schemaName),
     messages: [
       { role: "system" as const, content: system },
