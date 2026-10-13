@@ -33,7 +33,7 @@ async function loadUser(db: Database, userId: string): Promise<UserRow | null> {
 // Background AI jobs run in waitUntil(), which Workers cancel ~30s after the
 // response. If that happens the status never leaves "processing"/"analyzing",
 // so the client polls forever; fail stale jobs on read to unstick it.
-const STALE_JOB_MS = 60_000;
+const STALE_JOB_MS = 120_000;
 
 const getProfileHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");

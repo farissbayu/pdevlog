@@ -18,9 +18,10 @@ import type { AppEnv } from "@/worker/env";
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const REQUEST_TIMEOUT_MS = 30_000;
-// keep under the ~30s waitUntil budget so a timeout rejects and gets persisted
-// as "failed" before the isolate is killed
-const CV_REQUEST_TIMEOUT_MS = 25_000;
+// 60s to allow slow reasoning generations; the job runs in waitUntil(), which
+// Workers may cancel ~30s after the response, so the status self-heals via
+// STALE_JOB_MS in the profile route if the isolate is killed first.
+const CV_REQUEST_TIMEOUT_MS = 60_000;
 // OpenRouter reasoning budget. These calls only extract structured JSON, so
 // "low" cuts generation time; raise to "medium"/"high" if quality suffers.
 const REASONING_EFFORT = "low";

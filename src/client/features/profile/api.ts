@@ -23,7 +23,7 @@ export async function fetchProfile(): Promise<UserProfileResponse> {
 
 // Background jobs are killed ~30s after the response; if the server has been
 // "processing" longer than this, treat it as dead so the UI never hangs forever.
-const PROCESSING_TTL_MS = 60_000;
+const PROCESSING_TTL_MS = 120_000;
 
 export function isProfileProcessing(
   profile?: UserProfileResponse,
@@ -46,7 +46,7 @@ export const profileQueryOptions = () =>
     queryKey: profileKeys.detail(),
     queryFn: fetchProfile,
     refetchInterval: (query) =>
-      isProfileProcessing(query.state.data) ? 2500 : false,
+      isProfileProcessing(query.state.data) ? 10_000 : false,
   });
 
 export async function updateProfile(
