@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   StarBreakdownError,
   generateStarBreakdown,
+  refineStarBreakdown,
 } from "@/worker/lib/ai-client";
 
 function completionWith(content: string, status = 200): Response {
@@ -171,5 +172,35 @@ describe("generateStarBreakdown", () => {
     await expect(
       generateStarBreakdown(env, "fixed checkout retries"),
     ).rejects.toBeInstanceOf(StarBreakdownError);
+  });
+});
+
+describe("refineStarBreakdown", () => {
+  it("formats existing STAR fields into the user prompt and returns refined breakdown", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(completionWith(STAR_JSON));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { breakdown } = await refineStarBreakdown(
+      env,
+      {
+        title: "Fixed checkout retries",
+        situation: "Checkout was failing",
+        task: "Fix retries",
+        action: "Added idempotency",
+        result: "Orders recovered",
+      },
+      [{ id: "tag-1", name: "Payments" }],
+    );
+
+    expect(breakdown.title).toBe("Recovered failed checkout payments");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(init.body)) as {
+      messages: { role: string; content: string }[];
+    };
+    const userMessage = body.messages.find((m) => m.role === "user")?.content;
+    expect(userMessage).toContain("Title: Fixed checkout retries");
+    expect(userMessage).toContain("Situation: Checkout was failing");
+    expect(userMessage).toContain("Available tags:");
   });
 });

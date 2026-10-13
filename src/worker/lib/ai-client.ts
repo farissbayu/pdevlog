@@ -43,6 +43,20 @@ const SYSTEM_PROMPT = [
   "genuinely apply to the entry; never invent tags.",
 ].join(" ");
 
+const REFINE_SYSTEM_PROMPT = [
+  "You help software professionals refine and polish an existing",
+  "STAR (Situation, Task, Action, Result) brag-log entry.",
+  "Sharpen the headline and rewrite each section in clear, concise, active",
+  "first-person prose that highlights technical depth and impact while staying",
+  "strictly faithful to the facts provided. Do not invent metrics, tools, or outcomes.",
+  "Keep each section focused and free of markdown.",
+  "Respond with a single JSON object whose top-level keys are exactly",
+  "title, situation, task, action, result and tag_ids. Do not nest the",
+  "STAR fields or add any other keys.",
+  "When a list of available tags is provided, choose only the tags that",
+  "genuinely apply to the entry; never invent tags.",
+].join(" ");
+
 const SKILL_SHREDDER_SYSTEM_PROMPT = [
   "You are a Principal Software Engineer and Pragmatic Mentor specializing in",
   "deliberate practice and rapid skill acquisition. A developer wants to learn a",
@@ -72,6 +86,14 @@ const SKILL_SHREDDER_SYSTEM_PROMPT = [
 type TagOption = {
   id: string;
   name: string;
+};
+
+export type RefineStarBreakdownInput = {
+  title: string;
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
 };
 
 export class StarBreakdownError extends Error {
@@ -153,10 +175,34 @@ function buildUserPrompt(content: string, tagOptions: TagOption[]): string {
   return `Available tags:\n${tagList}\n\nNotes:\n${content}`;
 }
 
-export async function generateStarBreakdown(
+function buildRefineUserPrompt(
+  entry: RefineStarBreakdownInput,
+  tagOptions: TagOption[],
+): string {
+  const starContent = [
+    `Title: ${entry.title}`,
+    `Situation: ${entry.situation}`,
+    `Task: ${entry.task}`,
+    `Action: ${entry.action}`,
+    `Result: ${entry.result}`,
+  ].join("\n\n");
+
+  if (tagOptions.length === 0) {
+    return starContent;
+  }
+
+  const tagList = tagOptions
+    .map((tag) => `- id: ${tag.id}, name: ${tag.name}`)
+    .join("\n");
+
+  return `Available tags:\n${tagList}\n\nCurrent Brag Log:\n${starContent}`;
+}
+
+async function requestStarBreakdown(
   env: AppEnv["Bindings"],
-  content: string,
-  tagOptions: TagOption[] = [],
+  systemPrompt: string,
+  userPrompt: string,
+  tagOptions: TagOption[],
 ): Promise<StarBreakdownResult> {
   const client = getAiClient(env);
 
@@ -170,8 +216,8 @@ export async function generateStarBreakdown(
     temperature: 0.2,
     response_format: zodResponseFormat(schema, RESPONSE_FORMAT_NAME),
     messages: [
-      { role: "system" as const, content: SYSTEM_PROMPT },
-      { role: "user" as const, content: buildUserPrompt(content, tagOptions) },
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: userPrompt },
     ],
     provider: { require_parameters: true },
   };
@@ -219,6 +265,32 @@ export async function generateStarBreakdown(
       totalTokens,
     },
   };
+}
+
+export async function generateStarBreakdown(
+  env: AppEnv["Bindings"],
+  content: string,
+  tagOptions: TagOption[] = [],
+): Promise<StarBreakdownResult> {
+  return requestStarBreakdown(
+    env,
+    SYSTEM_PROMPT,
+    buildUserPrompt(content, tagOptions),
+    tagOptions,
+  );
+}
+
+export async function refineStarBreakdown(
+  env: AppEnv["Bindings"],
+  entry: RefineStarBreakdownInput,
+  tagOptions: TagOption[] = [],
+): Promise<StarBreakdownResult> {
+  return requestStarBreakdown(
+    env,
+    REFINE_SYSTEM_PROMPT,
+    buildRefineUserPrompt(entry, tagOptions),
+    tagOptions,
+  );
 }
 
 const SHREDDER_REQUEST_TIMEOUT_MS = 60_000;

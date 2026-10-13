@@ -102,6 +102,17 @@ export async function generateStarBreakdown(
   return data.breakdown;
 }
 
+export async function refineBragLog(id: string): Promise<StarBreakdown> {
+  const response = await client.api["brag-logs"][":id"].refine.$post({
+    param: { id },
+  });
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to refine brag log");
+  }
+  const data = (await response.json()) as StarBreakdownResponse;
+  return data.breakdown;
+}
+
 export function bragLogsQueryOptions(filters: FilterParams = EMPTY_FILTERS) {
   return queryOptions({
     queryKey: [...BRAG_LOGS_KEY, filters],
@@ -168,5 +179,11 @@ export function useDeleteBragLogMutation() {
 export function useGenerateStarBreakdownMutation() {
   return useMutation({
     mutationFn: generateStarBreakdown,
+  });
+}
+
+export function useRefineBragLogMutation() {
+  return useMutation({
+    mutationFn: refineBragLog,
   });
 }

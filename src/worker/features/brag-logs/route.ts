@@ -62,6 +62,7 @@ import {
 
 import {
   generateStarBreakdown,
+  refineStarBreakdown,
   StarBreakdownError,
 } from "@/worker/lib/ai-client";
 import { rateLimit } from "@/worker/middleware/rate-limit";
@@ -642,6 +643,53 @@ const generateStarBreakdownHandler = async (
   }
 };
 
+const refineBragLogHandler = async (c: Context<AppEnv, "/:id/refine">) => {
+  const userId = c.get("userId");
+  const id = c.req.param("id");
+  const db = createDb(c.env.DB);
+
+  const log = await findOwnedLog(db, id, userId);
+  if (!log) {
+    return c.json({ error: "Brag log not found" }, 404);
+  }
+
+  const tagOptions = await db
+    .select({ id: tags.id, name: tags.name })
+    .from(tags)
+    .where(eq(tags.userId, userId));
+
+  try {
+    const { breakdown, usage } = await refineStarBreakdown(
+      c.env,
+      {
+        title: log.title,
+        situation: log.situation,
+        task: log.task,
+        action: log.action,
+        result: log.result,
+      },
+      tagOptions,
+    );
+
+    await db.insert(aiUsage).values({
+      id: nanoid(),
+      userId,
+      model: usage.model,
+      promptTokens: usage.promptTokens,
+      completionTokens: usage.completionTokens,
+      totalTokens: usage.totalTokens,
+      createdAt: new Date(),
+    });
+
+    return c.json({ breakdown });
+  } catch (error) {
+    if (error instanceof StarBreakdownError) {
+      return c.json({ error: error.message }, 502);
+    }
+    throw error;
+  }
+};
+
 export const bragLogsRoute = new Hono<AppEnv>()
   .get("/", zValidator("query", logFilterSchema), listBragLogs)
   .post("/", zValidator("json", createBragLogSchema), createBragLogHandler)
@@ -652,5 +700,6 @@ export const bragLogsRoute = new Hono<AppEnv>()
     generateStarBreakdownHandler,
   )
   .get("/:id", getBragLog)
+  .post("/:id/refine", starBreakdownRateLimit, refineBragLogHandler)
   .put("/:id", zValidator("json", updateBragLogSchema), updateBragLogHandler)
   .delete("/:id", deleteBragLogHandler);

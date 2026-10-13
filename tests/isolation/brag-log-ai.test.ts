@@ -185,3 +185,61 @@ describe("brag log AI star breakdown route", () => {
     expect(response.status).toBe(401);
   });
 });
+
+describe("brag log AI refine route", () => {
+  async function createLog(token: string): Promise<string> {
+    const response = await request("/api/brag-logs", token, {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Fixed flaky checkout retries",
+        situation: "Checkout retries were dropping payments.",
+        task: "Fix retry mechanism.",
+        action: "Added idempotency keys.",
+        result: "Orders recovered.",
+        occurred_at: "2026-01-15",
+      }),
+    });
+    const body = (await response.json()) as { bragLog: { id: string } };
+    return body.bragLog.id;
+  }
+
+  it("refines an owned brag log and returns the breakdown", async () => {
+    const token = await createUser("refine-owner");
+    const logId = await createLog(token);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(completionWith(STAR_JSON)));
+
+    const response = await request(`/api/brag-logs/${logId}/refine`, token, {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      breakdown: Record<string, string>;
+    };
+    expect(body.breakdown.title).toBe("Recovered failed checkout payments");
+    expect(body.breakdown.action).toContain("idempotency keys");
+  });
+
+  it("returns 404 when attempting to refine another user's brag log", async () => {
+    const tokenA = await createUser("refine-user-a");
+    const tokenB = await createUser("refine-user-b");
+    const logId = await createLog(tokenA);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const response = await request(`/api/brag-logs/${logId}/refine`, tokenB, {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("requires authentication", async () => {
+    const response = await request("/api/brag-logs/some-id/refine", null, {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(401);
+  });
+});

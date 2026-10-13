@@ -6,6 +6,7 @@ import {
   Lightbulb,
   Loader2,
   Pencil,
+  Sparkles,
   Target,
   Trash2,
   TrendingUp,
@@ -31,6 +32,7 @@ import {
   useDeleteBragLogMutation,
 } from "./api";
 import { BragLogFormDialog } from "./brag-log-form";
+import { BragLogRefineDialog } from "./brag-log-refine-dialog";
 import { TagChip, formatBragLogDate } from "./tag-chip";
 
 const starSections = [
@@ -65,6 +67,7 @@ export function BragLogDetailPage() {
   const navigate = useNavigate();
   const { data, isPending, isError, refetch } = useBragLogDetailQuery(id);
   const deleteMutation = useDeleteBragLogMutation();
+  const [refineOpen, setRefineOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -152,6 +155,16 @@ export function BragLogDetailPage() {
         <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="outline"
+            size="sm"
+            aria-label="Refine with AI"
+            title="Refine with AI"
+            onClick={() => setRefineOpen(true)}
+          >
+            <Sparkles className="size-4 text-primary" />
+            Refine with AI
+          </Button>
+          <Button
+            variant="outline"
             size="icon"
             aria-label="Edit brag log"
             title="Edit brag log"
@@ -192,6 +205,12 @@ export function BragLogDetailPage() {
           );
         })}
       </div>
+
+      <BragLogRefineDialog
+        open={refineOpen}
+        onOpenChange={setRefineOpen}
+        bragLog={data}
+      />
 
       <BragLogFormDialog
         open={editOpen}
