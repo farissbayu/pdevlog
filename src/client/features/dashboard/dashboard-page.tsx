@@ -21,6 +21,7 @@ import { profileQueryOptions } from "@/client/features/profile/api";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 import type { ActivityItem } from "@/shared/schemas/dashboard";
 import { useDashboardQuery, useRecentActivityQuery } from "./api";
+import { CheckInCard } from "./check-in-card";
 
 
 function formatActivityDate(iso: string): string {
@@ -270,6 +271,8 @@ export function DashboardPage() {
               <StatCard key={stat.label} stat={stat} />
             ))}
           </div>
+
+          <CheckInCard />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Recent Activity */}

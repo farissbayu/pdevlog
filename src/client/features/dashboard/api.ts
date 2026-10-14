@@ -1,6 +1,10 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { client, parseApiError } from "@/client/lib/api";
+import {
+  checkInsResponseSchema,
+  type CheckInsResponse,
+} from "@/shared/schemas/check-in";
 import type {
   ActivityItem,
   DashboardResponse,
@@ -9,6 +13,7 @@ import type {
 
 const DASHBOARD_KEY = ["dashboard"] as const;
 const RECENT_ACTIVITY_KEY = ["dashboard", "recent"] as const;
+const CHECK_INS_KEY = ["dashboard", "check-ins"] as const;
 
 export async function fetchDashboard(): Promise<DashboardResponse> {
   const response = await client.api.dashboard.$get();
@@ -27,9 +32,25 @@ export async function fetchRecentActivity(): Promise<ActivityItem[]> {
   return data.items;
 }
 
+export async function fetchCheckIns(): Promise<CheckInsResponse> {
+  const tzOffset = -new Date().getTimezoneOffset();
+  const response = await client.api.dashboard["check-ins"].$get({
+    query: { tz_offset: tzOffset },
+  });
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to load check-ins");
+  }
+  return checkInsResponseSchema.parse(await response.json());
+}
+
 export const dashboardQueryOptions = queryOptions({
   queryKey: DASHBOARD_KEY,
   queryFn: fetchDashboard,
+});
+
+export const checkInsQueryOptions = queryOptions({
+  queryKey: CHECK_INS_KEY,
+  queryFn: fetchCheckIns,
 });
 
 export const recentActivityQueryOptions = queryOptions({
@@ -43,4 +64,8 @@ export function useDashboardQuery() {
 
 export function useRecentActivityQuery() {
   return useQuery(recentActivityQueryOptions);
+}
+
+export function useCheckInsQuery() {
+  return useQuery(checkInsQueryOptions);
 }

@@ -1,6 +1,12 @@
+import { zValidator } from "@hono/zod-validator";
 import { and, count, desc, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
+import {
+  checkInsQuerySchema,
+  type CheckInsQuery,
+  type CheckInsResponse,
+} from "@/shared/schemas/check-in";
 import type {
   ActivityItem,
   RecentActivityResponse,
@@ -11,6 +17,10 @@ import { bragLogs, notes, sparks, workspaces } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import { loadTagsByOwnerIds, toTagResponse } from "@/worker/features/tags/helpers";
 import { toWorkspaceResponse } from "@/worker/features/workspaces/helpers";
+
+import { computeStreaks, loadActiveDays, localDayKey } from "./service";
+
+type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 const RECENT_WORKSPACES_LIMIT = 5;
 const RECENT_ACTIVITY_LIMIT = 5;
@@ -150,6 +160,28 @@ const getRecentActivity = async (c: Context<AppEnv>) => {
   } satisfies RecentActivityResponse);
 };
 
+const getCheckIns = async (
+  c: Context<AppEnv, "/check-ins", QueryInput<CheckInsQuery>>,
+) => {
+  const userId = c.get("userId");
+  const { tz_offset: tzOffset } = c.req.valid("query");
+  const db = createDb(c.env.DB);
+
+  const days = await loadActiveDays(db, userId, tzOffset);
+  const streaks = computeStreaks(
+    days.map((day) => day.date),
+    localDayKey(Date.now(), tzOffset),
+  );
+
+  return c.json({
+    days,
+    currentStreak: streaks.current,
+    longestStreak: streaks.longest,
+    todayActive: streaks.todayActive,
+  } satisfies CheckInsResponse);
+};
+
 export const dashboardRoute = new Hono<AppEnv>()
   .get("/", getDashboard)
-  .get("/recent", getRecentActivity);
+  .get("/recent", getRecentActivity)
+  .get("/check-ins", zValidator("query", checkInsQuerySchema), getCheckIns);
