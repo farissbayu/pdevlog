@@ -21,6 +21,8 @@
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@hono/zod-validator": "^0.9.1",
+    "@remotion/cli": "4.0.535",
+    "@remotion/renderer": "^4.0.535",
     "@tanstack/react-query": "^5.104.0",
     "@tanstack/react-table": "^8",
     "arctic": "^3.7.0",
@@ -43,6 +45,7 @@
     "rehype-highlight": "^7.0.2",
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.1",
+    "remotion": "4.0.535",
     "sonner": "^2.0.8",
     "unpdf": "^1.8.1",
     "zod": "^4.6.5"
