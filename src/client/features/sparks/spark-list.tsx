@@ -84,7 +84,7 @@ function StatusBadge({ status }: { status: SparkStatus }) {
 
 export function SparkListSkeleton() {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((index) => (
         <li key={index} className="space-y-3 rounded-lg border bg-card p-5">
           <div className="h-3 w-4/5 animate-pulse rounded bg-muted" />
@@ -139,7 +139,7 @@ export function SparkList({
   onViewImage,
 }: SparkListProps) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {sparks.map((spark) => {
         const promotedHref =
           spark.promotedType === "note"
@@ -162,7 +162,7 @@ export function SparkList({
         return (
           <li
             key={spark.id}
-            className="flex flex-col gap-3 rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+            className="flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
           >
             <button
               type="button"

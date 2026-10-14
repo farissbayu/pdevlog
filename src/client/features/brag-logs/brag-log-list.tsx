@@ -14,7 +14,7 @@ import { TagChip, formatBragLogDate } from "./tag-chip";
 
 export function BragLogListSkeleton() {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {[0, 1, 2].map((index) => (
         <li key={index} className="space-y-3 rounded-lg border bg-card p-5">
           <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
@@ -54,11 +54,11 @@ type BragLogListProps = {
 
 export function BragLogList({ logs, onEdit, onDelete }: BragLogListProps) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {logs.map((log) => (
         <li
           key={log.id}
-          className="group flex flex-col gap-3 rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+          className="group flex min-w-0 flex-col gap-3 rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1 space-y-2">
@@ -68,11 +68,11 @@ export function BragLogList({ logs, onEdit, onDelete }: BragLogListProps) {
               >
                 {log.title}
               </Link>
-              <p className="line-clamp-3 text-sm text-muted-foreground">
+              <p className="line-clamp-3 break-words text-sm text-muted-foreground">
                 {log.result}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
               <Button
                 variant="ghost"
                 size="icon-sm"
