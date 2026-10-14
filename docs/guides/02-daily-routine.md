@@ -49,13 +49,13 @@ Open [Brag Logs](/brag-logs), jot down 2–3 raw sentences about what happened, 
 
 ## 3. Weekend / Learning Block (60 Minutes)
 
-Instead of passively watching a 20-hour video course, pick one Growth Gap from your [Dashboard](/dashboard) or [Profile](/profile?tab=skills) and run a **Skill Shredder** session:
+Instead of passively watching a 20-hour video course, pick one Growth Gap from your [Dashboard](/dashboard) or [Profile](/profile?tab=skills) and turn it into a small, shippable spike:
 
-1. Create a quick note or go straight to [Skill Shredder](/skill-shredder).
-2. Enter the technology or concept you want to demystify (e.g., *Cloudflare Queues*, *Postgres Row-Level Security*, *WebSockets backpressure*).
-3. Follow the generated **Fundamental Pillars** and complete the **15-minute Spike 0** in your terminal.
-4. Respect the **Ignore List**—skip auth, UI polish, and deployment until the core concept runs.
-5. Export your completed shred into a permanent **TIL Note** so future-you can reference the exact code and takeaways.
+1. Capture the technology or concept you want to demystify as a [Spark](/sparks) (e.g., *Cloudflare Queues*, *Postgres Row-Level Security*, *WebSockets backpressure*).
+2. Promote the spark into a **Project Item** of kind `spike` in your [Workspaces](/workspaces) backlog.
+3. Scratch the minimal code in your terminal to prove the core concept runs—skip auth, UI polish, and deployment.
+4. Keep a [TIL Note](/notes) with the exact commands and takeaways, attaching reference sources as you go.
+5. Ship the spike item when the core concept runs; it lands in your `CHANGELOG.md`.
 
 ---
 

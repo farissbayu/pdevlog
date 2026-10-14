@@ -28,7 +28,7 @@ Click **Analyze Skills** to run the AI Staff Engineer audit across your CV, Brag
 - **Engineering Archetype** — Your current high-level technical identity (e.g., *Product-Centric Fullstack Craftsman*, *Systems & Reliability Builder*).
 - **Executive Summary** — A candid synthesis of where you stand today based on real shipped evidence rather than buzzwords.
 - **Core Superpowers** — Your strongest technical domains, each backed by concrete evidence from your CV and Brag Logs.
-- **Growth Opportunities & Next Steps** — Honest blindspots holding you back from the next level, paired with actionable project or [Skill Shredder](/guides/skill-shredder) recommendations to close them.
+- **Growth Opportunities & Next Steps** — Honest blindspots holding you back from the next level, paired with actionable next steps—a project to build or a note to write—to close them.
 
 ---
 

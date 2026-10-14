@@ -21,10 +21,9 @@ Every feature in Personal Dev Log feeds into the next so nothing you learn or sh
 | :--- | :--- | :--- | :--- |
 | **1. Capture** | [Sparks](/guides/sparks) (`Cmd/Ctrl + K`) | Drop raw ideas, bug screenshots, or links without breaking coding flow. | ~10 seconds |
 | **2. Organize & Ship** | [Workspaces & Projects](/guides/workspaces-and-projects) | Turn sparks into tracked work items (`feat`, `fix`, `perf`, `spike`) and generate `CHANGELOG.md`. | Ongoing |
-| **3. Learn Fast** | [Skill Shredder](/guides/skill-shredder) | Break down intimidating topics into Fundamental Pillars, a 15-min Spike 0, and an Ignore List. | ~45–60 minutes |
-| **4. Document** | [Notes & Sources](/guides/notes-and-sources) | Write Markdown TILs, attach reference URLs or PDFs, and export clean PDFs. | ~5–10 minutes |
-| **5. Prove Impact** | [Brag Logs](/guides/brag-logs) | Convert shipped work and rough notes into structured **STAR** stories with AI. | ~3 minutes |
-| **6. Calibrate** | [Profile & CV Audit](/guides/profile-and-cv-audit) | Let the AI Staff Engineer evaluate your CV + Dev Log to surface Superpowers and Growth Gaps. | Monthly |
+| **3. Document** | [Notes & Sources](/guides/notes-and-sources) | Write Markdown TILs, attach reference URLs or PDFs, and export clean PDFs. | ~5–10 minutes |
+| **4. Prove Impact** | [Brag Logs](/guides/brag-logs) | Convert shipped work and rough notes into structured **STAR** stories with AI. | ~3 minutes |
+| **5. Calibrate** | [Profile & CV Audit](/guides/profile-and-cv-audit) | Let the AI Staff Engineer evaluate your CV + Dev Log to surface Superpowers and Growth Gaps. | Monthly |
 
 ---
 
@@ -36,7 +35,6 @@ Every feature in Personal Dev Log feeds into the next so nothing you learn or sh
 - **[Workspaces](/workspaces)** — Top-level containers (`Work`, `Personal`, `Learning`, etc.) that hold your **Projects**, linked **Notes**, and **Brag Logs**.
 - **[Notes](/notes)** — Full Markdown knowledge base with live preview, table of contents, source attachments, and print-ready PDF export.
 - **[Brag Logs](/brag-logs)** — Your catalogue of engineering wins with AI-assisted **STAR** (Situation, Task, Action, Result) breakdowns.
-- **[Skill Shredder](/skill-shredder)** — Guided anti-tutorial-hell engine that turns any note or topic into a focused hands-on learning session.
 - **[Sparks](/sparks)** — Inbox for quick thoughts and screenshots captured via `Cmd/Ctrl + K` from anywhere in the app.
 - **[Tags](/tags)** — Cross-cutting labels (`redis`, `performance`, `incident`, `architecture`) shared across Notes and Brag Logs.
 - **[Profile & CV](/profile)** — Your engineering persona, uploaded CV (PDF/Markdown), and AI Competency Mirror.

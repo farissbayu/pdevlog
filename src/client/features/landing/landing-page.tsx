@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Ban,
   Brain,
   Check,
   Compass,
@@ -62,7 +61,7 @@ const comparison: { dimension: string; before: string; after: string }[] = [
     before:
       "Watching dozens of hours of course videos, then abandoning it to scope creep.",
     after:
-      "Skill Shredder: one toy project, a 15-min Spike 0, and a strict Ignore List. Done in one session.",
+      "Capture the topic as a Spark, track it as a spike project item, and ship what you learn to your changelog.",
   },
   {
     dimension: "Ideas & Inspiration",
@@ -82,14 +81,6 @@ const comparison: { dimension: string; before: string; after: string }[] = [
     before: "Scattered across office Notion, Jira, or company-owned tools.",
     after: "100% Yours: runs on your own Edge, export Markdown & PDF anytime.",
   },
-];
-
-const shredderSteps = [
-  "Fundamental Pillars: boil the topic down to 2–3 core concepts, no fluff.",
-  "Spike 0 (15 minutes): scratch code to prove the syntax or connection runs in the terminal.",
-  "The Ignore List: the things you are FORBIDDEN to think about today.",
-  "Practice Challenge: test your understanding with no AI help.",
-  "Export straight into a Today I Learned (TIL) note.",
 ];
 
 const competencyPoints = [
@@ -120,9 +111,9 @@ const routine: { meta: string; title: string; description: string }[] = [
   },
   {
     meta: "Weekend · 20 minutes",
-    title: "Clear the inbox & shred one skill",
+    title: "Clear the inbox & plan next week",
     description:
-      "Promote or archive your Sparks, then run one Skill Shredder session to learn something new.",
+      "Promote or archive your Sparks, then queue next week's project items in your backlog.",
   },
   {
     meta: "End of Month · 30 minutes",
@@ -156,7 +147,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "How is this different from Notion, Obsidian, or Apple Notes?",
-    a: "Notion and Obsidian are blank canvases with no opinions and no constraints, and they often become a graveyard of passive note hoarding. pdevlog is an opinionated, structured system: it breaks ideas into STAR, forces learning through Spike 0 and the Ignore List, generates release changelogs, and evaluates your technical gaps via the AI Staff Engineer Mirror.",
+    a: "Notion and Obsidian are blank canvases with no opinions and no constraints, and they often become a graveyard of passive note hoarding. pdevlog is an opinionated, structured system: it breaks ideas into STAR, turns sparks into a shippable backlog with release changelogs, and evaluates your technical gaps via the AI Staff Engineer Mirror.",
   },
   {
     q: "My office uses no sprint system or formal performance metrics. Is this still useful?",
@@ -306,78 +297,6 @@ function BragPreview() {
             <p className="text-sm text-muted-foreground">{value}</p>
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function ShredderPreview() {
-  return (
-    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <span className="flex items-center gap-2 text-sm font-medium">
-          <Scissors className="size-4 text-indigo-600 dark:text-indigo-400" />
-          WebSockets
-        </span>
-        <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
-          Building
-        </span>
-      </div>
-      <div className="space-y-3 p-4">
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-          <p className="text-[10px] font-semibold tracking-wide text-primary uppercase">
-            The "Todo App" for WebSockets
-          </p>
-          <p className="mt-0.5 text-sm font-medium">
-            2-client terminal walkie-talkie
-          </p>
-        </div>
-        <div className="rounded-md border bg-muted/40 p-2.5">
-          <p className="font-mono text-[11px] text-muted-foreground">
-            {"// Spike 0 · 15 min"}
-          </p>
-          <p className="font-mono text-[11px]">
-            new WebSocket("wss://echo.workers.dev")
-          </p>
-        </div>
-        <ul className="space-y-1.5">
-          {[
-            { label: "Scaffold an echo server", done: true },
-            { label: "Broadcast to all clients", done: true },
-            { label: "Handle disconnect", done: false },
-          ].map((milestone) => (
-            <li
-              key={milestone.label}
-              className="flex items-center gap-2 text-sm">
-              <span
-                className={
-                  milestone.done
-                    ? "flex size-4 items-center justify-center rounded border border-primary bg-primary text-primary-foreground"
-                    : "flex size-4 items-center justify-center rounded border border-input"
-                }>
-                {milestone.done ? <Check className="size-3" /> : null}
-              </span>
-              <span
-                className={
-                  milestone.done
-                    ? "text-muted-foreground line-through"
-                    : undefined
-                }>
-                {milestone.label}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <div className="flex flex-wrap gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 p-2.5">
-          <Ban className="size-3.5 text-amber-600 dark:text-amber-400" />
-          {["No auth", "No styling", "No database"].map((item) => (
-            <span
-              key={item}
-              className="rounded-full bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
-              {item}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -547,8 +466,8 @@ export function LandingPage() {
               <strong className="font-semibold text-foreground">pdevlog</strong>{" "}
               is your personal Autonomous Tech Lead and Career Vault — turn
               daily work into real proof of impact (STAR), break into new tech
-              in 60 minutes, and get an objective competency mirror without
-              waiting on an office review.
+              with focused spikes, and get an objective competency mirror
+              without waiting on an office review.
             </p>
             <div className="flex flex-wrap items-center gap-3 motion-safe:animate-fade-up [animation-delay:240ms]">
               {primaryCta}
@@ -661,37 +580,6 @@ export function LandingPage() {
               </div>
               <Reveal delay={120}>
                 <BragPreview />
-              </Reveal>
-            </div>
-
-            <div className="grid items-center gap-12 lg:grid-cols-2">
-              <Reveal delay={120} className="lg:order-2">
-                <div className="space-y-6">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-indigo-500/5 px-3 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                    <Scissors className="size-3.5" />
-                    Anti-Tutorial Hell Engine
-                  </span>
-                  <h3 className="text-2xl font-semibold tracking-tight text-balance">
-                    Break Through New-Tech Fear in 60 Minutes. Build a Real Toy
-                    Project.
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Skill Shredder thinks like a Staff Engineer:
-                  </p>
-                  <ol className="space-y-2">
-                    {shredderSteps.map((step, index) => (
-                      <li key={step} className="flex gap-3 text-sm">
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <span className="text-muted-foreground">{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </Reveal>
-              <Reveal delay={120} className="lg:order-1">
-                <ShredderPreview />
               </Reveal>
             </div>
 

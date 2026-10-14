@@ -208,7 +208,6 @@ export function SparksPage() {
             }
             onPromoteToBrag={setBragSpark}
             onPromoteToBacklog={setBacklogSpark}
-            onShred={(spark) => navigate(`/skill-shredder?spark=${spark.id}`)}
             onViewImage={(spark, index) => setLightbox({ spark, index })}
           />
           {pagination ? (
