@@ -12,8 +12,16 @@ import {
   Trophy,
 } from "lucide-react";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/client/components/ui/accordion";
 import { Button } from "@/client/components/ui/button";
 import type { SkillInsights } from "@/shared/schemas/profile";
+
+import { CaseStudyPanel } from "./case-study-panel";
 
 export interface SkillInsightsViewProps {
   insights: SkillInsights | null;
@@ -115,25 +123,32 @@ export function SkillInsightsView({
             </p>
           </div>
 
-          {/* Two Columns: Strengths vs Growth Areas */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Strengths Column (Unggul di mana) */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="size-4" />
+          {/* Collapsible sections: Strengths & Growth Areas */}
+          <Accordion
+            type="multiple"
+            defaultValue={["strengths", "growth"]}
+            className="space-y-4"
+          >
+            <AccordionItem
+              value="strengths"
+              className="rounded-2xl border bg-card px-5 shadow-2xs"
+            >
+              <AccordionTrigger className="py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Core Superpowers ({insights.strengths.length})
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Proven technical proficiencies backed by concrete evidence
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Core Superpowers ({insights.strengths.length})
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Proven technical proficiencies backed by concrete evidence
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3">
                 {insights.strengths.map((s, idx) => (
                   <div
                     key={`${s.area}-${idx}`}
@@ -162,59 +177,61 @@ export function SkillInsightsView({
                     )}
                   </div>
                 ))}
-              </div>
-            </div>
+              </AccordionContent>
+            </AccordionItem>
 
-            {/* Growth Areas Column (Aspek yang kurang) */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <TrendingUp className="size-4" />
+            <AccordionItem
+              value="growth"
+              className="rounded-2xl border bg-card px-5 shadow-2xs"
+            >
+              <AccordionTrigger className="py-4 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <TrendingUp className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Growth Opportunities ({insights.growthAreas.length})
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Identified blind spots and actionable ways to bridge them
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Growth Opportunities ({insights.growthAreas.length})
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Identified blind spots and actionable ways to bridge them
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {insights.growthAreas.map((g, idx) => (
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3">
+                {insights.growthAreas.map((g) => (
                   <div
-                    key={`${g.area}-${idx}`}
+                    key={g.id}
                     className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-2.5 transition-all hover:border-amber-500/40"
                   >
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        {g.area}
-                      </h4>
-                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                        Growth Area
-                      </span>
-                    </div>
+                    <h4 className="text-sm font-semibold text-foreground">
+                      {g.area}
+                    </h4>
 
                     <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200">
                       <AlertCircle className="size-3.5 shrink-0 mt-0.5 text-amber-500" />
                       <p className="leading-relaxed">
-                        <strong>Gap:</strong> {g.gap}
+                        <strong>Blind spot:</strong> {g.gap}
                       </p>
                     </div>
 
                     <div className="rounded-lg bg-background/80 border border-amber-500/20 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2">
                       <Lightbulb className="size-3.5 shrink-0 mt-0.5 text-amber-500" />
                       <p className="leading-relaxed">
-                        <strong className="text-foreground">Next Step:</strong>{" "}
+                        <strong className="text-foreground">
+                          Why it matters:
+                        </strong>{" "}
                         {g.recommendation}
                       </p>
                     </div>
+
+                    <CaseStudyPanel growthArea={g} />
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           {/* Recommended Next Steps Card */}
           {insights.recommendedNextSteps.length > 0 && (

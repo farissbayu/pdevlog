@@ -3,6 +3,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { client, parseApiError } from "@/client/lib/api";
 import type {
   AnalyzeSkillsResponse,
+  CaseStudyBriefResponse,
   CvUploadResponse,
   UpdateProfileRequest,
   UserProfileResponse,
@@ -131,6 +132,26 @@ export function useExtractPersonaMutation() {
       queryClient.setQueryData(profileKeys.detail(), data);
       queryClient.invalidateQueries({ queryKey: profileKeys.all });
     },
+  });
+}
+
+export async function generateCaseStudy(
+  growthAreaId: string,
+): Promise<CaseStudyBriefResponse> {
+  const res = await client.api.profile["growth-areas"][":id"][
+    "case-study"
+  ].$post({
+    param: { id: growthAreaId },
+  });
+  if (!res.ok) {
+    throw await parseApiError(res, "Failed to generate a case study");
+  }
+  return (await res.json()) as CaseStudyBriefResponse;
+}
+
+export function useGenerateCaseStudyMutation() {
+  return useMutation({
+    mutationFn: generateCaseStudy,
   });
 }
 

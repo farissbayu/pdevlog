@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
+import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import {
@@ -7,9 +8,12 @@ import {
   type StarBreakdown,
 } from "@/shared/schemas/brag-log";
 import {
+  caseStudyBriefSchema,
   resumeExtractionSchema,
-  skillInsightsSchema,
+  skillStrengthItemSchema,
+  type CaseStudyBrief,
   type ResumeExtraction,
+  type SkillGrowthAreaItem,
   type SkillInsights,
 } from "@/shared/schemas/profile";
 
@@ -64,19 +68,66 @@ const RESUME_EXTRACTOR_SYSTEM_PROMPT = [
   "Preserve all specific technologies, numbers, user counts, performance percentages, and achievements faithful to the source.",
 ].join(" ");
 
-const SKILL_INSIGHTS_SYSTEM_PROMPT = [
-  "You are an Elite Staff Engineer and Career Mentor evaluating a software engineer's profile.",
-  "Analyze the provided CV/resume and developer work to provide an objective, actionable, and human-friendly evaluation of where they excel and what technical aspects they need to improve.",
-  "Do not use confusing points, numerical RPG levels, or rigid rubrics. Focus on concrete technical superpowers, real gaps, and practical next steps.",
-  "Respond with a single JSON object matching the requested schema with:",
-  "- archetype: A concise 2-4 word professional signature (e.g. 'Product-Centric Fullstack Engineer', 'High-Velocity Frontend Architect', 'Pragmatic Systems Builder').",
-  "- summary: A crisp 2-3 sentence narrative describing their engineering identity, primary domain impact, and current trajectory.",
-  "- strengths: An array of 3 to 5 objects with area (title), description (1-2 sentences), and evidenceSummary (quote or specific reference).",
-  "- growthAreas: An array of 2 to 4 objects with area (title), gap (what is missing/limited), and recommendation (concrete project/task to learn/document).",
-  "- recommendedNextSteps: An array of 2 to 3 practical next milestones or projects to log in their dev log.",
-  "- analyzedAt: The current ISO timestamp string.",
-  "Be constructive, insightful, and technically accurate. Base all insights strictly on provided facts.",
+// Stage 1: separate CV claims from capabilities proven by shipped work.
+const REALITY_EXTRACTION_SYSTEM_PROMPT = [
+  "You are an Elite Staff Engineer extracting an evidence-based reality profile of a software engineer.",
+  "You receive their CV/resume plus recent devlog entries (brag logs and notes).",
+  "Distinguish what is proven by shipped work from passive CV keywords.",
+  "Respond with a single JSON object matching the requested schema:",
+  "- archetype: A concise 2-4 word professional signature (e.g. 'Product-Centric Fullstack Engineer').",
+  "- summary: A crisp 2-3 sentence narrative of their engineering identity and trajectory.",
+  "- strengths: 3 to 5 objects with area, description (1-2 sentences), and evidenceSummary (specific reference from the material).",
+  "- productionStack: technologies clearly demonstrated in their work.",
+  "- observedPatterns: recurring architecture or workflow patterns you actually see.",
+  "- recommendedNextSteps: 2 to 3 practical next milestones to log in their dev log.",
+  "Base every claim strictly on the provided facts.",
 ].join(" ");
+
+// Stage 2: act as a principal auditor hunting for what is absent.
+const BLIND_SPOT_AUDIT_SYSTEM_PROMPT = [
+  "You are a Principal Systems Engineer acting as a constructive devil's advocate.",
+  "Given an engineer's demonstrated reality profile, identify the architectural and reliability blind spots absent from their work.",
+  "Audit across distributed systems and reliability, data consistency and scaling, and observability and operational hardening.",
+  "Respond with a single JSON object matching the requested schema:",
+  "- criticalGaps: 2 to 4 objects with area (a short title), gap (what is missing or limited), and whyItMattersForSoloDev (the concrete risk this creates for a solo developer).",
+  "Be specific and non-generic; avoid buzzword advice.",
+].join(" ");
+
+// On demand: expand a single blind spot into a first-principles case study.
+const CASE_STUDY_SYSTEM_PROMPT = [
+  "You design short first-principles case studies that turn an engineer's blind spot into transferable understanding.",
+  "Reason from fundamental constraints rather than naming libraries or frameworks.",
+  "Respond with a single JSON object matching the requested schema:",
+  "- title (concise, prefixed with 'Case Study: '),",
+  "- principle (the fundamental question or law the engineer must derive the solution from),",
+  "- caseStudy (a small self-contained scenario grounded in a plausible stack),",
+  "- reasoningSteps (an ordered array of prompts that guide the derivation, not the answer),",
+  "- deliverable (the single artifact that proves the understanding, e.g. a written derivation plus a minimal proof),",
+  "- definitionOfDone (an array of concrete, verifiable criteria),",
+  "- estimatedHours (integer between 1 and 40).",
+  "The case study must be finishable in a few days and must force reasoning from first principles, not copy-pasting a solution.",
+].join(" ");
+
+const realityExtractionSchema = z.object({
+  archetype: z.string().min(1),
+  summary: z.string().min(1),
+  strengths: z.array(skillStrengthItemSchema),
+  productionStack: z.array(z.string()),
+  observedPatterns: z.array(z.string()),
+  recommendedNextSteps: z.array(z.string()),
+});
+type RealityExtraction = z.infer<typeof realityExtractionSchema>;
+
+const blindSpotAuditSchema = z.object({
+  criticalGaps: z.array(
+    z.object({
+      area: z.string().min(1),
+      gap: z.string().min(1),
+      whyItMattersForSoloDev: z.string().min(1),
+    }),
+  ),
+});
+type BlindSpotAudit = z.infer<typeof blindSpotAuditSchema>;
 
 type TagOption = {
   id: string;
@@ -373,28 +424,100 @@ export async function analyzeDeveloperCompetencies(
   cvMarkdown: string,
   devlogContext?: string,
 ): Promise<SkillInsightsResult> {
-  const promptContent = [
+  const cv = cvMarkdown.slice(0, 8_000);
+  const devlog = devlogContext?.slice(0, 5_000) ?? "";
+  const context = [
     "Developer CV / Resume:",
-    cvMarkdown.slice(0, 8_000),
-    devlogContext
-      ? `\nRecent Devlog & Accomplishments:\n${devlogContext.slice(0, 5_000)}`
-      : "",
+    cv,
+    devlog ? `Recent Devlog & Accomplishments:\n${devlog}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const { data, usage } = await runStructuredCompletion<SkillInsights>({
+  const makeError = (message: string) => new SkillInsightsError(message);
+
+  const reality = await runStructuredCompletion<RealityExtraction>({
     env,
-    schema: skillInsightsSchema,
-    schemaName: "skill_insights",
-    system: SKILL_INSIGHTS_SYSTEM_PROMPT,
-    user: promptContent,
+    schema: realityExtractionSchema,
+    schemaName: "reality_extraction",
+    system: REALITY_EXTRACTION_SYSTEM_PROMPT,
+    user: context,
     temperature: 0.2,
     timeoutMs: CV_REQUEST_TIMEOUT_MS,
     maxRetries: 0,
-    makeError: (message) => new SkillInsightsError(message),
-    refusalLabel: "AI refused to analyze skills",
+    makeError,
+    refusalLabel: "AI refused to extract the reality profile",
   });
 
-  return { insights: data, usage };
+  const audit = await runStructuredCompletion<BlindSpotAudit>({
+    env,
+    schema: blindSpotAuditSchema,
+    schemaName: "blind_spot_audit",
+    system: BLIND_SPOT_AUDIT_SYSTEM_PROMPT,
+    user: `Demonstrated reality profile:\n${JSON.stringify(reality.data)}`,
+    temperature: 0.3,
+    timeoutMs: CV_REQUEST_TIMEOUT_MS,
+    maxRetries: 0,
+    makeError,
+    refusalLabel: "AI refused to audit blind spots",
+  });
+
+  const growthAreas = audit.data.criticalGaps.map((gap) => ({
+    id: nanoid(),
+    area: gap.area,
+    gap: gap.gap,
+    recommendation: gap.whyItMattersForSoloDev,
+  }));
+
+  const insights: SkillInsights = {
+    archetype: reality.data.archetype,
+    summary: reality.data.summary,
+    strengths: reality.data.strengths,
+    growthAreas,
+    recommendedNextSteps: reality.data.recommendedNextSteps,
+    analyzedAt: new Date().toISOString(),
+  };
+
+  const usage = [reality.usage, audit.usage].reduce(
+    (acc, item) => ({
+      model: acc.model || item.model,
+      promptTokens: acc.promptTokens + item.promptTokens,
+      completionTokens: acc.completionTokens + item.completionTokens,
+      totalTokens: acc.totalTokens + item.totalTokens,
+    }),
+    { model: "", promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+  );
+
+  return { insights, usage };
+}
+
+export type CaseStudyBriefResult = {
+  brief: CaseStudyBrief;
+  usage: StarBreakdownUsage;
+};
+
+export async function generateCaseStudyBrief(
+  env: AppEnv["Bindings"],
+  growthArea: SkillGrowthAreaItem,
+): Promise<CaseStudyBriefResult> {
+  const user = [
+    `Blind spot area: ${growthArea.area}`,
+    `What is missing: ${growthArea.gap}`,
+    `Why it matters: ${growthArea.recommendation}`,
+  ].join("\n");
+
+  const { data, usage } = await runStructuredCompletion<CaseStudyBrief>({
+    env,
+    schema: caseStudyBriefSchema,
+    schemaName: "case_study_brief",
+    system: CASE_STUDY_SYSTEM_PROMPT,
+    user,
+    temperature: 0.3,
+    timeoutMs: CV_REQUEST_TIMEOUT_MS,
+    maxRetries: 0,
+    makeError: (message) => new SkillInsightsError(message),
+    refusalLabel: "AI refused to generate a case study",
+  });
+
+  return { brief: data, usage };
 }

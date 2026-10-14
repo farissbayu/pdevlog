@@ -248,61 +248,62 @@ describe("profile and CV skill mapping isolation tests", () => {
       }),
     });
 
-    const mockAiResponse = {
-      choices: [
+    const reality = {
+      archetype: "Product-Centric Fullstack Engineer",
+      summary:
+        "Strong fullstack engineer with proven execution across user-facing frontend and backend services.",
+      strengths: [
         {
-          message: {
-            content: JSON.stringify({
-              archetype: "Product-Centric Fullstack Engineer",
-              summary:
-                "Strong fullstack engineer with proven execution across user-facing frontend and backend services.",
-              strengths: [
-                {
-                  area: "Frontend Architecture & UI Craft",
-                  description:
-                    "High velocity building interactive apps with React and TypeScript.",
-                  evidenceSummary:
-                    "Built scalable React applications with TypeScript.",
-                },
-                {
-                  area: "Relational Database Design",
-                  description:
-                    "Pragmatic modeling and migrations using SQLite and Postgres.",
-                  evidenceSummary:
-                    "Designed database schemas in SQLite and Postgres.",
-                },
-              ],
-              growthAreas: [
-                {
-                  area: "Distributed Systems & Scalability",
-                  gap: "Limited evidence of message brokers or distributed caching.",
-                  recommendation:
-                    "Build or document an event-driven queue project.",
-                },
-              ],
-              recommendedNextSteps: [
-                "Log architectural decisions around high-concurrency systems.",
-              ],
-              analyzedAt: new Date().toISOString(),
-            }),
-          },
+          area: "Frontend Architecture & UI Craft",
+          description:
+            "High velocity building interactive apps with React and TypeScript.",
+          evidenceSummary: "Built scalable React applications with TypeScript.",
+        },
+        {
+          area: "Relational Database Design",
+          description:
+            "Pragmatic modeling and migrations using SQLite and Postgres.",
+          evidenceSummary: "Designed database schemas in SQLite and Postgres.",
         },
       ],
-      usage: {
-        prompt_tokens: 120,
-        completion_tokens: 90,
-        total_tokens: 210,
-      },
+      productionStack: ["React", "TypeScript", "SQLite"],
+      observedPatterns: ["Relational CRUD", "SPA with Client State"],
+      recommendedNextSteps: [
+        "Log architectural decisions around high-concurrency systems.",
+      ],
     };
+    const audit = {
+      criticalGaps: [
+        {
+          area: "Distributed Systems & Scalability",
+          gap: "Limited evidence of message brokers or distributed caching.",
+          whyItMattersForSoloDev:
+            "Single points of failure under load without retries.",
+        },
+      ],
+    };
+
+    const makeCompletion = (payload: unknown) =>
+      new Response(
+        JSON.stringify({
+          choices: [
+            { message: { content: JSON.stringify(payload) } },
+          ],
+          usage: {
+            prompt_tokens: 40,
+            completion_tokens: 30,
+            total_tokens: 70,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
 
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(mockAiResponse), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValueOnce(makeCompletion(reality))
+        .mockResolvedValueOnce(makeCompletion(audit)),
     );
 
     const analyzeRes = await request("/api/profile/skills/analyze", token, {
@@ -322,6 +323,7 @@ describe("profile and CV skill mapping isolation tests", () => {
       skillInsights: {
         archetype: string;
         strengths: { area: string }[];
+        growthAreas: { area: string; gap: string; recommendation: string }[];
       };
       skillAnalyzedAt: string | null;
       insightsStatus: string;
@@ -332,6 +334,14 @@ describe("profile and CV skill mapping isolation tests", () => {
       "Product-Centric Fullstack Engineer",
     );
     expect(profileData.skillInsights.strengths).toHaveLength(2);
+    expect(profileData.skillInsights.growthAreas).toEqual([
+      {
+        id: expect.any(String),
+        area: "Distributed Systems & Scalability",
+        gap: "Limited evidence of message brokers or distributed caching.",
+        recommendation: "Single points of failure under load without retries.",
+      },
+    ]);
     expect(profileData.skillAnalyzedAt).not.toBeNull();
     expect(profileData.insightsStatus).toBe("ready");
   });

@@ -13,6 +13,7 @@ import { rateLimit } from "@/worker/middleware/rate-limit";
 
 import {
   extractPersonaFromCv,
+  generateCaseStudyForGap,
   getOrCreateProfile,
   loadUser,
   markProfile,
@@ -161,9 +162,42 @@ const extractPersonaHandler = async (c: Context<AppEnv>) => {
 
 const aiRateLimit = rateLimit({ limit: 10, windowMs: 60_000 });
 
+const caseStudyHandler = async (
+  c: Context<AppEnv, "/growth-areas/:id/case-study">,
+) => {
+  const userId = c.get("userId");
+  const db = createDb(c.env.DB);
+  const user = await loadUser(db, userId);
+
+  if (!user) {
+    return c.json({ error: "User not found" }, 404);
+  }
+
+  try {
+    const brief = await generateCaseStudyForGap(
+      db,
+      c.env,
+      userId,
+      c.req.param("id"),
+    );
+    if (!brief) {
+      return c.json({ error: "Growth area not found" }, 404);
+    }
+    return c.json({ brief });
+  } catch (error) {
+    console.error("POST /api/profile/growth-areas/:id/case-study error:", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to generate a case study.";
+    return c.json({ error: message }, 400);
+  }
+};
+
 export const profileRoute = new Hono<AppEnv>()
   .get("/", getProfileHandler)
   .patch("/", zValidator("json", updateProfileRequestSchema), updateProfileHandler)
   .post("/cv/upload", aiRateLimit, uploadCvHandler)
   .post("/skills/analyze", aiRateLimit, analyzeSkillsHandler)
-  .post("/persona/extract", aiRateLimit, extractPersonaHandler);
+  .post("/persona/extract", aiRateLimit, extractPersonaHandler)
+  .post("/growth-areas/:id/case-study", aiRateLimit, caseStudyHandler);

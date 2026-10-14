@@ -7,7 +7,19 @@ export const skillStrengthItemSchema = z.object({
 });
 export type SkillStrengthItem = z.infer<typeof skillStrengthItemSchema>;
 
+export const caseStudyBriefSchema = z.object({
+  title: z.string().min(1),
+  principle: z.string().min(1),
+  caseStudy: z.string().min(1),
+  reasoningSteps: z.array(z.string().min(1)),
+  deliverable: z.string().min(1),
+  definitionOfDone: z.array(z.string().min(1)),
+  estimatedHours: z.number().int().min(1).max(40),
+});
+export type CaseStudyBrief = z.infer<typeof caseStudyBriefSchema>;
+
 export const skillGrowthAreaItemSchema = z.object({
+  id: z.string().min(1),
   area: z.string().min(1),
   gap: z.string().min(1),
   recommendation: z.string().min(1),
@@ -23,6 +35,13 @@ export const skillInsightsSchema = z.object({
   analyzedAt: z.string(),
 });
 export type SkillInsights = z.infer<typeof skillInsightsSchema>;
+
+export const caseStudyBriefResponseSchema = z.object({
+  brief: caseStudyBriefSchema,
+});
+export type CaseStudyBriefResponse = z.infer<
+  typeof caseStudyBriefResponseSchema
+>;
 
 export const cvParseStatusSchema = z.enum([
   "idle",
