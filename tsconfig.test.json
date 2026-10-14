@@ -2,12 +2,14 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
     "target": "es2023",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "esnext",
     "types": [
       "./worker-configuration.d.ts",
-      "@cloudflare/vitest-pool-workers/types"
+      "@cloudflare/vitest-pool-workers/types",
+      "vite/client"
     ],
+    "jsx": "react-jsx",
     "skipLibCheck": true,
 
     /* Bundler mode */

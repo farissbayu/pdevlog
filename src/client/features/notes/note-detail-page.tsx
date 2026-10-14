@@ -29,8 +29,13 @@ import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-
 
 import { useDeleteNoteMutation, useNoteDetailQuery } from "./api";
 import { formatNoteDate } from "./note-list";
-import { countWords, estimateReadingMinutes } from "./note-stats";
-import { NoteToc, extractHeadings } from "./note-toc";
+import { extractHeadings } from "@/shared/guides/headings";
+import {
+  countWords,
+  estimateReadingMinutes,
+} from "@/shared/guides/text-stats";
+
+import { NoteToc } from "./note-toc";
 
 export function NoteDetailPage() {
   const { id = "" } = useParams();

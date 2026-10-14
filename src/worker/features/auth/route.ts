@@ -4,11 +4,10 @@ import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { nanoid } from "nanoid";
 
-import type { UserResponse } from "@/shared/schemas/auth";
 import { createDb, type Database } from "@/worker/db";
 import { users, type UserRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
-import { deleteUserData, isAdminEmail } from "@/worker/lib/users";
+import { deleteUserData, isAdminEmail, toUserResponse } from "@/worker/lib/users";
 import { authRateLimit } from "@/worker/middleware/rate-limit";
 
 import {
@@ -32,18 +31,6 @@ type GoogleUserInfo = {
   name: string;
   picture?: string;
 };
-
-function toUserResponse(user: UserRow, isAdmin: boolean): UserResponse {
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    avatarUrl: user.avatarUrl,
-    isAdmin,
-    createdAt: new Date(user.createdAt).toISOString(),
-    updatedAt: new Date(user.updatedAt).toISOString(),
-  };
-}
 
 function createGoogleClient(c: Context<AppEnv>): Google {
   const redirectUri = `${new URL(c.req.url).origin}/api/auth/google/callback`;

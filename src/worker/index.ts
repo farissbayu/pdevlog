@@ -13,6 +13,7 @@ import { profileRoute } from "@/worker/features/profile/route";
 import { handleAiJobBatch } from "@/worker/features/profile/queue";
 import { projectsRoute } from "@/worker/features/projects/route";
 import { sparksRoute } from "@/worker/features/sparks/route";
+import { ssrRoute } from "@/worker/features/ssr/route";
 import { tagsRoute } from "@/worker/features/tags/route";
 import { workspacesRoute } from "@/worker/features/workspaces/route";
 import { authMiddleware } from "@/worker/middleware/auth";
@@ -34,6 +35,8 @@ const app = new Hono<AppEnv>()
   .route("/api/dashboard", dashboardRoute)
   .route("/api/export", exportRoute)
   .get("/api/health", (c) => c.json({ status: "ok" }))
+
+  .route("/", ssrRoute)
   .notFound((c) => {
     if (c.req.path.startsWith("/api/")) {
       return c.json({ error: "Not found" }, 404);

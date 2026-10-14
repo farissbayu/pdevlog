@@ -1,6 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { cn } from "cn";
+
+const useIsoLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function Reveal({
   children,
@@ -12,14 +21,19 @@ export function Reveal({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+  // Rendered visible (also for SSR crawlers); only below-fold content hides until scrolled into view.
+  const [inView, setInView] = useState(true);
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const element = ref.current;
     if (!element || typeof IntersectionObserver === "undefined") {
-      setInView(true);
       return;
     }
+    if (element.getBoundingClientRect().top < window.innerHeight) {
+      return;
+    }
+
+    setInView(false);
 
     const observer = new IntersectionObserver(
       ([entry]) => {

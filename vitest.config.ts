@@ -15,6 +15,7 @@ export default defineConfig(async () => {
         miniflare: {
           compatibilityDate: "2026-08-22",
           r2Buckets: { STORAGE: "pdevlog-storage" },
+          assets: { directory: "./tests/fixtures/client" },
           bindings: {
             GOOGLE_CLIENT_ID: "test-google-client-id",
             GOOGLE_CLIENT_SECRET: "test-google-client-secret",

@@ -1,7 +1,20 @@
 import { eq } from "drizzle-orm";
 
+import type { UserResponse } from "@/shared/schemas/auth";
 import type { Database } from "@/worker/db";
-import { users } from "@/worker/db/schema";
+import { users, type UserRow } from "@/worker/db/schema";
+
+export function toUserResponse(user: UserRow, isAdmin: boolean): UserResponse {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+    isAdmin,
+    createdAt: new Date(user.createdAt).toISOString(),
+    updatedAt: new Date(user.updatedAt).toISOString(),
+  };
+}
 
 export function parseAdminEmails(value: string | undefined): Set<string> {
   return new Set(

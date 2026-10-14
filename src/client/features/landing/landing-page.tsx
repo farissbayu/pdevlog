@@ -169,13 +169,13 @@ const faqs: { q: string; a: string }[] = [
 ];
 
 function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
-  const reduceMotion =
-    typeof window !== "undefined" &&
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  const [count, setCount] = useState(() => (reduceMotion ? text.length : 0));
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (reduceMotion) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setCount(text.length);
+      return;
+    }
     let index = 0;
     let timer: number | undefined;
     const start = window.setTimeout(() => {
@@ -189,7 +189,7 @@ function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
       window.clearTimeout(start);
       if (timer) window.clearInterval(timer);
     };
-  }, [text, delay, reduceMotion]);
+  }, [text, delay]);
 
   const done = count >= text.length;
 
