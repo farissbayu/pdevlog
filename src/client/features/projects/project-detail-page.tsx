@@ -587,7 +587,7 @@ export function ProjectDetailPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="matcha-scroll max-h-[65svh] space-y-6 overflow-y-auto pr-1">
             {changelogGroups.map(([dateLabel, groupItems]) => (
               <div key={dateLabel} className="space-y-2">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
