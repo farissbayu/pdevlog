@@ -4,7 +4,6 @@ import { extractText } from "unpdf";
 
 import {
   skillInsightsSchema,
-  type CaseStudyBrief,
   type SkillInsights,
   type UpdateProfileRequest,
   type UserProfileResponse,
@@ -23,7 +22,6 @@ import type { AppEnv } from "@/worker/env";
 import {
   analyzeDeveloperCompetencies,
   extractAndFormatResume,
-  generateCaseStudyBrief,
 } from "@/worker/lib/ai-client";
 
 function parseStack(raw: string | null | undefined): string[] {
@@ -393,38 +391,3 @@ export async function analyzeAndSaveSkillInsights(
   }
 }
 
-export async function generateCaseStudyForGap(
-  db: Database,
-  env: AppEnv["Bindings"],
-  userId: string,
-  growthAreaId: string,
-): Promise<CaseStudyBrief | null> {
-  const [profile] = await db
-    .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.userId, userId))
-    .limit(1);
-  const insights = parseSkillInsights(profile?.skillInsights);
-  const area = insights?.growthAreas.find((gap) => gap.id === growthAreaId);
-  if (!area) {
-    return null;
-  }
-
-  const { brief, usage } = await generateCaseStudyBrief(env, area);
-
-  try {
-    await db.insert(aiUsage).values({
-      id: nanoid(),
-      userId,
-      model: usage.model,
-      promptTokens: usage.promptTokens,
-      completionTokens: usage.completionTokens,
-      totalTokens: usage.totalTokens,
-      createdAt: new Date(),
-    });
-  } catch (err) {
-    console.error("Failed to record AI usage for case study:", err);
-  }
-
-  return brief;
-}

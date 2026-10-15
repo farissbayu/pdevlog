@@ -8,12 +8,9 @@ import {
   type StarBreakdown,
 } from "@/shared/schemas/brag-log";
 import {
-  caseStudyBriefSchema,
   resumeExtractionSchema,
   skillStrengthItemSchema,
-  type CaseStudyBrief,
   type ResumeExtraction,
-  type SkillGrowthAreaItem,
   type SkillInsights,
 } from "@/shared/schemas/profile";
 
@@ -91,21 +88,6 @@ const BLIND_SPOT_AUDIT_SYSTEM_PROMPT = [
   "Respond with a single JSON object matching the requested schema:",
   "- criticalGaps: 2 to 4 objects with area (a short title), gap (what is missing or limited), and whyItMattersForSoloDev (the concrete risk this creates for a solo developer).",
   "Be specific and non-generic; avoid buzzword advice.",
-].join(" ");
-
-// On demand: expand a single blind spot into a first-principles case study.
-const CASE_STUDY_SYSTEM_PROMPT = [
-  "You design short first-principles case studies that turn an engineer's blind spot into transferable understanding.",
-  "Reason from fundamental constraints rather than naming libraries or frameworks.",
-  "Respond with a single JSON object matching the requested schema:",
-  "- title (concise, prefixed with 'Case Study: '),",
-  "- principle (the fundamental question or law the engineer must derive the solution from),",
-  "- caseStudy (a small self-contained scenario grounded in a plausible stack),",
-  "- reasoningSteps (an ordered array of prompts that guide the derivation, not the answer),",
-  "- deliverable (the single artifact that proves the understanding, e.g. a written derivation plus a minimal proof),",
-  "- definitionOfDone (an array of concrete, verifiable criteria),",
-  "- estimatedHours (integer between 1 and 40).",
-  "The case study must be finishable in a few days and must force reasoning from first principles, not copy-pasting a solution.",
 ].join(" ");
 
 const realityExtractionSchema = z.object({
@@ -489,35 +471,4 @@ export async function analyzeDeveloperCompetencies(
   );
 
   return { insights, usage };
-}
-
-export type CaseStudyBriefResult = {
-  brief: CaseStudyBrief;
-  usage: StarBreakdownUsage;
-};
-
-export async function generateCaseStudyBrief(
-  env: AppEnv["Bindings"],
-  growthArea: SkillGrowthAreaItem,
-): Promise<CaseStudyBriefResult> {
-  const user = [
-    `Blind spot area: ${growthArea.area}`,
-    `What is missing: ${growthArea.gap}`,
-    `Why it matters: ${growthArea.recommendation}`,
-  ].join("\n");
-
-  const { data, usage } = await runStructuredCompletion<CaseStudyBrief>({
-    env,
-    schema: caseStudyBriefSchema,
-    schemaName: "case_study_brief",
-    system: CASE_STUDY_SYSTEM_PROMPT,
-    user,
-    temperature: 0.3,
-    timeoutMs: CV_REQUEST_TIMEOUT_MS,
-    maxRetries: 0,
-    makeError: (message) => new SkillInsightsError(message),
-    refusalLabel: "AI refused to generate a case study",
-  });
-
-  return { brief: data, usage };
 }

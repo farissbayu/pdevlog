@@ -21,8 +21,6 @@ import {
 import { Button } from "@/client/components/ui/button";
 import type { SkillInsights } from "@/shared/schemas/profile";
 
-import { CaseStudyPanel } from "./case-study-panel";
-
 export interface SkillInsightsViewProps {
   insights: SkillInsights | null;
   analyzedAt: string | null;
@@ -225,8 +223,6 @@ export function SkillInsightsView({
                         {g.recommendation}
                       </p>
                     </div>
-
-                    <CaseStudyPanel growthArea={g} />
                   </div>
                 ))}
               </AccordionContent>
