@@ -3,9 +3,9 @@ import {
   BookOpen,
   CheckCircle2,
   FileText,
+  Flame,
   FolderKanban,
   GraduationCap,
-  LayoutDashboard,
   Sparkles,
   TrendingUp,
   Trophy,
@@ -14,15 +14,37 @@ import {
 import { cn } from "cn";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { format, startOfWeek } from "date-fns";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/client/components/ui/avatar";
 import { Button } from "@/client/components/ui/button";
+import { meQueryOptions } from "@/client/features/auth/api";
 import { TagChip } from "@/client/features/brag-logs/tag-chip";
 import { profileQueryOptions } from "@/client/features/profile/api";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 import type { ActivityItem } from "@/shared/schemas/dashboard";
-import { useDashboardQuery, useRecentActivityQuery } from "./api";
+import {
+  useCheckInsQuery,
+  useDashboardQuery,
+  useRecentActivityQuery,
+} from "./api";
 import { CheckInCard } from "./check-in-card";
 
+
+function countLabel(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function greetingForHour(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function getInitials(name: string, email: string): string {
+  const source = name.trim() || email;
+  return source.slice(0, 1).toUpperCase();
+}
 
 function formatActivityDate(iso: string): string {
   const date = new Date(iso);
@@ -180,8 +202,36 @@ function DashboardSkeleton() {
 export function DashboardPage() {
   const dashboard = useDashboardQuery();
   const activity = useRecentActivityQuery();
+  const checkIns = useCheckInsQuery();
   const profileQuery = useQuery(profileQueryOptions());
+  const me = useQuery(meQueryOptions);
   const insights = profileQuery.data?.skillInsights;
+
+  const user = me.data?.user;
+  const days = checkIns.data?.days ?? [];
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const todayTotal = days.find((day) => day.date === todayKey)?.total ?? 0;
+  const weekStartKey = format(startOfWeek(new Date()), "yyyy-MM-dd");
+  const weekTotal = days
+    .filter((day) => day.date >= weekStartKey)
+    .reduce((sum, day) => sum + day.total, 0);
+  const currentStreak = checkIns.data?.currentStreak ?? 0;
+  const topStrength = insights?.strengths[0]?.area;
+
+  const firstName = user?.name.trim().split(/\s+/)[0] || "there";
+  const subtitle = checkIns.isPending
+    ? "Here is where your week stands."
+    : days.length === 0
+      ? "Nothing logged yet — your first entry starts the habit."
+      : todayTotal > 0
+        ? `${countLabel(todayTotal, "entry")} today · ${countLabel(currentStreak, "day")} streak.`
+        : currentStreak > 0
+          ? `Nothing logged today — your ${countLabel(currentStreak, "day")} streak is safe.`
+          : "Nothing logged today yet — add one to keep the habit going.";
+  const wrapUp =
+    days.length === 0
+      ? "Log a brag, a note, or a spark and this is where your progress will gather."
+      : `${countLabel(weekTotal, "thing")} logged this week${topStrength ? `, leaning into ${topStrength}` : ""}.`;
 
   const stats: StatCard[] = dashboard.data
     ? [
@@ -220,15 +270,22 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <LayoutDashboard className="size-6 text-primary" />
-            Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your latest activity at a glance.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Avatar size="lg">
+            {user?.avatarUrl ? (
+              <AvatarImage src={user.avatarUrl} alt={user.name} />
+            ) : null}
+            <AvatarFallback>
+              {user ? getInitials(user.name, user.email) : "?"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">
+              {greetingForHour(new Date().getHours())}, {firstName}
+            </h1>
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
+          </div>
         </div>
 
         <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -266,6 +323,35 @@ export function DashboardPage() {
 
       {!isPending && !activity.isError ? (
         <>
+          {checkIns.isPending ? (
+            <div className="h-[104px] animate-pulse rounded-lg border bg-card" />
+          ) : (
+            <div className="relative overflow-hidden rounded-lg border bg-card p-5 sm:p-6">
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent"
+                aria-hidden
+              />
+              <div className="relative flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Flame className="size-6" />
+                  </span>
+                  <div className="space-y-0.5">
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {countLabel(currentStreak, "day")} streak
+                    </p>
+                    <p className="text-sm text-muted-foreground">{wrapUp}</p>
+                  </div>
+                </div>
+                {insights ? (
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    {insights.archetype}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <StatCard key={stat.label} stat={stat} />
@@ -281,7 +367,7 @@ export function DashboardPage() {
               <div className="border-b px-5 py-4">
                 <h2 className="font-medium">Recent activity</h2>
                 <p className="text-sm text-muted-foreground">
-                  Your latest brag logs, notes, and sparks.
+                  What you've been building, most recent first.
                 </p>
               </div>
 
@@ -291,7 +377,8 @@ export function DashboardPage() {
                     <Trophy className="size-5 text-muted-foreground" />
                   </div>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    No activity yet. Start by logging a brag log or a note!
+                    Nothing here yet. One win is enough to start — log it before
+                    you forget.
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <Button asChild size="sm">
@@ -373,8 +460,8 @@ export function DashboardPage() {
                   <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
                     <Sparkles className="size-8 text-muted-foreground/40" />
                     <p className="text-xs text-muted-foreground max-w-[220px]">
-                      Discover your technical superpowers and areas to grow by
-                      analyzing your CV in Profile.
+                      Your technical superpowers and growth areas show up here
+                      once you analyze your CV in Profile.
                     </p>
                   </div>
                 )}
