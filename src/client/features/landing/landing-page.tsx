@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   Brain,
   Check,
   Compass,
+  ExternalLink,
   FolderKanban,
+  Menu,
   Rocket,
+  RotateCcw,
   Scissors,
   Sparkles,
   Trophy,
@@ -94,6 +97,45 @@ const sparksPoints = [
   "Press Cmd+K from any screen to drop an idea, link, or bug screenshot.",
   "Promote a spark into a Project Item (feat, fix, perf, refactor, spike, docs).",
   "When a feature ships, generate a CHANGELOG.md Markdown file automatically.",
+];
+
+const starFields = ["Situation", "Task", "Action", "Result"] as const;
+
+const captureSamples: {
+  title: string;
+  note: string;
+  star: [string, string, string, string];
+}[] = [
+  {
+    title: "Slow query",
+    note: "Our order DB went slow when traffic spiked. I added a join index and changed the query to batch. Response time dropped from 800ms to 45ms.",
+    star: [
+      "Transaction latency spike from a database query bottleneck under load.",
+      "Eliminate performance degradation on the critical order endpoint.",
+      "Profiled queries, added a composite index, refactored to a batched fetcher.",
+      "p95 latency −94% (800ms → 45ms), with no added server cost.",
+    ],
+  },
+  {
+    title: "Flaky CI",
+    note: "CI was red for no reason a few times a day. Turned out a shared mock kept state between tests. I reset it before each test and the flakiness stopped.",
+    star: [
+      "Intermittent CI failures blocking merges for weeks.",
+      "Find and remove the root cause of the non-deterministic failures.",
+      "Traced the flake to a shared mock leaking state; reset it before each test.",
+      "Green CI — no random failures since, merges unblocked.",
+    ],
+  },
+  {
+    title: "Learned WebSockets",
+    note: "I kept saying I'd learn WebSockets but only ever watched videos. So one weekend I built a small live-presence demo with reconnect and message ordering, and shipped it as a spike.",
+    star: [
+      "Wanted real hands-on experience with real-time transport.",
+      "Learn WebSockets by shipping something real, not another course.",
+      "Built a live presence demo; handled reconnection and message ordering.",
+      "A reusable spike shipped, and a skill gap turned into evidence.",
+    ],
+  },
 ];
 
 const routine: { meta: string; title: string; description: string }[] = [
@@ -197,6 +239,115 @@ function Typewriter({ text, delay = 0 }: { text: string; delay?: number }) {
   );
 }
 
+function CaptureDemo() {
+  const [sampleIndex, setSampleIndex] = useState(0);
+  const [structured, setStructured] = useState(false);
+  const sample = captureSamples[sampleIndex];
+
+  return (
+    <div className="overflow-hidden rounded-lg border bg-background">
+      <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Trophy className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            Brag Log · STAR
+          </p>
+        </div>
+        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-amber-600 dark:text-amber-400">
+          Live demo
+        </span>
+      </div>
+
+      <div className="space-y-3 p-3">
+        <fieldset className="flex flex-wrap gap-1.5">
+          <legend className="sr-only">Choose a sample rough note</legend>
+          {captureSamples.map((item, index) => (
+            <label key={item.title} className="cursor-pointer">
+              <input
+                type="radio"
+                name="hero-capture-sample"
+                checked={sampleIndex === index}
+                onChange={() => {
+                  setSampleIndex(index);
+                  setStructured(false);
+                }}
+                className="peer sr-only"
+              />
+              <span className="block rounded-full border px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors peer-checked:border-amber-500/40 peer-checked:bg-amber-500/10 peer-checked:text-amber-600 peer-focus-visible:ring-2 peer-focus-visible:ring-ring dark:peer-checked:text-amber-400">
+                {item.title}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <div className="rounded-md border bg-muted/40 p-2.5">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            Rough note
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            &ldquo;{sample.note}&rdquo;
+          </p>
+        </div>
+
+        <div
+          role="status"
+          aria-live="polite"
+          aria-label="STAR breakdown"
+          className="space-y-1.5">
+          {starFields.map((label, index) => {
+            const value = structured ? sample.star[index] : null;
+            return (
+              <div
+                key={label}
+                style={
+                  structured ? { animationDelay: `${index * 70}ms` } : undefined
+                }
+                className={`flex gap-3 ${
+                  structured ? "motion-safe:animate-fade-up" : ""
+                }`}>
+                <span className="w-16 shrink-0 font-mono text-[10px] tracking-wide text-emerald-600 uppercase dark:text-emerald-400">
+                  {label}
+                </span>
+                {value ? (
+                  <p className="text-xs text-muted-foreground">
+                    {label === "Result" ? (
+                      <Typewriter text={value} delay={150} />
+                    ) : (
+                      value
+                    )}
+                  </p>
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="mt-1 inline-block h-2.5 w-28 rounded bg-muted-foreground/15"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setStructured((prev) => !prev)}>
+          {structured ? (
+            <>
+              <RotateCcw className="size-3.5" />
+              Start over
+            </>
+          ) : (
+            <>
+              <Sparkles className="size-3.5" />
+              Break into STAR
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function HeroPreview() {
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm motion-safe:animate-scale-in">
@@ -232,28 +383,7 @@ function HeroPreview() {
             </span>
           </div>
         </div>
-        <div className="overflow-hidden rounded-lg border bg-background">
-          <div className="flex items-center gap-2 border-b px-3 py-2">
-            <Trophy className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-              Brag Log · STAR
-            </p>
-          </div>
-          <div className="space-y-1.5 px-3 py-2.5 text-xs">
-            <p>
-              <span className="font-semibold text-muted-foreground">
-                Result:{" "}
-              </span>
-              <Typewriter
-                text="p95 latency −94% (800ms → 45ms), with no added server cost."
-                delay={600}
-              />
-            </p>
-            <p className="text-muted-foreground">
-              Action: query profiling, composite indexing, batch fetcher.
-            </p>
-          </div>
-        </div>
+        <CaptureDemo />
       </div>
     </div>
   );
@@ -371,6 +501,8 @@ function SectionHeading({
 export function LandingPage() {
   const { data } = useQuery(meQueryOptions);
   const isAuthenticated = Boolean(data);
+  const mobileNavRef = useRef<HTMLDetailsElement>(null);
+  const closeMobileNav = () => mobileNavRef.current?.removeAttribute("open");
 
   const primaryCta = isAuthenticated ? (
     <Button asChild size="lg" className="group">
@@ -380,7 +512,10 @@ export function LandingPage() {
       </Link>
     </Button>
   ) : (
-    <Button asChild size="lg">
+    <Button
+      asChild
+      size="lg"
+      className="max-[350px]:h-auto max-[350px]:shrink max-[350px]:whitespace-normal max-[350px]:py-2.5 max-[350px]:text-center">
       <a href="/api/auth/google">
         <GoogleIcon />
         Sign in with Google — 100% Free &amp; Private
@@ -398,12 +533,12 @@ export function LandingPage() {
               alt="Personal Dev Log"
               className="size-7 shrink-0 rounded-md"
             />
-            <span className="font-mono font-semibold tracking-tight">
+            <span className="hidden font-mono font-semibold tracking-tight whitespace-nowrap sm:inline">
               Personal Dev Log
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+          <nav className="hidden items-center gap-4 text-sm text-muted-foreground whitespace-nowrap md:flex lg:gap-6">
             <a
               href="#problem"
               className="transition-colors hover:text-foreground">
@@ -445,6 +580,37 @@ export function LandingPage() {
                 <Link to="/login">Sign in</Link>
               </Button>
             )}
+            <details ref={mobileNavRef} className="relative md:hidden">
+              <summary
+                aria-label="Open menu"
+                className="flex size-11 cursor-pointer list-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&::-webkit-details-marker]:hidden">
+                <Menu className="size-5" />
+              </summary>
+              <nav
+                onClick={closeMobileNav}
+                className="absolute top-full right-0 z-40 mt-2 w-56 rounded-xl border bg-background p-1.5 text-sm shadow-lg">
+                {[
+                  ["#problem", "The Problem"],
+                  ["#solution", "The Solution"],
+                  ["#routine", "5-Min Routine"],
+                  ["#faq", "FAQ"],
+                ].map(([href, label]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    className="block rounded-md px-3 py-3 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                    {label}
+                  </a>
+                ))}
+                <Link
+                  to="/guides"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-md px-3 py-3 font-medium text-foreground transition-colors hover:bg-accent hover:text-primary">
+                  Guides
+                </Link>
+              </nav>
+            </details>
           </div>
         </div>
       </header>
@@ -461,13 +627,10 @@ export function LandingPage() {
               Stop Repeating 1 Year of Experience 5 Times Over.
             </h1>
             <p className="max-w-prose text-lg text-muted-foreground motion-safe:animate-fade-up [animation-delay:160ms]">
-              Most developers work without a Tech Lead, without 1-on-1s, and
-              without architectural feedback.{" "}
               <strong className="font-semibold text-foreground">pdevlog</strong>{" "}
-              is your personal Autonomous Tech Lead and Career Vault — turn
-              daily work into real proof of impact (STAR), break into new tech
-              with focused spikes, and get an objective competency mirror
-              without waiting on an office review.
+              captures your daily work as a durable, exportable record of
+              impact — so you can prove what you built without relying on
+              memory or scattered git commits.
             </p>
             <div className="flex flex-wrap items-center gap-3 motion-safe:animate-fade-up [animation-delay:240ms]">
               {primaryCta}
@@ -507,10 +670,11 @@ export function LandingPage() {
             <SectionHeading
               eyebrow="A new paradigm"
               title="Stop Relying on Office Luck. Hold Your Own Technical Bar."
+              subtitle="pdevlog is the Autonomous Tech Lead and Career Vault your office never gave you — an objective read on your strengths and gaps, drawn from your own logs."
             />
 
             <Reveal delay={120}>
-              <div className="mt-12 overflow-x-auto rounded-xl border">
+              <div className="mt-12 hidden overflow-x-auto rounded-xl border sm:block">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="bg-muted/50 text-left">
@@ -542,6 +706,33 @@ export function LandingPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="mt-12 space-y-4 sm:hidden">
+                {comparison.map((row) => (
+                  <div
+                    key={row.dimension}
+                    className="rounded-xl border bg-card p-5">
+                    <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">
+                      {row.dimension}
+                    </p>
+                    <p className="mt-3 font-mono text-[11px] tracking-wide text-primary uppercase">
+                      With pdevlog
+                    </p>
+                    <p className="mt-1.5 flex gap-2 font-medium">
+                      <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                      {row.after}
+                    </p>
+                    <p className="mt-3 border-t pt-3 text-sm">
+                      <span className="font-mono text-[11px] tracking-wide text-muted-foreground uppercase">
+                        The old way
+                      </span>
+                      <span className="mt-1.5 block text-muted-foreground">
+                        {row.before}
+                      </span>
+                    </p>
+                  </div>
+                ))}
               </div>
             </Reveal>
           </div>
@@ -610,7 +801,7 @@ export function LandingPage() {
 
               <Reveal delay={80}>
                 <div className="h-full rounded-xl border bg-card p-6">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-yellow-500/5 px-3 py-1 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-amber-500/5 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                     <Rocket className="size-3.5" />
                     Sparks &amp; Workspace Delivery Machine
                   </span>
@@ -621,7 +812,7 @@ export function LandingPage() {
                   <ul className="mt-4 space-y-2">
                     {sparksPoints.map((point) => (
                       <li key={point} className="flex gap-2 text-sm">
-                        <Zap className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                        <Zap className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                         <span className="text-muted-foreground">{point}</span>
                       </li>
                     ))}
@@ -741,6 +932,29 @@ export function LandingPage() {
             />
             <span className="font-mono">Personal Dev Log</span>
           </div>
+          <nav
+            aria-label="Footer"
+            className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <Link
+              to="/privacy"
+              className="transition-colors hover:text-foreground">
+              Privacy
+            </Link>
+            <Link
+              to="/guides/export-your-data"
+              className="transition-colors hover:text-foreground">
+              Export docs
+            </Link>
+            <a
+              href="https://github.com/farissbayu/pdevlog"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Source code on GitHub (opens in a new tab)"
+              className="inline-flex items-center gap-1 transition-colors hover:text-foreground">
+              Source
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </a>
+          </nav>
           <p>Built for developers who keep track</p>
         </div>
       </footer>

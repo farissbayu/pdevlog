@@ -45,6 +45,15 @@ describe("server-rendered landing page and guides", () => {
     expect(html).not.toContain("__PDEVLOG_ME__");
   });
 
+  it("server-renders the interactive capture demo with accessible controls", async () => {
+    const response = await request("/");
+    const html = await response.text();
+
+    expect(html).toContain("Choose a sample rough note");
+    expect(html).toContain("Break into STAR");
+    expect(html).toContain('type="radio"');
+  });
+
   it("renders a guide with markdown content and article SEO tags", async () => {
     const response = await request("/guides/overview");
 

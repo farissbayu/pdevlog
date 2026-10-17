@@ -15,6 +15,7 @@ import { NoteDetailPage } from "@/client/features/notes/note-detail-page";
 import { NoteEditorPage } from "@/client/features/notes/note-editor";
 import { NotePrintPage } from "@/client/features/notes/note-print-page";
 import { NotesPage } from "@/client/features/notes/notes-page";
+import { PrivacyPage } from "@/client/features/privacy/privacy-page";
 import { ProfilePage } from "@/client/features/profile/profile-page";
 import { ProjectDetailPage } from "@/client/features/projects/project-detail-page";
 import { SettingsPage } from "@/client/features/settings/settings-page";
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/privacy",
+    element: <PrivacyPage />,
   },
   {
     path: "/guides",
