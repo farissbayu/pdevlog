@@ -1,0 +1,1 @@
+ALTER TABLE `daily_learning_suggestions` ADD `source_items` text;

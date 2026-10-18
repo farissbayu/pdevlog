@@ -29,6 +29,7 @@ import {
   useRecentActivityQuery,
 } from "./api";
 import { CheckInCard } from "./check-in-card";
+import { DailyLearningCard } from "./daily-learning-card";
 
 
 function countLabel(count: number, noun: string): string {
@@ -359,6 +360,8 @@ export function DashboardPage() {
           </div>
 
           <CheckInCard />
+
+          <DailyLearningCard />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Recent Activity */}

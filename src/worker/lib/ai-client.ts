@@ -90,6 +90,34 @@ const BLIND_SPOT_AUDIT_SYSTEM_PROMPT = [
   "Be specific and non-generic; avoid buzzword advice.",
 ].join(" ");
 
+const DAILY_LEARNING_SYSTEM_PROMPT = [
+  "You are an Elite Staff Engineer and Technical Mentor guiding a software engineer.",
+  "You are given a chronological feed of the engineer's actual work over the LAST 7 DAYS",
+  "(their project backlog items, brag logs, and notes).",
+  "Recommend ONE hyper-relevant, concrete technical topic for them to learn today.",
+  "Rules:",
+  "1. The topic MUST directly build upon, harden, or optimize what they built or documented recently.",
+  "2. Do NOT recommend generic beginner roadmaps. Propose a specific architectural pattern,",
+  "performance nuance, edge-case hardening, or internal mechanism relevant to their recent work.",
+  "3. Explain the connection explicitly: 'Because you built [X] in [Project Y], the next natural concept to master is [Z]'.",
+  "4. Provide a concrete practical next step: a 1-2h spike, benchmark, or prototype.",
+  "5. Write the suggested outline as a short Markdown note template with 3-4 guiding questions.",
+  "6. In usedSourceTitles, copy verbatim (1 to 3) the exact titles of the notes, brag logs, or project items",
+  "   from the feed that inspired this suggestion. Use the real titles from the feed, never invented ones.",
+  "Respond with a single JSON object matching the requested schema.",
+].join(" ");
+
+const dailyLearningSuggestionSchema = z.object({
+  title: z.string().min(1),
+  category: z.string().min(1),
+  reason: z.string().min(1),
+  practicalNextStep: z.string().min(1),
+  suggestedOutline: z.string().min(1),
+  suggestedTags: z.array(z.string().min(1)),
+  usedSourceTitles: z.array(z.string().min(1)),
+  sourceContextSummary: z.string().min(1),
+});
+
 const realityExtractionSchema = z.object({
   archetype: z.string().min(1),
   summary: z.string().min(1),
@@ -379,6 +407,51 @@ export async function refineStarBreakdown(
     tagOptions,
     "AI refused to refine the breakdown",
   );
+}
+
+export class DailyLearningSuggestionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DailyLearningSuggestionError";
+  }
+}
+
+export type DailyLearningAiSuggestion = z.infer<
+  typeof dailyLearningSuggestionSchema
+>;
+
+export type DailyLearningSuggestionResult = {
+  suggestion: DailyLearningAiSuggestion;
+  usage: StarBreakdownUsage;
+};
+
+export async function generateDailyLearningSuggestion(
+  env: AppEnv["Bindings"],
+  context: string,
+  options: { regenerate?: boolean } = {},
+): Promise<DailyLearningSuggestionResult> {
+  const user = options.regenerate
+    ? [
+        "The engineer already saw an earlier suggestion today and asked for a different direction.",
+        "Propose a meaningfully different topic that still follows the rules.",
+        "",
+        context,
+      ].join("\n")
+    : context;
+
+  const { data, usage } = await runStructuredCompletion<DailyLearningAiSuggestion>({
+    env,
+    schema: dailyLearningSuggestionSchema,
+    schemaName: "daily_learning_suggestion",
+    system: DAILY_LEARNING_SYSTEM_PROMPT,
+    user,
+    temperature: 0.4,
+    timeoutMs: REQUEST_TIMEOUT_MS,
+    makeError: (message) => new DailyLearningSuggestionError(message),
+    refusalLabel: "AI refused to suggest a learning topic",
+  });
+
+  return { suggestion: data, usage };
 }
 
 export async function extractAndFormatResume(

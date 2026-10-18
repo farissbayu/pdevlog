@@ -48,6 +48,7 @@ import {
 } from "@/client/features/sources/source-editor";
 import { extractSourcesFromText } from "@/client/features/sources/url-extractor";
 import { TagSelect } from "@/client/features/tags/tag-select";
+import { useTagsQuery } from "@/client/features/tags/api";
 import { useProjectsQuery } from "@/client/features/projects/api";
 import { useWorkspacesQuery } from "@/client/features/workspaces/api";
 import {
@@ -125,12 +126,18 @@ function NoteEditorForm({
   presetWorkspaceId,
   presetProjectId,
   projectItemId,
+  presetTitle,
+  presetContent,
+  presetTagNames,
   spark,
 }: {
   note: NoteResponse | null;
   presetWorkspaceId: string;
   presetProjectId: string;
   projectItemId: string;
+  presetTitle: string;
+  presetContent: string;
+  presetTagNames: string;
   spark?: SparkResponse | null;
 }) {
   const isEditing = Boolean(note);
@@ -141,9 +148,11 @@ function NoteEditorForm({
   const { data: workspaces } = useWorkspacesQuery();
 
   const [title, setTitle] = useState(
-    note?.title ?? (spark ? sparkTitle(spark.content) : ""),
+    note?.title ?? (presetTitle || (spark ? sparkTitle(spark.content) : "")),
   );
-  const [content, setContent] = useState(() => initialContent(note, spark));
+  const [content, setContent] = useState(
+    () => initialContent(note, spark) || presetContent,
+  );
   const [workspaceId, setWorkspaceId] = useState(
     note?.workspaceId ?? presetWorkspaceId ?? "",
   );
@@ -170,6 +179,26 @@ function NoteEditorForm({
       spark?.tags.map((tag) => tag.id) ??
       [],
   );
+  const { data: allTags } = useTagsQuery();
+  const presetTagsApplied = useRef(false);
+  useEffect(() => {
+    if (presetTagsApplied.current || !allTags || !presetTagNames) {
+      return;
+    }
+    presetTagsApplied.current = true;
+    const wanted = new Set(
+      presetTagNames
+        .split(",")
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const matched = allTags
+      .filter((tag) => wanted.has(tag.name.toLowerCase()))
+      .map((tag) => tag.id);
+    if (matched.length > 0) {
+      setTagIds((current) => [...new Set([...current, ...matched])]);
+    }
+  }, [allTags, presetTagNames]);
   const [sources, setSources] = useState<SourceDraft[]>(() =>
     initialSources(note, spark),
   );
@@ -731,6 +760,9 @@ export function NoteEditorPage() {
   const presetProjectId = searchParams.get("project") ?? "";
   const projectItemId = searchParams.get("projectItem") ?? "";
   const sparkId = searchParams.get("spark") ?? "";
+  const presetTitle = searchParams.get("title") ?? "";
+  const presetContent = searchParams.get("content") ?? "";
+  const presetTagNames = searchParams.get("tags") ?? "";
   const isEditing = Boolean(id);
   const noteQuery = useNoteDetailQuery(id ?? "");
   const sparkQuery = useSparkDetailQuery(isEditing ? "" : sparkId);
@@ -793,6 +825,9 @@ export function NoteEditorPage() {
       presetWorkspaceId={presetWorkspaceId}
       presetProjectId={presetProjectId}
       projectItemId={projectItemId}
+      presetTitle={presetTitle}
+      presetContent={presetContent}
+      presetTagNames={presetTagNames}
       spark={spark}
     />
   );

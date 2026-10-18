@@ -414,6 +414,55 @@ export const projectItems = sqliteTable(
   ],
 );
 
+export const learningSuggestionStatuses = [
+  "active",
+  "saved_as_spark",
+  "converted_to_note",
+  "dismissed",
+] as const;
+
+export type LearningSuggestionStatus =
+  (typeof learningSuggestionStatuses)[number];
+
+export const dailyLearningSuggestions = sqliteTable(
+  "daily_learning_suggestions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // Local day key 'YYYY-MM-DD'
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    reason: text("reason").notNull(),
+    practicalNextStep: text("practical_next_step").notNull(),
+    suggestedOutline: text("suggested_outline"),
+    suggestedTags: text("suggested_tags"), // JSON string array
+    sourceItems: text("source_items"), // JSON array of { kind, title }
+    sourceContextSummary: text("source_context_summary"),
+    regenerateCount: integer("regenerate_count").notNull().default(0),
+    status: text("status", { enum: learningSuggestionStatuses })
+      .notNull()
+      .default("active"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [
+    uniqueIndex("daily_learning_suggestions_user_date_idx").on(
+      table.userId,
+      table.date,
+    ),
+    index("daily_learning_suggestions_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const cvParseStatuses = [
   "idle",
   "processing",
@@ -496,5 +545,9 @@ export type ProjectItemRow = typeof projectItems.$inferSelect;
 export type NewProjectItemRow = typeof projectItems.$inferInsert;
 export type UserProfileRow = typeof userProfiles.$inferSelect;
 export type NewUserProfileRow = typeof userProfiles.$inferInsert;
+export type DailyLearningSuggestionRow =
+  typeof dailyLearningSuggestions.$inferSelect;
+export type NewDailyLearningSuggestionRow =
+  typeof dailyLearningSuggestions.$inferInsert;
 
 
