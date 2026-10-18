@@ -169,6 +169,13 @@
       "when": 1792315208135,
       "tag": "0023_familiar_quasimodo",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1792317883583,
+      "tag": "0024_spicy_apocalypse",
+      "breakpoints": true
     }
   ]
 }

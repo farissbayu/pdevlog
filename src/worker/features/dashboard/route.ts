@@ -265,6 +265,33 @@ async function findTodaySuggestion(
   return row;
 }
 
+function parsePreviousTitles(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((title): title is string => typeof title === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+async function loadAvoidTitles(
+  db: ReturnType<typeof createDb>,
+  userId: string,
+  extra: string[],
+): Promise<string[]> {
+  const rows = await db
+    .select({ title: dailyLearningSuggestions.title })
+    .from(dailyLearningSuggestions)
+    .where(eq(dailyLearningSuggestions.userId, userId))
+    .orderBy(desc(dailyLearningSuggestions.updatedAt))
+    .limit(5);
+
+  return [...new Set([...extra, ...rows.map((row) => row.title)])].slice(0, 10);
+}
+
 function pickCitedSources(
   usedSourceTitles: string[],
   sources: SuggestionSource[],
@@ -357,11 +384,13 @@ const generateLearningSuggestion = async (
   }
 
   const { context, recentItems, sources } = await loadLearningContext(db, userId);
+  const avoidTitles = await loadAvoidTitles(db, userId, []);
 
   try {
     const { suggestion, usage } = await generateDailyLearningSuggestion(
       c.env,
       context,
+      { avoidTitles },
     );
 
     const now = new Date();
@@ -431,12 +460,16 @@ const regenerateLearningSuggestion = async (
   }
 
   const { context, recentItems, sources } = await loadLearningContext(db, userId);
+  const avoidTitles = await loadAvoidTitles(db, userId, [
+    ...parsePreviousTitles(existing.previousTitles),
+    existing.title,
+  ]);
 
   try {
     const { suggestion, usage } = await generateDailyLearningSuggestion(
       c.env,
       context,
-      { regenerate: true },
+      { regenerate: true, avoidTitles },
     );
 
     const now = new Date();
@@ -453,6 +486,10 @@ const regenerateLearningSuggestion = async (
         sourceItems: JSON.stringify(
           pickCitedSources(suggestion.usedSourceTitles, sources),
         ),
+        previousTitles: JSON.stringify([
+          ...parsePreviousTitles(existing.previousTitles),
+          existing.title,
+        ]),
         sourceContextSummary: suggestion.sourceContextSummary,
         regenerateCount,
         updatedAt: now,

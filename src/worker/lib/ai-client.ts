@@ -428,16 +428,26 @@ export type DailyLearningSuggestionResult = {
 export async function generateDailyLearningSuggestion(
   env: AppEnv["Bindings"],
   context: string,
-  options: { regenerate?: boolean } = {},
+  options: { regenerate?: boolean; avoidTitles?: string[] } = {},
 ): Promise<DailyLearningSuggestionResult> {
+  const avoidTitles = options.avoidTitles ?? [];
+  const avoidLine =
+    avoidTitles.length > 0
+      ? `Do NOT repeat or rephrase any of these topics the engineer was already suggested: ${avoidTitles
+          .map((title) => `"${title}"`)
+          .join("; ")}.`
+      : "";
+
   const user = options.regenerate
     ? [
         "The engineer already saw an earlier suggestion today and asked for a different direction.",
-        "Propose a meaningfully different topic that still follows the rules.",
+        avoidLine,
         "",
         context,
-      ].join("\n")
-    : context;
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : [avoidLine, context].filter(Boolean).join("\n");
 
   const { data, usage } = await runStructuredCompletion<DailyLearningAiSuggestion>({
     env,

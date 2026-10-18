@@ -189,12 +189,10 @@ describe("daily learning suggestion", () => {
   it("allows three regenerations per day and rejects the fourth", async () => {
     const token = await createUser("learn-regen");
     await insertNote("learn-regen", "learn-regen-note", "D1 work", Date.now());
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation(() =>
-        Promise.resolve(completionWith(SUGGESTION_JSON)),
-      ),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(completionWith(SUGGESTION_JSON)));
+    vi.stubGlobal("fetch", fetchMock);
 
     const created = await generate(token);
     expect(created.status).toBe(201);
@@ -206,6 +204,18 @@ describe("daily learning suggestion", () => {
       expect(body.regenerationsLeft).toBe(expectedLeft);
       expect(body.suggestion?.regenerateCount).toBe(3 - expectedLeft);
     }
+
+    const firstRegenInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    const firstRegenBody = JSON.parse(String(firstRegenInit.body)) as {
+      messages: { role: string; content: string }[];
+    };
+    const firstRegenPrompt =
+      firstRegenBody.messages.find((message) => message.role === "user")
+        ?.content ?? "";
+    expect(firstRegenPrompt).toContain("Do NOT repeat");
+    expect(firstRegenPrompt).toContain(
+      "Connection pooling and prepared statement caching in D1",
+    );
 
     const blocked = await regenerate(token);
     expect(blocked.status).toBe(400);

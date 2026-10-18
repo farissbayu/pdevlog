@@ -439,6 +439,7 @@ export const dailyLearningSuggestions = sqliteTable(
     suggestedOutline: text("suggested_outline"),
     suggestedTags: text("suggested_tags"), // JSON string array
     sourceItems: text("source_items"), // JSON array of { kind, title }
+    previousTitles: text("previous_titles"), // JSON string array replaced today
     sourceContextSummary: text("source_context_summary"),
     regenerateCount: integer("regenerate_count").notNull().default(0),
     status: text("status", { enum: learningSuggestionStatuses })
