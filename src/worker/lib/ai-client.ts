@@ -300,13 +300,20 @@ async function runStructuredCompletion<T>({
 }: StructuredCompletionParams<T>): Promise<{ data: T; usage: StarBreakdownUsage }> {
   const client = getAiClient(env, { maxRetries });
 
+  // InferHub's DashScope-backed models reject json_schema, so send the schema
+  // in the prompt and validate the json_object response with Zod instead.
+  const jsonSchema = zodResponseFormat(schema, schemaName).json_schema.schema;
+
   const requestParams = {
     model: env.AI_MODEL || DEFAULT_MODEL,
     temperature,
     ...(REASONING_EFFORT ? { reasoning: { effort: REASONING_EFFORT } } : {}),
-    response_format: zodResponseFormat(schema, schemaName),
+    response_format: { type: "json_object" as const },
     messages: [
-      { role: "system" as const, content: system },
+      {
+        role: "system" as const,
+        content: `${system}\nRespond with a single JSON object that conforms to this JSON Schema:\n${JSON.stringify(jsonSchema)}`,
+      },
       { role: "user" as const, content: user },
     ],
     provider: { require_parameters: true },
@@ -320,11 +327,12 @@ async function runStructuredCompletion<T>({
   let totalTokens = 0;
 
   try {
-    const completion = await client.chat.completions.parse(requestParams, {
+    const completion = await client.chat.completions.create(requestParams, {
       timeout: timeoutMs,
     });
     const message = completion.choices[0]?.message;
-    parsed = (message?.parsed as T | null | undefined) ?? null;
+    const content = message?.content;
+    parsed = content ? schema.parse(JSON.parse(content)) : null;
     refusal = message?.refusal ?? null;
     model = completion.model || requestParams.model;
     promptTokens = completion.usage?.prompt_tokens ?? 0;

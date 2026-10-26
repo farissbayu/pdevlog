@@ -133,14 +133,14 @@ describe("brag log AI star breakdown route", () => {
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     const sent = JSON.parse(String(init.body)) as {
-      response_format: {
-        json_schema: {
-          schema: { properties: { tag_ids: { items: { enum: string[] } } } };
-        };
-      };
+      messages: { role: string; content: string }[];
     };
-    const allowed =
-      sent.response_format.json_schema.schema.properties.tag_ids.items.enum;
+    const system =
+      sent.messages.find((message) => message.role === "system")?.content ?? "";
+    const schema = JSON.parse(system.split("JSON Schema:\n")[1] ?? "{}") as {
+      properties: { tag_ids: { items: { enum: string[] } } };
+    };
+    const allowed = schema.properties.tag_ids.items.enum;
     expect(allowed).toEqual([ownedTag]);
     expect(allowed).not.toContain(otherTag);
   });

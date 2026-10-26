@@ -79,10 +79,11 @@ Mock the AI provider with `vi.stubGlobal("fetch", ...)` (see
 ## AI calls
 
 All AI lives in `src/worker/lib/ai-client.ts` behind `getAiClient(env)`:
-`AI_BASE_URL` is passed through `resolveBaseUrl()`, which strips a trailing
-`/chat/completions` (`wrangler.jsonc` stores it with the suffix, `.dev.vars.example`
-without — both work). OpenRouter attribution headers come from `APP_URL` /
-`APP_NAME`.
+`AI_BASE_URL` is passed through `resolveBaseUrl()`. `wrangler.jsonc` and
+`.dev.vars.example` now store plain provider base URLs without a
+`/chat/completions` suffix, and `resolveBaseUrl()` still strips a trailing
+`/chat/completions` when present for backward compatibility. OpenRouter
+attribution headers come from `APP_URL` / `APP_NAME`.
 
 Long AI work (CV parse, skill audits, skill-shredder generation) runs in
 `c.executionCtx.waitUntil(...)` and returns `202` with a status; the client polls

@@ -63,7 +63,7 @@ describe("generateStarBreakdown", () => {
     expect(String(url)).toContain("/chat/completions");
   });
 
-  it("requests a json_schema response format with a tag enum", async () => {
+  it("requests a json_object response format with the tag enum in the prompt", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       completionWith(
         JSON.stringify({
@@ -88,29 +88,19 @@ describe("generateStarBreakdown", () => {
 
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(init.body)) as {
-      response_format: {
-        type: string;
-        json_schema: {
-          name: string;
-          strict: boolean;
-          schema: {
-            properties: {
-              tag_ids: { items: { enum: string[] } };
-              title: { description?: string };
-            };
-          };
-        };
+      response_format: { type: string };
+      messages: { role: string; content: string }[];
+    };
+    expect(body.response_format.type).toBe("json_object");
+    const system = body.messages.find((m) => m.role === "system")?.content ?? "";
+    const schema = JSON.parse(system.split("JSON Schema:\n")[1] ?? "{}") as {
+      properties: {
+        tag_ids: { items: { enum: string[] } };
+        title: { description?: string };
       };
     };
-    expect(body.response_format.type).toBe("json_schema");
-    expect(body.response_format.json_schema.name).toBe("star_breakdown");
-    expect(body.response_format.json_schema.strict).toBe(true);
-    expect(
-      body.response_format.json_schema.schema.properties.tag_ids.items.enum,
-    ).toEqual(["tag-1"]);
-    expect(
-      body.response_format.json_schema.schema.properties.title.description,
-    ).toContain("headline");
+    expect(schema.properties.tag_ids.items.enum).toEqual(["tag-1"]);
+    expect(schema.properties.title.description).toContain("headline");
   });
 
   it("throws when the model returns a tag outside the enum", async () => {
