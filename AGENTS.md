@@ -13,9 +13,14 @@ bunx vitest run tests/isolation/skills.test.ts   # single file
 bun run dev                # Vite dev server w/ Worker runtime on :5173
 ```
 
-CI (`.github/workflows/deploy.yml`) runs on every push to `main`:
-`typecheck -> test -> db:migrate:remote -> deploy`. Remote D1 migrations and deploy
-happen automatically — do not run them by hand for a normal push.
+Deploys run on **Cloudflare Workers Builds**, configured in the Cloudflare
+dashboard (no `.github/workflows` in this repo, so GitHub Actions is not involved).
+The dashboard build command is `bun install --frozen-lockfile && bun run build`;
+the deploy command is `bun run deploy:ci`, which applies remote D1 migrations and
+then runs `wrangler deploy`.
+
+There is no remote test gate: run `bun run typecheck && bun run test` locally
+before pushing, because the build only type-checks via `tsc -b`.
 
 Commit messages are lowercase Conventional Commits: `feat: ...`, `fix: ...`, `chore: ...`.
 

@@ -224,10 +224,22 @@ unauthenticated; every other route requires a valid session cookie and returns
 
 ## Deployment
 
-Deployment to Cloudflare Workers runs in CI: every push to `main` runs typecheck,
-tests, remote D1 migrations, and deploy via
-[.github/workflows/deploy.yml](.github/workflows/deploy.yml). To deploy manually,
-set `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` and run `bun run deploy`.
+Deploys run on **Cloudflare Workers Builds** (dashboard → Workers & Pages →
+`pdevlog` → Settings → Build), not GitHub Actions. Every push to `main` triggers
+a build on Cloudflare; no GitHub Actions minutes are used.
+
+| Setting | Value |
+| --- | --- |
+| Build command | `bun install --frozen-lockfile && bun run build` |
+| Deploy command | `bun run deploy:ci` (applies remote D1 migrations, then `wrangler deploy`) |
+| Root directory | `/` |
+
+`deploy:ci` skips migration prompts automatically because Workers Builds sets
+`CI=true`. Tests do **not** run on the build — run `bun run typecheck && bun run test`
+locally before pushing.
+
+To deploy manually, set `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` and run
+`bun run deploy:ci` (or `bun run deploy` to skip migrations).
 
 ## License
 
