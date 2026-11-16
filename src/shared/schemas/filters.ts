@@ -23,6 +23,7 @@ const baseFilterSchema = z
     tag_id: filterQueryValueSchema,
     from: dateSchema,
     to: dateSchema,
+    tz_offset: z.coerce.number().int().min(-840).max(840).optional(),
   })
   .extend(paginationQuerySchema.shape);
 
@@ -38,6 +39,7 @@ export const sparkFilterSchema = z
     from: dateSchema,
     to: dateSchema,
     status: z.enum(["open", "archived", "promoted"]).optional(),
+    tz_offset: z.coerce.number().int().min(-840).max(840).optional(),
   })
   .extend(paginationQuerySchema.shape);
 

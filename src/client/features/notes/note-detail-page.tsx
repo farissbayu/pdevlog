@@ -1,7 +1,9 @@
+import GithubSlugger from "github-slugger";
 import {
   AlertTriangle,
   ArrowLeft,
   Clock,
+  FileCode,
   FileDown,
   FileText,
   Loader2,
@@ -113,6 +115,21 @@ export function NoteDetailPage() {
     );
   }
 
+  const downloadMarkdown = () => {
+    const body = `# ${data.title}\n\n${data.content}\n`;
+    const slug = new GithubSlugger().slug(data.title) || "note";
+    const url = URL.createObjectURL(
+      new Blob([body], { type: "text/markdown;charset=utf-8" }),
+    );
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${slug}.md`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
@@ -198,6 +215,16 @@ export function NoteDetailPage() {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+            aria-label="Download Markdown"
+            title="Download Markdown"
+            onClick={downloadMarkdown}
+          >
+            <FileCode className="size-4" />
+          </Button>
           <Button variant="outline" size="icon" className="shrink-0" asChild>
             <Link
               to={`/notes/${data.id}/print`}

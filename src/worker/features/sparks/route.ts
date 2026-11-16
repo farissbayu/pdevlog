@@ -6,7 +6,6 @@ import {
   eq,
   gte,
   inArray,
-  like,
   lte,
   sql,
   type SQL,
@@ -54,6 +53,8 @@ import {
   toTagResponse,
   validateTagOwnership,
 } from "@/worker/features/tags/helpers";
+import { containsText } from "@/worker/lib/sql";
+import { dayEndUtc, dayStartUtc } from "@/worker/lib/time";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
@@ -97,9 +98,10 @@ const listSparks = async (
   const db = createDb(c.env.DB);
 
   const conditions: SQL[] = [eq(sparks.userId, userId)];
+  const tzOffset = filters.tz_offset ?? 0;
 
   if (filters.q) {
-    conditions.push(like(sparks.content, `%${filters.q}%`));
+    conditions.push(containsText(sparks.content, filters.q));
   }
 
   if (filters.status) {
@@ -108,13 +110,13 @@ const listSparks = async (
 
   if (filters.from) {
     conditions.push(
-      gte(sparks.createdAt, new Date(`${filters.from}T00:00:00.000Z`)),
+      gte(sparks.createdAt, dayStartUtc(filters.from, tzOffset)),
     );
   }
 
   if (filters.to) {
     conditions.push(
-      lte(sparks.createdAt, new Date(`${filters.to}T23:59:59.999Z`)),
+      lte(sparks.createdAt, dayEndUtc(filters.to, tzOffset)),
     );
   }
 

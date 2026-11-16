@@ -16,8 +16,8 @@ with a D1 (SQLite) database.
 - **Sparks** — a frictionless capture inbox. Press `Cmd/Ctrl+K` (or the Spark button) anywhere to dump a link, idea, or screenshot. Recall old sparks with full-text/tag/date filters or a "Surprise me" random pick, then promote them into a note or brag log.
 - **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 20 per owner). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted into a note.
 - **Tags** — cross-cut brag logs and notes; filter and search across them.
-- **Dashboard** — totals and recent activity at a glance.
-- **Export** — download brag logs as Markdown (optionally scoped to a date range) and any note as a print-ready PDF for offline reading.
+- **Dashboard** — outcome counts (achievements, evidenced skills, documented projects), an activity heatmap, recent activity, and a zero-state capture box that turns one rough note into a saved achievement.
+- **Export** — download brag logs as Markdown (full STAR or one-line CV bullets, optionally scoped to a date range), download any note as `.md`, or print it as a PDF.
 - **Account deletion** — remove your account and all owned data (cascading deletes).
 - **Admin page** — for emails listed in `ADMIN_EMAILS`: a separate console with a user datatable (search, sort, paginate), per-user content and AI-token usage, and hard-delete.
 - **Light/dark theme**, collapsible sidebar, responsive layout.
@@ -169,16 +169,16 @@ wrangler.jsonc             # Worker, D1, R2, assets config
   foreign keys use `ON DELETE CASCADE` so deleting a user or workspace removes
   owned rows.
 - **Rate limiting.** Auth endpoints are limited to 10 requests/min per IP; the
-  AI STAR breakdown endpoint likewise.
+  AI STAR breakdown and profile AI endpoints likewise.
 - **AI safety.** The STAR generator uses a strict system prompt (first-person,
   no invented facts) and Zod-structured output; suggested tag IDs are filtered
   against the user's actual tags.
 
 ## API Overview
 
-All routes are prefixed with `/api`. Only `/api/auth/*` is unauthenticated;
-every other route — including `/api/health` — requires a valid session cookie and
-returns 401 without one.
+All routes are prefixed with `/api`. Only `/api/auth/*` and `/api/health` are
+unauthenticated; every other route requires a valid session cookie and returns
+401 without one.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
@@ -196,8 +196,9 @@ returns 401 without one.
 | GET/PUT/DELETE | `/brag-logs/:id` | Read/update/delete a brag log |
 | GET/POST | `/notes` | List or create notes |
 | GET/PUT/DELETE | `/notes/:id` | Read/update/delete a note |
-| GET | `/dashboard` | Counts and recent workspaces |
+| GET | `/dashboard` | Outcome stats and recent workspaces |
 | GET | `/dashboard/recent` | Recent activity feed |
+| GET | `/dashboard/check-ins` | Per-day activity buckets (heatmap) |
 | GET/PATCH | `/profile` | Read or update the developer profile |
 | POST | `/profile/cv/upload` | Upload a CV/PDF and extract Markdown (async, 202) |
 | POST | `/profile/skills/analyze` | Generate skill insights (async, 202) |
@@ -215,7 +216,7 @@ returns 401 without one.
 | POST | `/sparks/:id/attachments` | Upload an image attachment (multipart) |
 | POST | `/notes/:id/attachments` | Upload an image attachment (multipart) |
 | GET/DELETE | `/attachments/:id` | Owner-checked image proxy / delete |
-| GET | `/export/brag-logs` | Export brag logs as Markdown |
+| GET | `/export/brag-logs` | Export brag logs as Markdown (`format=star` or `bullets`) |
 | GET | `/admin/users` | List users with per-user usage (admin only) |
 | DELETE | `/admin/users/:id` | Hard-delete a user and their data (admin only) |
 | GET | `/health` | Health check |

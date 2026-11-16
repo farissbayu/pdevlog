@@ -176,6 +176,20 @@
       "when": 1792317883583,
       "tag": "0024_spicy_apocalypse",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1793002422672,
+      "tag": "0025_military_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1794802987151,
+      "tag": "0026_hot_wrecker",
+      "breakpoints": true
     }
   ]
 }

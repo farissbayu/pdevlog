@@ -1,0 +1,1 @@
+ALTER TABLE `user_profiles` ADD `ai_job_started_at` integer;

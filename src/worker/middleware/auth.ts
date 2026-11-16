@@ -4,7 +4,7 @@ import type { AppEnv } from "@/worker/env";
 import { getSessionUserId } from "@/worker/features/auth/session";
 
 export const authMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (c.req.path.startsWith("/api/auth/")) {
+  if (c.req.path.startsWith("/api/auth/") || c.req.path === "/api/health") {
     return next();
   }
 

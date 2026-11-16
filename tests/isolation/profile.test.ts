@@ -258,12 +258,14 @@ describe("profile and CV skill mapping isolation tests", () => {
           description:
             "High velocity building interactive apps with React and TypeScript.",
           evidenceSummary: "Built scalable React applications with TypeScript.",
+          evidenceLogIds: [],
         },
         {
           area: "Relational Database Design",
           description:
             "Pragmatic modeling and migrations using SQLite and Postgres.",
           evidenceSummary: "Designed database schemas in SQLite and Postgres.",
+          evidenceLogIds: [],
         },
       ],
       productionStack: ["React", "TypeScript", "SQLite"],
@@ -344,6 +346,206 @@ describe("profile and CV skill mapping isolation tests", () => {
     ]);
     expect(profileData.skillAnalyzedAt).not.toBeNull();
     expect(profileData.insightsStatus).toBe("ready");
+  });
+
+  it("links skill strengths to supporting brag logs and drops invented evidence ids", async () => {
+    const token = await createUser("profile-user-evidence");
+
+    await request("/api/profile", token, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cvMarkdown:
+          "# Jane Doe - Senior Product Engineer\n\n- Built scalable React applications with TypeScript.",
+      }),
+    });
+
+    const knownId = "brag-log-evidence-1";
+    await env.DB.prepare(
+      "INSERT INTO brag_logs (id, user_id, title, situation, task, action, result, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+      .bind(
+        knownId,
+        "profile-user-evidence",
+        "Shipped auth",
+        "Users needed login",
+        "Add auth",
+        "Built OAuth flow",
+        "Shipped OAuth login",
+        "2026-01-01",
+      )
+      .run();
+
+    const reality = {
+      archetype: "Product-Centric Fullstack Engineer",
+      summary: "Strong fullstack engineer with proven execution.",
+      strengths: [
+        {
+          area: "Frontend Architecture & UI Craft",
+          description: "High velocity building interactive apps with React.",
+          evidenceSummary: "Built scalable React applications with TypeScript.",
+          evidenceLogIds: [knownId, "invented-id"],
+        },
+      ],
+      productionStack: ["React", "TypeScript"],
+      observedPatterns: ["SPA with Client State"],
+      recommendedNextSteps: ["Log architectural decisions."],
+    };
+    const audit = {
+      criticalGaps: [
+        {
+          area: "Distributed Systems & Scalability",
+          gap: "Limited evidence of message brokers.",
+          whyItMattersForSoloDev: "Single points of failure under load.",
+        },
+      ],
+    };
+
+    const makeCompletion = (payload: unknown) =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: JSON.stringify(payload) } }],
+          usage: { prompt_tokens: 40, completion_tokens: 30, total_tokens: 70 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(makeCompletion(reality))
+        .mockResolvedValueOnce(makeCompletion(audit)),
+    );
+
+    const analyzeRes = await request("/api/profile/skills/analyze", token, {
+      method: "POST",
+    });
+    expect(analyzeRes.status).toBe(202);
+
+    await runQueuedAiJob({ kind: "skills", userId: "profile-user-evidence" });
+
+    const profileRes = await request("/api/profile", token);
+    const profile = (await profileRes.json()) as {
+      skillInsights: {
+        strengths: { evidenceLogs: { id: string; title: string }[] }[];
+      };
+    };
+
+    expect(profile.skillInsights.strengths[0].evidenceLogs).toEqual([
+      { id: knownId, title: "Shipped auth" },
+    ]);
+  });
+
+  it("parses legacy skill insights without evidenceLogs as an empty list", async () => {
+    const token = await createUser("profile-user-legacy");
+
+    const legacyInsights = {
+      archetype: "Legacy Engineer",
+      summary: "Older insight set.",
+      strengths: [
+        {
+          area: "Backend",
+          description: "Built APIs.",
+          evidenceSummary: "Shipped APIs.",
+        },
+      ],
+      growthAreas: [
+        {
+          id: "gap-1",
+          area: "Observability",
+          gap: "No tracing.",
+          recommendation: "Add tracing.",
+        },
+      ],
+      recommendedNextSteps: ["Log more"],
+      analyzedAt: "2026-01-01T00:00:00.000Z",
+    };
+
+    await env.DB.prepare(
+      "INSERT INTO user_profiles (user_id, skill_insights) VALUES (?, ?)",
+    )
+      .bind("profile-user-legacy", JSON.stringify(legacyInsights))
+      .run();
+
+    const profileRes = await request("/api/profile", token);
+    expect(profileRes.status).toBe(200);
+    const profile = (await profileRes.json()) as {
+      skillInsights: {
+        strengths: { evidenceLogs: unknown[] }[];
+      };
+    };
+    expect(profile.skillInsights.strengths[0].evidenceLogs).toEqual([]);
+  });
+
+  it("rejects a CV upload that is not a PDF, Markdown, or text file", async () => {
+    const token = await createUser("profile-user-bad-cv");
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File([new Uint8Array([137, 80, 78, 71])], "photo.png", {
+        type: "image/png",
+      }),
+    );
+
+    const res = await request("/api/profile/cv/upload", token, {
+      method: "POST",
+      body: formData,
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain("PDF, Markdown, or text");
+  });
+
+  it("marks an AI job failed and rejects so the queue can retry it", async () => {
+    const token = await createUser("profile-user-job-fail");
+
+    await request("/api/profile", token, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cvMarkdown:
+          "# Jane Doe - Senior Product Engineer\n\n- Built scalable React applications with TypeScript.",
+      }),
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("provider down")),
+    );
+
+    const batch = createMessageBatch<AiJobMessage>("pdevlog-ai-jobs", [
+      {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        attempts: 1,
+        body: { kind: "skills", userId: "profile-user-job-fail" },
+      },
+    ]);
+    const ctx = createExecutionContext();
+
+    await expect(app.queue(batch, env, ctx)).rejects.toThrow();
+
+    const profileRes = await request("/api/profile", token);
+    const profile = (await profileRes.json()) as { insightsStatus: string };
+    expect(profile.insightsStatus).toBe("failed");
+  });
+
+  it("fails a job that has been stuck longer than the stale window", async () => {
+    const token = await createUser("profile-user-stale");
+
+    await request("/api/profile", token);
+    await env.DB.prepare(
+      "UPDATE user_profiles SET cv_parse_status = 'processing', ai_job_started_at = ? WHERE user_id = ?",
+    )
+      .bind(Date.now() - 200_000, "profile-user-stale")
+      .run();
+
+    const res = await request("/api/profile", token);
+    const profile = (await res.json()) as { cvParseStatus: string };
+    expect(profile.cvParseStatus).toBe("failed");
   });
 });
 

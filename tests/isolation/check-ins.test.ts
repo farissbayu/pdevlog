@@ -135,8 +135,6 @@ type CheckInsBody = {
     sparks: number;
     projectItems: number;
   }[];
-  currentStreak: number;
-  longestStreak: number;
   todayActive: boolean;
 };
 
@@ -156,8 +154,6 @@ describe("daily check-ins", () => {
     const body = await getCheckIns(token);
     expect(body).toEqual({
       days: [],
-      currentStreak: 0,
-      longestStreak: 0,
       todayActive: false,
     });
   });
@@ -189,43 +185,7 @@ describe("daily check-ins", () => {
         projectItems: 1,
       },
     ]);
-    expect(body.currentStreak).toBe(1);
-    expect(body.longestStreak).toBe(1);
     expect(body.todayActive).toBe(true);
-  });
-
-  it("computes current and longest streaks across a gap", async () => {
-    const token = await createUser("checkin-streaks");
-
-    for (const daysAgo of [0, 1, 2, 10, 11, 12, 13]) {
-      await insertSpark(
-        "checkin-streaks",
-        `checkin-streaks-spark-${daysAgo}`,
-        noonUtc(daysAgo),
-      );
-    }
-
-    const body = await getCheckIns(token);
-    expect(body.days).toHaveLength(7);
-    expect(body.currentStreak).toBe(3);
-    expect(body.longestStreak).toBe(4);
-    expect(body.todayActive).toBe(true);
-  });
-
-  it("keeps the streak alive through yesterday and resets after a gap", async () => {
-    const yesterdayToken = await createUser("checkin-yesterday");
-    await insertSpark("checkin-yesterday", "spark-y", noonUtc(1));
-
-    const yesterdayBody = await getCheckIns(yesterdayToken);
-    expect(yesterdayBody.currentStreak).toBe(1);
-    expect(yesterdayBody.todayActive).toBe(false);
-
-    const gapToken = await createUser("checkin-gap");
-    await insertSpark("checkin-gap", "spark-gap", noonUtc(2));
-
-    const gapBody = await getCheckIns(gapToken);
-    expect(gapBody.currentStreak).toBe(0);
-    expect(gapBody.longestStreak).toBe(1);
   });
 
   it("buckets days by the client timezone offset", async () => {

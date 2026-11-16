@@ -57,6 +57,9 @@ export async function handleAiJobBatch(
     } catch (error) {
       console.error("AI job failed:", error);
       await markJobFailed(env, message.body);
+      // Rethrow so the queue's max_retries can retry transient failures.
+      // The profile stays "failed" if every attempt fails.
+      throw error;
     }
   }
 }

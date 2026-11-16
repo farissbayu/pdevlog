@@ -38,10 +38,9 @@ Add a feature in that order: schema -> `route.ts`/`service.ts` -> mount in
   client (`hc<AppType>`, `src/client/lib/api.ts`), so changing a route's response
   type breaks client code at compile time. Put request/response shapes in
   `src/shared/schemas`, never redefine them client-side.
-- **Auth.** `/api/auth/*` is the only unauthenticated path; `authMiddleware`
-  covers the rest of `/api/*`, including `/api/health` (it returns 401 — README
-  claims otherwise). Admin routes add `requireAdmin`, which checks the session
-  user's email against the `ADMIN_EMAILS` var.
+- **Auth.** `/api/auth/*` and `/api/health` are the only unauthenticated paths;
+  `authMiddleware` covers the rest of `/api/*`. Admin routes add `requireAdmin`,
+  which checks the session user's email against the `ADMIN_EMAILS` var.
 - **Per-user isolation.** Scope every query by `c.get("userId")`. Cross-user
   access must answer **404, not 403** — `tests/isolation/*` asserts this.
 - **DB changes need a generated migration.** Edit `src/worker/db/schema.ts`, then
@@ -55,8 +54,9 @@ Add a feature in that order: schema -> `route.ts`/`service.ts` -> mount in
   `verbatimModuleSyntax`, and `erasableSyntaxOnly` (no enums, no constructor
   parameter properties) apply to worker, client, and tests.
 - **Rate limiting is per-IP, 10/min**, on auth, `/api/brag-logs/star-breakdown`,
-  and skill-shredder. `rateLimit()` state is an in-memory `Map`, so it is
-  per-isolate, not global.
+  and profile AI endpoints (`/api/profile/cv/upload`, `/api/profile/skills/analyze`,
+  `/api/profile/persona/extract`). `rateLimit()` state is an in-memory `Map`, so
+  it is per-isolate, not global.
 
 ## Tests
 
@@ -85,14 +85,15 @@ All AI lives in `src/worker/lib/ai-client.ts` behind `getAiClient(env)`:
 `/chat/completions` when present for backward compatibility. OpenRouter
 attribution headers come from `APP_URL` / `APP_NAME`.
 
-Long AI work (CV parse, skill audits, skill-shredder generation) runs in
-`c.executionCtx.waitUntil(...)` and returns `202` with a status; the client polls
-via `refetchInterval`. Follow that pattern instead of blocking the request.
+Long AI work (CV parse and skill audits) is sent to the `AI_QUEUE` producer,
+handled by `handleAiJobBatch` in `src/worker/features/profile/queue.ts`, and
+returns `202` with a status; the client polls via `refetchInterval`. A
+`user_profiles.ai_job_started_at` timestamp lets `GET /api/profile` mark jobs
+older than 2 minutes as failed so polling never hangs. Follow the queue pattern
+instead of blocking the request (the synchronous `/api/profile/persona/extract`
+endpoint is the one exception).
 
 ## Stale docs
 
-`README.md` is behind the code: it omits the profile, projects, skills, and
-skill-shredder features and their `/api/*` routes, and it links to
-`docs/google-oauth-setup.md` and `docs/DEPLOYMENT.md`, which do not exist
-(`docs/` only holds `docs/plan/` design notes). Trust `src/worker/index.ts` over
-the README's route table.
+`README.md` is mostly accurate but can lag behind new routes. Trust
+`src/worker/index.ts` over the README's route table.

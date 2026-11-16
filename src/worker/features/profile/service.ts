@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { extractText } from "unpdf";
 
 import {
+  parsePrimaryStack,
   skillInsightsSchema,
   type SkillInsights,
   type UpdateProfileRequest,
@@ -23,19 +24,6 @@ import {
   analyzeDeveloperCompetencies,
   extractAndFormatResume,
 } from "@/worker/lib/ai-client";
-
-function parseStack(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-}
 
 function parseSkillInsights(
   raw: string | null | undefined,
@@ -61,7 +49,7 @@ function toProfileResponse(
     avatarUrl: user.avatarUrl,
     headline: profile.headline,
     bio: profile.bio,
-    primaryStack: parseStack(profile.primaryStack),
+    primaryStack: parsePrimaryStack(profile.primaryStack),
     cvMarkdown: profile.cvMarkdown,
     cvExtractedAt: profile.cvExtractedAt
       ? new Date(profile.cvExtractedAt).toISOString()
@@ -73,6 +61,9 @@ function toProfileResponse(
       ? new Date(profile.skillAnalyzedAt).toISOString()
       : null,
     insightsStatus: profile.insightsStatus,
+    aiJobStartedAt: profile.aiJobStartedAt
+      ? new Date(profile.aiJobStartedAt).toISOString()
+      : null,
     createdAt: new Date(profile.createdAt).toISOString(),
     updatedAt: new Date(profile.updatedAt).toISOString(),
   };
@@ -273,7 +264,10 @@ export async function extractPersonaFromCv(
   let primaryStack: string[] = profile.primaryStack;
 
   if (env.AI_API_KEY) {
-    const { data } = await extractAndFormatResume(env, profile.cvMarkdown);
+    // Synchronous request path: cap the wait below the queue's 60s budget.
+    const { data } = await extractAndFormatResume(env, profile.cvMarkdown, {
+      timeoutMs: 30_000,
+    });
     if (data.headline) headline = data.headline;
     if (data.bio) bio = data.bio;
     if (data.primaryStack && data.primaryStack.length > 0) {
@@ -325,6 +319,7 @@ export async function analyzeAndSaveSkillInsights(
   // Fetch recent brag logs and notes to enrich dev context
   const recentBragLogs = await db
     .select({
+      id: bragLogs.id,
       title: bragLogs.title,
       situation: bragLogs.situation,
       task: bragLogs.task,
@@ -334,6 +329,7 @@ export async function analyzeAndSaveSkillInsights(
     .from(bragLogs)
     .where(eq(bragLogs.userId, userId))
     .orderBy(desc(bragLogs.createdAt))
+    // ponytail: only the 5 newest logs are evidence sources; raise the limit if users report thin evidence.
     .limit(5);
 
   const recentNotes = await db
@@ -349,7 +345,7 @@ export async function analyzeAndSaveSkillInsights(
   const devlogEntries: string[] = [];
   for (const log of recentBragLogs) {
     devlogEntries.push(
-      `- Brag Log "${log.title}": [Action] ${log.action} -> [Result] ${log.result}`,
+      `- Brag Log [id=${log.id}] "${log.title}": [Action] ${log.action} -> [Result] ${log.result}`,
     );
   }
   for (const note of recentNotes) {
@@ -358,10 +354,15 @@ export async function analyzeAndSaveSkillInsights(
   const devlogContext =
     devlogEntries.length > 0 ? devlogEntries.join("\n") : undefined;
 
+  const evidenceTitlesById = new Map(
+    recentBragLogs.map((log) => [log.id, log.title]),
+  );
+
   const { insights, usage } = await analyzeDeveloperCompetencies(
     env,
     profile.cvMarkdown,
     devlogContext,
+    evidenceTitlesById,
   );
 
   const now = new Date();

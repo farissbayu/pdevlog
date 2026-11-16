@@ -55,6 +55,7 @@ export function buildFilterQuery(
   if (filters.to) query.to = filters.to;
   if (filters.status) query.status = filters.status;
   query.page = String(filters.page);
+  query.tz_offset = String(-new Date().getTimezoneOffset());
   return query;
 }
 

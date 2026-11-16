@@ -13,8 +13,6 @@ import {
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
-  Flame,
-  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -169,7 +167,7 @@ export function CheckInCard() {
   ).length;
   const daysInMonth = endOfMonth(monthCursor).getDate();
   const isCurrentMonth = isSameMonth(monthCursor, new Date());
-  const { currentStreak, longestStreak, todayActive } = checkIns.data;
+  const { todayActive } = checkIns.data;
 
   return (
     <div className="rounded-lg border bg-card">
@@ -177,7 +175,7 @@ export function CheckInCard() {
         <div className="space-y-1">
           <h2 className="flex items-center gap-2 font-medium">
             <CalendarCheck className="size-4 text-primary" />
-            Daily Check-In
+            Activity
           </h2>
           <p className="text-sm text-muted-foreground">
             Brag logs, notes, sparks, and shipped items you create each day.
@@ -270,24 +268,12 @@ export function CheckInCard() {
 
           {days.length === 0 ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              No activity yet — write a spark to start your streak.
+              No activity yet — write a spark to start.
             </p>
           ) : null}
         </div>
 
         <div className="flex flex-col justify-center gap-3">
-          <SummaryRow
-            icon={Flame}
-            label="Current streak"
-            value={countLabel(currentStreak, "day")}
-            className="bg-orange-500/10 text-orange-600 dark:text-orange-400"
-          />
-          <SummaryRow
-            icon={Trophy}
-            label="Best streak"
-            value={countLabel(longestStreak, "day")}
-            className="bg-amber-500/10 text-amber-600 dark:text-amber-400"
-          />
           <SummaryRow
             icon={CalendarCheck}
             label="This month"

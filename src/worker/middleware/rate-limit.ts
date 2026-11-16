@@ -32,11 +32,17 @@ export function getClientIp(c: Context<AppEnv>): string {
 
 export function rateLimit(options: RateLimitOptions): MiddlewareHandler<AppEnv> {
   const hits = new Map<string, RateLimitEntry>();
+  let lastCleanupAt = 0;
 
   return async (c, next) => {
     const now = Date.now();
 
-    if (hits.size >= CLEANUP_THRESHOLD) {
+    // Scan for expired keys at most once per window instead of on every request.
+    if (
+      hits.size >= CLEANUP_THRESHOLD &&
+      now - lastCleanupAt >= options.windowMs
+    ) {
+      lastCleanupAt = now;
       for (const [key, entry] of hits) {
         if (entry.resetAt <= now) {
           hits.delete(key);

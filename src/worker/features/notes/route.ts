@@ -1,7 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   and,
-  asc,
   count,
   desc,
   eq,
@@ -9,7 +8,6 @@ import {
   gte,
   inArray,
   isNull,
-  like,
   lte,
   or,
   type SQL,
@@ -50,7 +48,6 @@ import {
   type NoteRow,
   type ProjectItemRow,
   type ProjectRow,
-  type SourceOwnerType,
   type SourceRow,
   type TagRow,
   type WorkspaceRow,
@@ -76,6 +73,20 @@ import {
   toSourceResponse,
   toWorkspaceResponse,
 } from "@/worker/features/workspaces/helpers";
+import {
+  findOwnedProject,
+  loadProject,
+  loadWorkspace,
+  touchProjectStatement,
+  touchWorkspaceStatement,
+  validateWorkspaceOwnership,
+} from "@/worker/lib/ownership";
+import {
+  loadSources,
+  loadSourcesByOwnerIds,
+} from "@/worker/lib/sources";
+import { containsText } from "@/worker/lib/sql";
+import { dayEndUtc, dayStartUtc } from "@/worker/lib/time";
 
 
 const ATTACHMENT_URL_PATTERN = /\/api\/attachments\/([A-Za-z0-9_-]+)/g;
@@ -140,136 +151,6 @@ async function findOwnedNote(
     .where(and(eq(notes.id, id), eq(notes.userId, userId)))
     .limit(1);
   return note;
-}
-
-async function loadSources(
-  db: Database,
-  ownerType: SourceOwnerType,
-  ownerId: string,
-  userId: string,
-): Promise<SourceRow[]> {
-  return db
-    .select()
-    .from(sources)
-    .where(
-      and(
-        eq(sources.ownerType, ownerType),
-        eq(sources.ownerId, ownerId),
-        eq(sources.userId, userId),
-      ),
-    )
-    .orderBy(asc(sources.position), asc(sources.createdAt));
-}
-
-async function loadSourcesByOwnerIds(
-  db: Database,
-  ownerType: SourceOwnerType,
-  ownerIds: string[],
-  userId: string,
-): Promise<Map<string, SourceRow[]>> {
-  const map = new Map<string, SourceRow[]>();
-  if (ownerIds.length === 0) {
-    return map;
-  }
-
-  const rows = await db
-    .select()
-    .from(sources)
-    .where(
-      and(
-        eq(sources.ownerType, ownerType),
-        inArray(sources.ownerId, ownerIds),
-        eq(sources.userId, userId),
-      ),
-    )
-    .orderBy(asc(sources.position), asc(sources.createdAt));
-
-  for (const row of rows) {
-    const list = map.get(row.ownerId) ?? [];
-    list.push(row);
-    map.set(row.ownerId, list);
-  }
-  return map;
-}
-
-async function loadWorkspace(
-  db: Database,
-  workspaceId: string | null,
-  userId: string,
-): Promise<WorkspaceRow | null> {
-  if (!workspaceId) {
-    return null;
-  }
-  const [workspace] = await db
-    .select()
-    .from(workspaces)
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
-    .limit(1);
-  return workspace ?? null;
-}
-
-async function validateWorkspaceOwnership(
-  db: Database,
-  workspaceId: string | null | undefined,
-  userId: string,
-): Promise<boolean> {
-  if (workspaceId === null || workspaceId === undefined) {
-    return true;
-  }
-  const [workspace] = await db
-    .select()
-    .from(workspaces)
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
-    .limit(1);
-  return Boolean(workspace);
-}
-
-function touchWorkspaceStatement(
-  db: Database,
-  workspaceId: string,
-  userId: string,
-  now: Date,
-) {
-  return db
-    .update(workspaces)
-    .set({ updatedAt: now })
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)));
-}
-
-async function findOwnedProject(
-  db: Database,
-  projectId: string,
-  userId: string,
-): Promise<ProjectRow | undefined> {
-  const [project] = await db
-    .select()
-    .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
-    .limit(1);
-  return project;
-}
-
-async function loadProject(
-  db: Database,
-  projectId: string | null,
-  userId: string,
-): Promise<ProjectRow | null> {
-  if (!projectId) {
-    return null;
-  }
-  return (await findOwnedProject(db, projectId, userId)) ?? null;
-}
-
-function touchProjectStatement(
-  db: Database,
-  projectId: string,
-  userId: string,
-  now: Date,
-) {
-  return db
-    .update(projects)
-    .set({ updatedAt: now })
-    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
 }
 
 type ScopeResolution =
@@ -347,6 +228,7 @@ const listNotes = async (
   const db = createDb(c.env.DB);
 
   const conditions: SQL[] = [eq(notes.userId, userId)];
+  const tzOffset = filters.tz_offset ?? 0;
 
   if (filters.q) {
     // AND across up to 5 keyword tokens; each token may match title, content or a source.
@@ -357,7 +239,6 @@ const listNotes = async (
       .slice(0, 5);
 
     for (const token of tokens) {
-      const pattern = `%${token}%`;
       const sourceMatch = exists(
         db
           .select({ id: sources.id })
@@ -367,14 +248,17 @@ const listNotes = async (
               eq(sources.userId, userId),
               eq(sources.ownerType, "note"),
               eq(sources.ownerId, notes.id),
-              or(like(sources.label, pattern), like(sources.url, pattern)),
+              or(
+                containsText(sources.label, token),
+                containsText(sources.url, token),
+              ),
             ),
           ),
       );
       conditions.push(
         or(
-          like(notes.title, pattern),
-          like(notes.content, pattern),
+          containsText(notes.title, token),
+          containsText(notes.content, token),
           sourceMatch,
         )!,
       );
@@ -394,11 +278,15 @@ const listNotes = async (
   }
 
   if (filters.from) {
-    conditions.push(gte(notes.createdAt, new Date(`${filters.from}T00:00:00.000Z`)));
+    conditions.push(
+      gte(notes.createdAt, dayStartUtc(filters.from, tzOffset)),
+    );
   }
 
   if (filters.to) {
-    conditions.push(lte(notes.createdAt, new Date(`${filters.to}T23:59:59.999Z`)));
+    conditions.push(
+      lte(notes.createdAt, dayEndUtc(filters.to, tzOffset)),
+    );
   }
 
   const tagIds = normalizeTagIds(filters.tag_id);

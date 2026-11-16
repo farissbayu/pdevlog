@@ -74,6 +74,7 @@ const REALITY_EXTRACTION_SYSTEM_PROMPT = [
   "- archetype: A concise 2-4 word professional signature (e.g. 'Product-Centric Fullstack Engineer').",
   "- summary: A crisp 2-3 sentence narrative of their engineering identity and trajectory.",
   "- strengths: 3 to 5 objects with area, description (1-2 sentences), and evidenceSummary (specific reference from the material).",
+  "- strengths[].evidenceLogIds: copy verbatim the ids from the \"Brag Log [id=...]\" lines that directly support the claim, only ids present in the input, empty array when nothing supports it, never invent an id.",
   "- productionStack: technologies clearly demonstrated in their work.",
   "- observedPatterns: recurring architecture or workflow patterns you actually see.",
   "- recommendedNextSteps: 2 to 3 practical next milestones to log in their dev log.",
@@ -90,38 +91,14 @@ const BLIND_SPOT_AUDIT_SYSTEM_PROMPT = [
   "Be specific and non-generic; avoid buzzword advice.",
 ].join(" ");
 
-const DAILY_LEARNING_SYSTEM_PROMPT = [
-  "You are an Elite Staff Engineer and Technical Mentor guiding a software engineer.",
-  "You are given a chronological feed of the engineer's actual work over the LAST 7 DAYS",
-  "(their project backlog items, brag logs, and notes).",
-  "Recommend ONE hyper-relevant, concrete technical topic for them to learn today.",
-  "Rules:",
-  "1. The topic MUST directly build upon, harden, or optimize what they built or documented recently.",
-  "2. Do NOT recommend generic beginner roadmaps. Propose a specific architectural pattern,",
-  "performance nuance, edge-case hardening, or internal mechanism relevant to their recent work.",
-  "3. Explain the connection explicitly: 'Because you built [X] in [Project Y], the next natural concept to master is [Z]'.",
-  "4. Provide a concrete practical next step: a 1-2h spike, benchmark, or prototype.",
-  "5. Write the suggested outline as a short Markdown note template with 3-4 guiding questions.",
-  "6. In usedSourceTitles, copy verbatim (1 to 3) the exact titles of the notes, brag logs, or project items",
-  "   from the feed that inspired this suggestion. Use the real titles from the feed, never invented ones.",
-  "Respond with a single JSON object matching the requested schema.",
-].join(" ");
-
-const dailyLearningSuggestionSchema = z.object({
-  title: z.string().min(1),
-  category: z.string().min(1),
-  reason: z.string().min(1),
-  practicalNextStep: z.string().min(1),
-  suggestedOutline: z.string().min(1),
-  suggestedTags: z.array(z.string().min(1)),
-  usedSourceTitles: z.array(z.string().min(1)),
-  sourceContextSummary: z.string().min(1),
-});
-
 const realityExtractionSchema = z.object({
   archetype: z.string().min(1),
   summary: z.string().min(1),
-  strengths: z.array(skillStrengthItemSchema),
+  strengths: z.array(
+    skillStrengthItemSchema
+      .omit({ evidenceLogs: true })
+      .extend({ evidenceLogIds: z.array(z.string()).max(10) }),
+  ),
   productionStack: z.array(z.string()),
   observedPatterns: z.array(z.string()),
   recommendedNextSteps: z.array(z.string()),
@@ -417,64 +394,10 @@ export async function refineStarBreakdown(
   );
 }
 
-export class DailyLearningSuggestionError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "DailyLearningSuggestionError";
-  }
-}
-
-export type DailyLearningAiSuggestion = z.infer<
-  typeof dailyLearningSuggestionSchema
->;
-
-export type DailyLearningSuggestionResult = {
-  suggestion: DailyLearningAiSuggestion;
-  usage: StarBreakdownUsage;
-};
-
-export async function generateDailyLearningSuggestion(
-  env: AppEnv["Bindings"],
-  context: string,
-  options: { regenerate?: boolean; avoidTitles?: string[] } = {},
-): Promise<DailyLearningSuggestionResult> {
-  const avoidTitles = options.avoidTitles ?? [];
-  const avoidLine =
-    avoidTitles.length > 0
-      ? `Do NOT repeat or rephrase any of these topics the engineer was already suggested: ${avoidTitles
-          .map((title) => `"${title}"`)
-          .join("; ")}.`
-      : "";
-
-  const user = options.regenerate
-    ? [
-        "The engineer already saw an earlier suggestion today and asked for a different direction.",
-        avoidLine,
-        "",
-        context,
-      ]
-        .filter(Boolean)
-        .join("\n")
-    : [avoidLine, context].filter(Boolean).join("\n");
-
-  const { data, usage } = await runStructuredCompletion<DailyLearningAiSuggestion>({
-    env,
-    schema: dailyLearningSuggestionSchema,
-    schemaName: "daily_learning_suggestion",
-    system: DAILY_LEARNING_SYSTEM_PROMPT,
-    user,
-    temperature: 0.4,
-    timeoutMs: REQUEST_TIMEOUT_MS,
-    makeError: (message) => new DailyLearningSuggestionError(message),
-    refusalLabel: "AI refused to suggest a learning topic",
-  });
-
-  return { suggestion: data, usage };
-}
-
 export async function extractAndFormatResume(
   env: AppEnv["Bindings"],
   rawText: string,
+  options: { timeoutMs?: number } = {},
 ): Promise<ResumeExtractionResult> {
   const { data, usage } = await runStructuredCompletion<ResumeExtraction>({
     env,
@@ -483,7 +406,7 @@ export async function extractAndFormatResume(
     system: RESUME_EXTRACTOR_SYSTEM_PROMPT,
     user: `Raw Extracted Resume Content:\n\n${rawText.slice(0, 8_000)}`,
     temperature: 0.1,
-    timeoutMs: CV_REQUEST_TIMEOUT_MS,
+    timeoutMs: options.timeoutMs ?? CV_REQUEST_TIMEOUT_MS,
     maxRetries: 0,
     makeError: (message) => new ResumeExtractionError(message),
     refusalLabel: "AI refused to process resume",
@@ -496,6 +419,7 @@ export async function analyzeDeveloperCompetencies(
   env: AppEnv["Bindings"],
   cvMarkdown: string,
   devlogContext?: string,
+  evidenceTitlesById?: Map<string, string>,
 ): Promise<SkillInsightsResult> {
   const cv = cvMarkdown.slice(0, 8_000);
   const devlog = devlogContext?.slice(0, 5_000) ?? "";
@@ -542,10 +466,19 @@ export async function analyzeDeveloperCompetencies(
     recommendation: gap.whyItMattersForSoloDev,
   }));
 
+  const strengths = reality.data.strengths.map((s) => ({
+    area: s.area,
+    description: s.description,
+    evidenceSummary: s.evidenceSummary,
+    evidenceLogs: s.evidenceLogIds
+      .filter((id) => evidenceTitlesById?.has(id))
+      .map((id) => ({ id, title: evidenceTitlesById.get(id)! })),
+  }));
+
   const insights: SkillInsights = {
     archetype: reality.data.archetype,
     summary: reality.data.summary,
-    strengths: reality.data.strengths,
+    strengths,
     growthAreas,
     recommendedNextSteps: reality.data.recommendedNextSteps,
     analyzedAt: new Date().toISOString(),

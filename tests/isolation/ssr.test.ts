@@ -99,6 +99,6 @@ describe("server-rendered landing page and guides", () => {
 
   it("keeps API routes untouched", async () => {
     const health = await request("/api/health");
-    expect(health.status).toBe(401);
+    expect(health.status).toBe(200);
   });
 });

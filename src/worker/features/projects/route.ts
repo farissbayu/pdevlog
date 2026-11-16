@@ -6,7 +6,6 @@ import {
   desc,
   eq,
   inArray,
-  like,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -40,11 +39,12 @@ import {
   projectItems,
   projects,
   sparks,
-  workspaces,
   type ProjectItemRow,
   type ProjectRow,
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { findOwnedProject, validateWorkspaceOwnership } from "@/worker/lib/ownership";
+import { containsText } from "@/worker/lib/sql";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
@@ -102,19 +102,6 @@ function toProjectItemResponse(item: ProjectItemRow): ProjectItemResponse {
     createdAt: new Date(item.createdAt).toISOString(),
     updatedAt: new Date(item.updatedAt).toISOString(),
   };
-}
-
-async function findOwnedProject(
-  db: Database,
-  id: string,
-  userId: string,
-): Promise<ProjectRow | undefined> {
-  const [project] = await db
-    .select()
-    .from(projects)
-    .where(and(eq(projects.id, id), eq(projects.userId, userId)))
-    .limit(1);
-  return project;
 }
 
 async function loadItemCounts(
@@ -180,19 +167,6 @@ async function loadNoteCounts(
   return map;
 }
 
-async function validateWorkspaceOwnership(
-  db: Database,
-  workspaceId: string,
-  userId: string,
-): Promise<boolean> {
-  const [workspace] = await db
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
-    .limit(1);
-  return Boolean(workspace);
-}
-
 const listProjects = async (
   c: Context<AppEnv, "/", QueryInput<z.infer<typeof listProjectsQuerySchema>>>,
 ) => {
@@ -205,10 +179,9 @@ const listProjects = async (
     conditions.push(eq(projects.workspaceId, filters.workspace_id));
   }
   if (filters.q) {
-    const pattern = `%${filters.q}%`;
     const search = or(
-      like(projects.name, pattern),
-      like(projects.tagline, pattern),
+      containsText(projects.name, filters.q),
+      containsText(projects.tagline, filters.q),
     );
     if (search) {
       conditions.push(search);

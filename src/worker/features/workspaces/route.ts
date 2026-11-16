@@ -5,7 +5,6 @@ import {
   desc,
   eq,
   inArray,
-  like,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -27,51 +26,23 @@ import {
   type CreateWorkspaceInput,
   type UpdateWorkspaceInput,
 } from "@/shared/schemas/workspace";
-import { createDb, type Database } from "@/worker/db";
+import { createDb } from "@/worker/db";
 import {
+  bragLogs,
   notes,
   sources,
   workspaces,
-  type SourceRow,
   type WorkspaceRow,
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { deleteAttachmentsForOwners } from "@/worker/features/attachments/helpers";
+import { loadSourcesByOwnerIds } from "@/worker/lib/sources";
+import { containsText } from "@/worker/lib/sql";
 
 import { toWorkspaceResponse } from "./helpers";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
-
-function loadWorkspaceSources(
-  db: Database,
-  ownerIds: string[],
-  userId: string,
-): Promise<Map<string, SourceRow[]>> {
-  const map = new Map<string, SourceRow[]>();
-  if (ownerIds.length === 0) {
-    return Promise.resolve(map);
-  }
-
-  return db
-    .select()
-    .from(sources)
-    .where(
-      and(
-        eq(sources.ownerType, "workspace"),
-        inArray(sources.ownerId, ownerIds),
-        eq(sources.userId, userId),
-      ),
-    )
-    .orderBy(sources.position, sources.createdAt)
-    .then((rows) => {
-      for (const row of rows) {
-        const list = map.get(row.ownerId) ?? [];
-        list.push(row);
-        map.set(row.ownerId, list);
-      }
-      return map;
-    });
-}
 
 function workspaceSourceStatements(
   db: ReturnType<typeof createDb>,
@@ -132,10 +103,9 @@ const listWorkspaces = async (
   const conditions: SQL[] = [eq(workspaces.userId, userId)];
 
   if (filters.q) {
-    const pattern = `%${filters.q}%`;
     const search = or(
-      like(workspaces.name, pattern),
-      like(workspaces.description, pattern),
+      containsText(workspaces.name, filters.q),
+      containsText(workspaces.description, filters.q),
     );
     if (search) {
       conditions.push(search);
@@ -162,8 +132,9 @@ const listWorkspaces = async (
       ? await query
       : await query.limit(pageSize).offset((page - 1) * pageSize);
 
-  const sourcesByWorkspaceId = await loadWorkspaceSources(
+  const sourcesByWorkspaceId = await loadSourcesByOwnerIds(
     db,
+    "workspace",
     rows.map((workspace) => workspace.id),
     userId,
   );
@@ -219,7 +190,7 @@ const createWorkspaceHandler = async (
     )
     .limit(1);
 
-  const createdSources = await loadWorkspaceSources(db, [workspaceId], userId);
+  const createdSources = await loadSourcesByOwnerIds(db, "workspace", [workspaceId], userId);
 
   return c.json(
     {
@@ -243,7 +214,7 @@ const getWorkspace = async (c: Context<AppEnv, "/:id">) => {
     return c.json({ error: "Workspace not found" }, 404);
   }
 
-  const workspaceSources = await loadWorkspaceSources(db, [id], userId);
+  const workspaceSources = await loadSourcesByOwnerIds(db, "workspace", [id], userId);
 
   return c.json({
     workspace: toWorkspaceResponse(workspace, workspaceSources.get(id) ?? []),
@@ -282,7 +253,7 @@ const updateWorkspaceHandler = async (
   );
 
   const [updated] = await findOwnedWorkspace(db, id, userId);
-  const workspaceSources = await loadWorkspaceSources(db, [id], userId);
+  const workspaceSources = await loadSourcesByOwnerIds(db, "workspace", [id], userId);
 
   return c.json({
     workspace: toWorkspaceResponse(
@@ -301,6 +272,37 @@ const deleteWorkspaceHandler = async (c: Context<AppEnv, "/:id">) => {
   if (!owned) {
     return c.json({ error: "Workspace not found" }, 404);
   }
+
+  // Notes and brag logs are removed by FK cascade, but their attachment rows
+  // and R2 objects have no FK, so clean those up first.
+  const [noteRows, logRows] = await Promise.all([
+    db
+      .select({ id: notes.id })
+      .from(notes)
+      .where(and(eq(notes.workspaceId, id), eq(notes.userId, userId))),
+    db
+      .select({ id: bragLogs.id })
+      .from(bragLogs)
+      .where(
+        and(eq(bragLogs.workspaceId, id), eq(bragLogs.userId, userId)),
+      ),
+  ]);
+  await Promise.all([
+    deleteAttachmentsForOwners(
+      db,
+      c.env.STORAGE,
+      "note",
+      noteRows.map((row) => row.id),
+      userId,
+    ),
+    deleteAttachmentsForOwners(
+      db,
+      c.env.STORAGE,
+      "brag-log",
+      logRows.map((row) => row.id),
+      userId,
+    ),
+  ]);
 
   const statements: BatchItem<"sqlite">[] = [
     db

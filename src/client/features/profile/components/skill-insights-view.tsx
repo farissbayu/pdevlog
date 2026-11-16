@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Trophy,
 } from "lucide-react";
+import { Link } from "react-router";
 
 import {
   Accordion,
@@ -173,6 +174,22 @@ export function SkillInsightsView({
                         </span>
                       </div>
                     )}
+
+                    {s.evidenceLogs.length > 0 ? (
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {s.evidenceLogs.map((entry) => (
+                          <li key={entry.id}>
+                            <Link
+                              to={`/brag-logs/${entry.id}`}
+                              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                            >
+                              <FileText className="size-3" />
+                              {entry.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ))}
               </AccordionContent>

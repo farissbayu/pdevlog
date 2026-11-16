@@ -93,7 +93,13 @@ async function setCreatedAt(
 }
 
 type DashboardBody = {
-  stats: { workspaces: number; bragLogs: number; notes: number };
+  stats: {
+    achievements: number;
+    achievementsThisMonth: number;
+    skillsEvidenced: number;
+    projectsDocumented: number;
+    sparksInbox: number;
+  };
   recentWorkspaces: { id: string }[];
 };
 
@@ -127,10 +133,11 @@ describe("dashboard summary", () => {
     const body = (await response.json()) as DashboardBody;
 
     expect(body.stats).toEqual({
-      workspaces: 2,
-      bragLogs: 1,
-      notes: 1,
-      sparks: 0,
+      achievements: 1,
+      achievementsThisMonth: 0,
+      skillsEvidenced: 0,
+      projectsDocumented: 0,
+      sparksInbox: 0,
     });
     expect(body.recentWorkspaces).toHaveLength(2);
     expect(body.recentWorkspaces[0].id).toBe(withLog);

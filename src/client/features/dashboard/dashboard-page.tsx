@@ -2,11 +2,10 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
-  FileText,
   Flame,
   FolderKanban,
-  GraduationCap,
   Sparkles,
+  Tag,
   TrendingUp,
   Trophy,
   type LucideIcon,
@@ -29,7 +28,7 @@ import {
   useRecentActivityQuery,
 } from "./api";
 import { CheckInCard } from "./check-in-card";
-import { DailyLearningCard } from "./daily-learning-card";
+import { FirstAchievementCard } from "./first-achievement-card";
 
 
 function countLabel(count: number, noun: string): string {
@@ -62,6 +61,7 @@ function formatActivityDate(iso: string): string {
 type StatCard = {
   label: string;
   value: number;
+  hint?: string;
   icon: LucideIcon;
   to?: string;
   className: string;
@@ -79,6 +79,11 @@ function StatCard({ stat }: { stat: StatCard }) {
       <div className="min-w-0 space-y-0.5">
         <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
         <p className="truncate text-sm text-muted-foreground">{stat.label}</p>
+        {stat.hint ? (
+          <p className="truncate text-xs text-muted-foreground/70">
+            {stat.hint}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -216,19 +221,16 @@ export function DashboardPage() {
   const weekTotal = days
     .filter((day) => day.date >= weekStartKey)
     .reduce((sum, day) => sum + day.total, 0);
-  const currentStreak = checkIns.data?.currentStreak ?? 0;
   const topStrength = insights?.strengths[0]?.area;
 
   const firstName = user?.name.trim().split(/\s+/)[0] || "there";
   const subtitle = checkIns.isPending
     ? "Here is where your week stands."
     : days.length === 0
-      ? "Nothing logged yet — your first entry starts the habit."
+      ? "Nothing logged yet — your first entry starts the record."
       : todayTotal > 0
-        ? `${countLabel(todayTotal, "entry")} today · ${countLabel(currentStreak, "day")} streak.`
-        : currentStreak > 0
-          ? `Nothing logged today — your ${countLabel(currentStreak, "day")} streak is safe.`
-          : "Nothing logged today yet — add one to keep the habit going.";
+        ? `${countLabel(todayTotal, "entry")} today · ${countLabel(weekTotal, "thing")} this week.`
+        : `${countLabel(weekTotal, "thing")} logged this week.`;
   const wrapUp =
     days.length === 0
       ? "Log a brag, a note, or a spark and this is where your progress will gather."
@@ -237,29 +239,33 @@ export function DashboardPage() {
   const stats: StatCard[] = dashboard.data
     ? [
         {
-          label: "Workspaces",
-          value: dashboard.data.stats.workspaces,
-          icon: FolderKanban,
-          to: "/workspaces",
-          className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-        },
-        {
-          label: "Brag Logs",
-          value: dashboard.data.stats.bragLogs,
-          icon: FileText,
+          label: "Achievements",
+          value: dashboard.data.stats.achievements,
+          hint: `${dashboard.data.stats.achievementsThisMonth} this month`,
+          icon: Trophy,
           to: "/brag-logs",
           className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
         },
         {
-          label: "Notes",
-          value: dashboard.data.stats.notes,
-          icon: GraduationCap,
-          to: "/notes",
+          label: "Skills evidenced",
+          value: dashboard.data.stats.skillsEvidenced,
+          hint: "from your own logs",
+          icon: Tag,
+          to: "/profile",
+          className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+        },
+        {
+          label: "Projects documented",
+          value: dashboard.data.stats.projectsDocumented,
+          hint: "with shipped work",
+          icon: FolderKanban,
+          to: "/workspaces",
           className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
         },
         {
-          label: "Sparks",
-          value: dashboard.data.stats.sparks,
+          label: "Sparks inbox",
+          value: dashboard.data.stats.sparksInbox,
+          hint: "open",
           icon: Sparkles,
           to: "/sparks",
           className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
@@ -339,7 +345,7 @@ export function DashboardPage() {
                   </span>
                   <div className="space-y-0.5">
                     <p className="text-2xl font-semibold tabular-nums">
-                      {countLabel(currentStreak, "day")} streak
+                      {countLabel(weekTotal, "thing")} this week
                     </p>
                     <p className="text-sm text-muted-foreground">{wrapUp}</p>
                   </div>
@@ -359,9 +365,11 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <CheckInCard />
+          {dashboard.data && dashboard.data.stats.achievements === 0 ? (
+            <FirstAchievementCard />
+          ) : null}
 
-          <DailyLearningCard />
+          <CheckInCard />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Recent Activity */}

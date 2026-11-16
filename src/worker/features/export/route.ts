@@ -6,14 +6,20 @@ import {
   exportLogsQuerySchema,
   type ExportLogsQuery,
 } from "@/shared/schemas/settings";
-import { createDb } from "@/worker/db";
+import { createDb, type Database } from "@/worker/db";
 import { bragLogs, workspaces, type TagRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import { loadTagsByOwnerIds } from "@/worker/features/tags/helpers";
 
+import { bulletLine } from "./format";
+
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
 
 const EMPTY_VALUE = "—";
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function formatTagNames(logTags: TagRow[]): string {
   if (logTags.length === 0) {
@@ -22,13 +28,12 @@ function formatTagNames(logTags: TagRow[]): string {
   return logTags.map((tag) => tag.name).join(", ");
 }
 
-const exportBragLogs = async (
-  c: Context<AppEnv, "/brag-logs", QueryInput<ExportLogsQuery>>,
-) => {
-  const userId = c.get("userId");
-  const { from, to } = c.req.valid("query");
-  const db = createDb(c.env.DB);
-
+async function loadExportRows(
+  db: Database,
+  userId: string,
+  from?: string,
+  to?: string,
+) {
   const conditions: SQL[] = [eq(bragLogs.userId, userId)];
   if (from) {
     conditions.push(gte(bragLogs.occurredAt, from));
@@ -57,11 +62,21 @@ const exportBragLogs = async (
     userId,
   );
 
+  return { rows, tagsByLogId };
+}
+
+type ExportData = Awaited<ReturnType<typeof loadExportRows>>;
+
+function renderStarExport(
+  { rows, tagsByLogId }: ExportData,
+  from?: string,
+  to?: string,
+): string {
   const lines: string[] = [];
   lines.push("# Brag Logs");
   lines.push("");
   lines.push(
-    `> Exported from Personal Dev Log on ${new Date().toISOString().slice(0, 10)}`,
+    `> Exported from Personal Dev Log on ${today()}`,
   );
   if (from || to) {
     lines.push(
@@ -108,11 +123,60 @@ const exportBragLogs = async (
     }
   }
 
-  const markdown = lines.join("\n");
+  return lines.join("\n");
+}
+
+function renderBulletsExport(
+  { rows, tagsByLogId }: ExportData,
+  from?: string,
+  to?: string,
+): string {
+  const lines: string[] = [];
+  lines.push("# Brag Log Bullets");
+  lines.push("");
+  lines.push(`> Exported from Personal Dev Log on ${today()}`);
+  lines.push(
+    `> ${rows.length} entries · ${from ?? "beginning"} → ${to ?? "today"}`,
+  );
+  lines.push("");
+
+  if (rows.length === 0) {
+    lines.push("_No brag logs found for the selected range._");
+    lines.push("");
+  } else {
+    for (const { log } of rows) {
+      lines.push(
+        bulletLine(
+          log,
+          (tagsByLogId.get(log.id) ?? []).map((tag) => tag.name),
+        ),
+      );
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+const exportBragLogs = async (
+  c: Context<AppEnv, "/brag-logs", QueryInput<ExportLogsQuery>>,
+) => {
+  const userId = c.get("userId");
+  const { from, to } = c.req.valid("query");
+  const format = c.req.valid("query").format ?? "star";
+  const db = createDb(c.env.DB);
+
+  const data = await loadExportRows(db, userId, from, to);
+  const markdown =
+    format === "bullets"
+      ? renderBulletsExport(data, from, to)
+      : renderStarExport(data, from, to);
+  const filename =
+    format === "bullets" ? "brag-log-bullets.md" : "brag-logs.md";
 
   return c.body(markdown, 200, {
     "Content-Type": "text/markdown; charset=utf-8",
-    "Content-Disposition": 'attachment; filename="brag-logs.md"',
+    "Content-Disposition": `attachment; filename="${filename}"`,
   });
 };
 

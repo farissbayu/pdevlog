@@ -224,20 +224,39 @@ export async function deleteOwnedAttachments(
   ownerId: string,
   userId: string,
 ): Promise<void> {
-  const rows = await loadAttachments(db, ownerType, ownerId, userId);
+  await deleteAttachmentsForOwners(db, bucket, ownerType, [ownerId], userId);
+}
+
+export async function deleteAttachmentsForOwners(
+  db: Database,
+  bucket: R2Bucket,
+  ownerType: AttachmentOwnerType,
+  ownerIds: string[],
+  userId: string,
+): Promise<void> {
+  if (ownerIds.length === 0) {
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(attachments)
+    .where(
+      and(
+        eq(attachments.ownerType, ownerType),
+        inArray(attachments.ownerId, ownerIds),
+        eq(attachments.userId, userId),
+      ),
+    );
   if (rows.length === 0) {
     return;
   }
   await bucket.delete(rows.map((row) => row.r2Key));
-  await db
-    .delete(attachments)
-    .where(
-      and(
-        eq(attachments.ownerType, ownerType),
-        eq(attachments.ownerId, ownerId),
-        eq(attachments.userId, userId),
-      ),
-    );
+  await db.delete(attachments).where(
+    inArray(
+      attachments.id,
+      rows.map((row) => row.id),
+    ),
+  );
 }
 
 export async function pruneUnreferencedAttachments(

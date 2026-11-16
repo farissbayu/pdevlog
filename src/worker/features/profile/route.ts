@@ -25,6 +25,17 @@ type JsonInput<T> = { in: { json: T }; out: { json: T } };
 // message), the status would stay "processing"/"analyzing" and the client would
 // poll forever. Fail anything older than this on read so it unsticks itself.
 const STALE_JOB_MS = 120_000;
+const MAX_CV_FILE_SIZE = 10 * 1024 * 1024;
+
+function isSupportedCvFile(file: File): boolean {
+  if (file.type === "application/pdf") {
+    return true;
+  }
+  if (file.type.startsWith("text/")) {
+    return true;
+  }
+  return /\.(pdf|md|markdown|txt)$/i.test(file.name);
+}
 
 const getProfileHandler = async (c: Context<AppEnv>) => {
   const userId = c.get("userId");
@@ -37,8 +48,10 @@ const getProfileHandler = async (c: Context<AppEnv>) => {
 
   const profile = await getOrCreateProfile(db, user);
 
-  const stale =
-    Date.now() - new Date(profile.updatedAt).getTime() > STALE_JOB_MS;
+  const startedAt = profile.aiJobStartedAt;
+  const stale = startedAt
+    ? Date.now() - new Date(startedAt).getTime() > STALE_JOB_MS
+    : false;
   if (
     stale &&
     (profile.cvParseStatus === "processing" ||
@@ -93,6 +106,12 @@ const uploadCvHandler = async (c: Context<AppEnv>) => {
     return c.json({ error: "User not found" }, 404);
   }
 
+  // Reject large bodies before parseBody buffers them in isolate memory.
+  const contentLength = Number(c.req.header("content-length") ?? "0");
+  if (contentLength > MAX_CV_FILE_SIZE + 1_000_000) {
+    return c.json({ error: "CV file must be 10 MB or smaller." }, 413);
+  }
+
   const body = await c.req.parseBody();
   const file = body["file"];
 
@@ -103,13 +122,27 @@ const uploadCvHandler = async (c: Context<AppEnv>) => {
     );
   }
 
+  if (!isSupportedCvFile(file)) {
+    return c.json(
+      { error: "Only PDF, Markdown, or text files are supported." },
+      400,
+    );
+  }
+
+  if (file.size > MAX_CV_FILE_SIZE) {
+    return c.json({ error: "CV file must be 10 MB or smaller." }, 413);
+  }
+
   const key = `cv-uploads/${userId}/${nanoid()}`;
   await c.env.STORAGE.put(key, await file.arrayBuffer(), {
     httpMetadata: { contentType: file.type },
   });
 
   await getOrCreateProfile(db, user);
-  await markProfile(db, userId, { cvParseStatus: "processing" });
+  await markProfile(db, userId, {
+    cvParseStatus: "processing",
+    aiJobStartedAt: new Date(),
+  });
   await c.env.AI_QUEUE.send({
     kind: "cv",
     userId,
@@ -131,7 +164,10 @@ const analyzeSkillsHandler = async (c: Context<AppEnv>) => {
   }
 
   await getOrCreateProfile(db, user);
-  await markProfile(db, userId, { insightsStatus: "analyzing" });
+  await markProfile(db, userId, {
+    insightsStatus: "analyzing",
+    aiJobStartedAt: new Date(),
+  });
   await c.env.AI_QUEUE.send({ kind: "skills", userId });
 
   return c.json({ status: "analyzing" }, 202);

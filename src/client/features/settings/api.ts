@@ -10,11 +10,14 @@ export async function exportBragLogs(query: ExportLogsQuery): Promise<void> {
     throw await parseApiError(response, "Failed to export brag logs");
   }
 
+  const filename =
+    query.format === "bullets" ? "brag-log-bullets.md" : "brag-logs.md";
+
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "brag-logs.md";
+  anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();

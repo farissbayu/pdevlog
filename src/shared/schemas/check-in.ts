@@ -11,8 +11,6 @@ export const checkInDaySchema = z.object({
 
 export const checkInsResponseSchema = z.object({
   days: z.array(checkInDaySchema),
-  currentStreak: z.number().int(),
-  longestStreak: z.number().int(),
   todayActive: z.boolean(),
 });
 

@@ -5,7 +5,6 @@ import {
   desc,
   eq,
   inArray,
-  like,
   or,
   sum,
   type SQL,
@@ -36,6 +35,7 @@ import {
 } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import { deleteUserData, isAdminEmail } from "@/worker/lib/users";
+import { containsText } from "@/worker/lib/sql";
 import { requireAdmin } from "@/worker/middleware/admin";
 
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
@@ -159,8 +159,10 @@ const listUsers = async (
 
   const conditions: SQL[] = [];
   if (filters.q) {
-    const pattern = `%${filters.q}%`;
-    const search = or(like(users.name, pattern), like(users.email, pattern));
+    const search = or(
+      containsText(users.name, filters.q),
+      containsText(users.email, filters.q),
+    );
     if (search) {
       conditions.push(search);
     }

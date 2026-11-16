@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, count, eq, like, ne, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ne, type SQL } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { nanoid } from "nanoid";
 
@@ -20,6 +20,7 @@ import {
 import { createDb } from "@/worker/db";
 import { tags, type TagRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
+import { containsText } from "@/worker/lib/sql";
 
 import { toTagResponse } from "./helpers";
 
@@ -51,7 +52,7 @@ const listTags = async (
   const conditions: SQL[] = [eq(tags.userId, userId)];
 
   if (filters.q) {
-    conditions.push(like(tags.name, `%${filters.q}%`));
+    conditions.push(containsText(tags.name, filters.q));
   }
 
   const where = and(...conditions);

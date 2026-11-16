@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+export const skillEvidenceSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+});
+export type SkillEvidence = z.infer<typeof skillEvidenceSchema>;
+
 export const skillStrengthItemSchema = z.object({
   area: z.string().min(1),
   description: z.string().min(1),
   evidenceSummary: z.string(),
+  evidenceLogs: z.array(skillEvidenceSchema).default([]),
 });
 export type SkillStrengthItem = z.infer<typeof skillStrengthItemSchema>;
 
@@ -64,10 +71,28 @@ export const userProfileResponseSchema = z.object({
   skillInsights: skillInsightsSchema.nullable(),
   skillAnalyzedAt: z.string().nullable(),
   insightsStatus: insightsStatusSchema,
+  aiJobStartedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 export type UserProfileResponse = z.infer<typeof userProfileResponseSchema>;
+
+export function parsePrimaryStack(raw: string | null | undefined): string[] {
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return raw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+}
 
 export const updateProfileRequestSchema = z.object({
   headline: z.string().max(150).nullable().optional(),

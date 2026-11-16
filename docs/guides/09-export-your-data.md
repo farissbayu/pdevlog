@@ -7,7 +7,7 @@ order: 9
 
 ## Overview
 
-Nothing in Personal Dev Log is locked in. Export your brag logs as plain Markdown, print notes to PDF, or delete everything and walk away.
+Nothing in Personal Dev Log is locked in. Export your brag logs as plain Markdown, download notes as `.md`, print them to PDF, or delete everything and walk away.
 
 ---
 
@@ -15,15 +15,24 @@ Nothing in Personal Dev Log is locked in. Export your brag logs as plain Markdow
 
 1. Open [Settings](/settings).
 2. Under **Export data**, optionally pick a **From** and **To** date.
-3. Click **Export to Markdown (.md)**.
+3. Pick a format:
+   - **Download STAR (.md)** → `brag-logs.md`. Each entry keeps its full STAR structure (Situation, Task, Action, Result) plus date, workspace, and tags.
+   - **Download CV bullets (.md)** → `brag-log-bullets.md`. One line per achievement, ready to paste into a CV or performance review:
 
-The app downloads a `brag-logs.md` file. Each entry keeps its full STAR structure (Situation, Task, Action, Result) plus its date, workspace, and tags. Leave both dates empty to export your entire history.
+     ```
+     - **Fixed order endpoint latency** — Reduced p95 from 800ms to 45ms. (2026-03-12 · Database, Backend)
+     ```
+
+Leave both dates empty to export your entire history. Bullets are written deterministically from your own fields — no AI rewriting, no invented metrics.
 
 ---
 
-## Print or Save Notes as PDF
+## Download or Print Notes
 
-Open any note, click **Print**, and use your browser's print dialog to save it as a PDF. The Markdown formatting, sources, and metadata are preserved in the printed output.
+Open any note and use the header actions:
+
+- **Download Markdown** saves `<note-title>.md` with the title as an `#` heading followed by your content, exactly as written.
+- **Download PDF** opens the print view; use your browser's print dialog to save a PDF. Formatting, sources, and metadata are preserved.
 
 ---
 

@@ -5,15 +5,7 @@ import type { CheckInDay } from "@/shared/schemas/check-in";
 import type { Database } from "@/worker/db";
 import { bragLogs, notes, projectItems, sparks } from "@/worker/db/schema";
 
-const MS_PER_DAY = 86_400_000;
-
 type SourceCounts = Omit<CheckInDay, "date" | "total">;
-
-export type StreakSummary = {
-  current: number;
-  longest: number;
-  todayActive: boolean;
-};
 
 function tzModifier(tzOffsetMinutes: number): string {
   const sign = tzOffsetMinutes >= 0 ? "+" : "-";
@@ -27,35 +19,6 @@ export function localDayKey(
   return new Date(timestampMs + tzOffsetMinutes * 60_000)
     .toISOString()
     .slice(0, 10);
-}
-
-function epochDay(day: string): number {
-  const [year, month, date] = day.split("-").map(Number);
-  return Date.UTC(year!, month! - 1, date!) / MS_PER_DAY;
-}
-
-export function computeStreaks(
-  days: string[],
-  todayKey: string,
-): StreakSummary {
-  const active = new Set(days.map(epochDay));
-  const today = epochDay(todayKey);
-
-  let longest = 0;
-  let run = 0;
-  for (const day of [...active].sort((a, b) => a - b)) {
-    run = active.has(day - 1) ? run + 1 : 1;
-    longest = Math.max(longest, run);
-  }
-
-  let current = 0;
-  let cursor = active.has(today) ? today : today - 1;
-  while (active.has(cursor)) {
-    current += 1;
-    cursor -= 1;
-  }
-
-  return { current, longest, todayActive: active.has(today) };
 }
 
 export async function loadActiveDays(

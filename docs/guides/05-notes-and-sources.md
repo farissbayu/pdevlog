@@ -45,6 +45,7 @@ Tags work across both **Notes** and **Brag Logs**:
 ## Exporting & Printing to PDF
 
 Need to share a technical design doc or keep an offline copy?
-- Open any note and click **Export PDF / Print** (`/notes/:id/print`).
+- Open any note and click **Download Markdown** to save the note as a `.md` file.
+- Or click **Download PDF / Print** (`/notes/:id/print`).
 - Personal Dev Log opens a dedicated print-optimized stylesheet with clean typography, code formatting, and metadata ready for your browser's **Save as PDF**.
 

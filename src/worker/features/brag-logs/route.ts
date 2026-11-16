@@ -8,7 +8,6 @@ import {
   inArray,
   isNull,
   lte,
-  like,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -69,6 +68,12 @@ import {
   refineStarBreakdown,
   StarBreakdownError,
 } from "@/worker/lib/ai-client";
+import {
+  loadWorkspace,
+  touchWorkspaceStatement,
+  validateWorkspaceOwnership,
+} from "@/worker/lib/ownership";
+import { containsText } from "@/worker/lib/sql";
 import { rateLimit } from "@/worker/middleware/rate-limit";
 
 type JsonInput<T> = { in: { json: T }; out: { json: T } };
@@ -110,50 +115,6 @@ async function findOwnedLog(
   return log;
 }
 
-async function loadWorkspace(
-  db: Database,
-  workspaceId: string | null,
-  userId: string,
-): Promise<WorkspaceRow | null> {
-  if (!workspaceId) {
-    return null;
-  }
-  const [workspace] = await db
-    .select()
-    .from(workspaces)
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
-    .limit(1);
-  return workspace ?? null;
-}
-
-async function validateWorkspaceOwnership(
-  db: Database,
-  workspaceId: string | null | undefined,
-  userId: string,
-): Promise<boolean> {
-  if (workspaceId === null || workspaceId === undefined) {
-    return true;
-  }
-  const [workspace] = await db
-    .select()
-    .from(workspaces)
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)))
-    .limit(1);
-  return Boolean(workspace);
-}
-
-function touchWorkspaceStatement(
-  db: Database,
-  workspaceId: string,
-  userId: string,
-  now: Date,
-) {
-  return db
-    .update(workspaces)
-    .set({ updatedAt: now })
-    .where(and(eq(workspaces.id, workspaceId), eq(workspaces.userId, userId)));
-}
-
 const listBragLogs = async (
   c: Context<AppEnv, "/", QueryInput<LogFilterInput>>,
 ) => {
@@ -164,13 +125,12 @@ const listBragLogs = async (
   const conditions: SQL[] = [eq(bragLogs.userId, userId)];
 
   if (filters.q) {
-    const pattern = `%${filters.q}%`;
     const search = or(
-      like(bragLogs.title, pattern),
-      like(bragLogs.situation, pattern),
-      like(bragLogs.task, pattern),
-      like(bragLogs.action, pattern),
-      like(bragLogs.result, pattern),
+      containsText(bragLogs.title, filters.q),
+      containsText(bragLogs.situation, filters.q),
+      containsText(bragLogs.task, filters.q),
+      containsText(bragLogs.action, filters.q),
+      containsText(bragLogs.result, filters.q),
     );
     if (search) {
       conditions.push(search);

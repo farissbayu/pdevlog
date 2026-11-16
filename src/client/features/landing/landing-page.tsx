@@ -6,14 +6,11 @@ import {
   Check,
   Compass,
   ExternalLink,
-  FolderKanban,
   Menu,
-  Rocket,
   RotateCcw,
   Scissors,
   Sparkles,
   Trophy,
-  Zap,
 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -60,19 +57,6 @@ const comparison: { dimension: string; before: string; after: string }[] = [
       "Captured in STAR format (Situation, Task, Action, Result) with AI help in just 2 minutes.",
   },
   {
-    dimension: "Exploring New Tech",
-    before:
-      "Watching dozens of hours of course videos, then abandoning it to scope creep.",
-    after:
-      "Capture the topic as a Spark, track it as a spike project item, and ship what you learn to your changelog.",
-  },
-  {
-    dimension: "Ideas & Inspiration",
-    before: "Jotted somewhere random, then evaporating and lost.",
-    after:
-      "Sparks (Cmd+K): capture instantly, attach a screenshot, and promote to your backlog when ready.",
-  },
-  {
     dimension: "Competency Evaluation",
     before:
       "Waiting on a manager's review that often does not understand the tech.",
@@ -91,12 +75,6 @@ const competencyPoints = [
   "Core Superpowers: your main technical strengths, backed by real evidence.",
   "Growth Opportunities: an honest read on your gaps, plus concrete Next Steps to close them.",
   "Dashboard Snapshot: a daily reminder of what you are improving this month.",
-];
-
-const sparksPoints = [
-  "Press Cmd+K from any screen to drop an idea, link, or bug screenshot.",
-  "Promote a spark into a Project Item (feat, fix, perf, refactor, spike, docs).",
-  "When a feature ships, generate a CHANGELOG.md Markdown file automatically.",
 ];
 
 const starFields = ["Situation", "Task", "Action", "Result"] as const;
@@ -190,6 +168,10 @@ const faqs: { q: string; a: string }[] = [
   {
     q: "How is this different from Notion, Obsidian, or Apple Notes?",
     a: "Notion and Obsidian are blank canvases with no opinions and no constraints, and they often become a graveyard of passive note hoarding. pdevlog is an opinionated, structured system: it breaks ideas into STAR, turns sparks into a shippable backlog with release changelogs, and evaluates your technical gaps via the AI Staff Engineer Mirror.",
+  },
+  {
+    q: "Where do quick ideas and half-formed bugs go?",
+    a: "Press Cmd+K from any screen and drop it as a Spark — a link, a screenshot, one sentence. Capture it in seconds, then promote it to a project item or a brag log only when it earns the attention.",
   },
   {
     q: "My office uses no sprint system or formal performance metrics. Is this still useful?",
@@ -774,7 +756,7 @@ export function LandingPage() {
               </Reveal>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4">
               <Reveal>
                 <div className="h-full rounded-xl border bg-card p-6">
                   <span className="inline-flex items-center gap-1.5 rounded-full border bg-violet-500/5 px-3 py-1 text-xs font-medium text-violet-600 dark:text-violet-400">
@@ -796,36 +778,6 @@ export function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              </Reveal>
-
-              <Reveal delay={80}>
-                <div className="h-full rounded-xl border bg-card p-6">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border bg-amber-500/5 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                    <Rocket className="size-3.5" />
-                    Sparks &amp; Workspace Delivery Machine
-                  </span>
-                  <h3 className="mt-4 text-xl font-semibold tracking-tight text-balance">
-                    Capture an Idea in 5 Seconds. Ship a Professional Changelog
-                    in 1 Click.
-                  </h3>
-                  <ul className="mt-4 space-y-2">
-                    {sparksPoints.map((point) => (
-                      <li key={point} className="flex gap-2 text-sm">
-                        <Zap className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                        <span className="text-muted-foreground">{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
-                    <FolderKanban className="size-4 text-muted-foreground" />
-                    <span className="font-mono text-xs text-muted-foreground">
-                      CHANGELOG.md
-                    </span>
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                      generated
-                    </span>
-                  </div>
                 </div>
               </Reveal>
             </div>

@@ -39,13 +39,14 @@ export function SettingsPage() {
     from && to && from > to ? "The start date must be before the end date." : null;
   const isConfirmed = deleteAccountSchema.safeParse({ confirmation }).success;
 
-  const handleExport = () => {
+  const handleExport = (format: "star" | "bullets") => {
     if (rangeError) {
       return;
     }
     exportMutation.mutate({
       from: from || undefined,
       to: to || undefined,
+      format,
     });
   };
 
@@ -79,7 +80,8 @@ export function SettingsPage() {
         <div className="border-b px-5 py-4">
           <h2 className="font-medium">Export data</h2>
           <p className="text-sm text-muted-foreground">
-            Download your brag logs as a Markdown file in STAR format.
+            STAR gives the full story per entry; bullets give one impact line per
+            entry, ready to paste into your CV or performance review.
           </p>
         </div>
         <div className="space-y-4 p-5">
@@ -111,7 +113,7 @@ export function SettingsPage() {
               />
             </div>
             <Button
-              onClick={handleExport}
+              onClick={() => handleExport("star")}
               disabled={exportMutation.isPending || Boolean(rangeError)}
             >
               {exportMutation.isPending ? (
@@ -119,7 +121,19 @@ export function SettingsPage() {
               ) : (
                 <Download className="size-4" />
               )}
-              Export to Markdown (.md)
+              Download STAR (.md)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleExport("bullets")}
+              disabled={exportMutation.isPending || Boolean(rangeError)}
+            >
+              {exportMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              Download CV bullets (.md)
             </Button>
           </div>
 

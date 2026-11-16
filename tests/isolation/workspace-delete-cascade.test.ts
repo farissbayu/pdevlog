@@ -25,7 +25,7 @@ async function request(
 ): Promise<Response> {
   const headers = new Headers(init?.headers);
   headers.set("Cookie", `${SESSION_COOKIE}=${token}`);
-  if (init?.body !== undefined) {
+  if (typeof init?.body === "string") {
     headers.set("Content-Type", "application/json");
   }
 
@@ -101,6 +101,25 @@ async function createNote(
   return body.note.id;
 }
 
+async function uploadNoteImage(
+  token: string,
+  noteId: string,
+): Promise<string> {
+  const form = new FormData();
+  form.append(
+    "file",
+    new File([new Uint8Array([137, 80, 78, 71])], "shot.png", {
+      type: "image/png",
+    }),
+  );
+  const response = await request(`/api/notes/${noteId}/attachments`, token, {
+    method: "POST",
+    body: form,
+  });
+  const body = (await response.json()) as { attachment: { id: string } };
+  return body.attachment.id;
+}
+
 describe("workspace deletion cascade", () => {
   it("removes the workspace's brag logs and notes but keeps tags", async () => {
     const token = await createUser("ws-cascade");
@@ -110,6 +129,7 @@ describe("workspace deletion cascade", () => {
 
     const bragLogId = await createBragLog(token, workspaceId, tagId);
     const noteId = await createNote(token, workspaceId, tagId);
+    const attachmentId = await uploadNoteImage(token, noteId);
     const otherBragLogId = await createBragLog(
       token,
       otherWorkspaceId,
@@ -167,6 +187,14 @@ describe("workspace deletion cascade", () => {
         noteId,
       ),
     ).toBe(0);
+    expect(
+      await countRows(
+        "SELECT COUNT(*) AS count FROM attachments WHERE id = ?",
+        attachmentId,
+      ),
+    ).toBe(0);
+    const stored = await env.STORAGE.list({ prefix: "attachments/ws-cascade/" });
+    expect(stored.objects).toHaveLength(0);
 
     expect(
       await countRows(

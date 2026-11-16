@@ -8,11 +8,11 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
 }
 
 describe("auth API", () => {
-  it("protects /api/health for unauthenticated requests", async () => {
+  it("serves /api/health without a session", async () => {
     const response = await request("/api/health");
 
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "ok" });
   });
 
   it("returns 401 from /api/auth/me without a session", async () => {
