@@ -21,6 +21,7 @@ import { ProjectDetailPage } from "@/client/features/projects/project-detail-pag
 import { SettingsPage } from "@/client/features/settings/settings-page";
 import { SparksPage } from "@/client/features/sparks/sparks-page";
 import { TagsPage } from "@/client/features/tags/tags-page";
+import { WeekPage } from "@/client/features/week/week-page";
 import { WorkspaceDetailPage } from "@/client/features/workspaces/workspace-detail-page";
 import { WorkspacesPage } from "@/client/features/workspaces/workspaces-page";
 
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: "dashboard", element: <DashboardPage /> },
+      { path: "week", element: <WeekPage /> },
       { path: "workspaces", element: <WorkspacesPage /> },
       { path: "workspaces/:id", element: <WorkspaceDetailPage /> },
       {

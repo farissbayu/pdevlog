@@ -118,28 +118,22 @@ const captureSamples: {
 
 const routine: { meta: string; title: string; description: string }[] = [
   {
-    meta: "While Coding · 10 seconds",
-    title: "Capture ideas without breaking flow",
+    meta: "Friday · 2 minutes",
+    title: "Open the week recap",
     description:
-      "Press Cmd+K to grab a wild idea or paste a bug screenshot, then get straight back to coding.",
+      "Every win you logged this week, with a per-day strip so a quiet Tuesday is visible. Copy three bullets you can paste straight into a standup or review.",
   },
   {
-    meta: "End of Workday · 3-5 minutes",
-    title: "Draft one brag log",
+    meta: "Monday · 1 minute",
+    title: "Pick one target for the week",
     description:
-      'Open Brag Logs, hit "Draft with AI", type 2 sentences about today\'s win, then move the project item to "Shipped".',
+      "A single sentence saved to your Sparks inbox. Not a backlog, not a sprint board — one thing you want to be able to write down next Friday.",
   },
   {
-    meta: "Weekend · 20 minutes",
-    title: "Clear the inbox & plan next week",
+    meta: "Whenever it happens · 10 seconds",
+    title: "Capture it before it fades",
     description:
-      "Promote or archive your Sparks, then queue next week's project items in your backlog.",
-  },
-  {
-    meta: "End of Month · 30 minutes",
-    title: "Re-analyze & set targets",
-    description:
-      'Open Profile, run "Re-analyze with AI", and review Growth Blindspots to set next month\'s target.',
+      "Press Cmd+K, drop two rough sentences, let AI shape the STAR. One to three brag logs a week is the healthy range — no daily homework.",
   },
 ];
 
@@ -163,11 +157,11 @@ const sovereignty: { title: string; description: string }[] = [
 const faqs: { q: string; a: string }[] = [
   {
     q: "Do I have to write a long journal every day?",
-    a: "No. pdevlog is low-friction by design. You just write 1–2 rough sentences as-is, and let AI break them into industry-standard STAR. It takes about 2 minutes a day on average.",
+    a: "No — there is no daily homework. Log a win only when something worth remembering ships (1 to 3 a week), then spend 2 minutes on Friday in the week recap: copy the bullets, set one target, close the tab.",
   },
   {
     q: "How is this different from Notion, Obsidian, or Apple Notes?",
-    a: "Notion and Obsidian are blank canvases with no opinions and no constraints, and they often become a graveyard of passive note hoarding. pdevlog is an opinionated, structured system: it breaks ideas into STAR, turns sparks into a shippable backlog with release changelogs, and evaluates your technical gaps via the AI Staff Engineer Mirror.",
+    a: "Notion and Obsidian are blank canvases: you have to invent the system, and they usually become a graveyard of passive note hoarding. pdevlog is opinionated and outcome-first: it shapes a win into STAR, turns the week into copy-ready CV bullets, and links every competency claim back to the entries that prove it.",
   },
   {
     q: "Where do quick ideas and half-formed bugs go?",
@@ -787,8 +781,8 @@ export function LandingPage() {
         <section id="routine" className="scroll-mt-20 py-20">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
             <SectionHeading
-              eyebrow="Low-friction habit"
-              title="Not a Burdensome Diary. A 5-Minute System That Flows With Your Code."
+              eyebrow="One repeated ritual"
+              title="Not a Daily Diary. A 2-Minute Week Recap That Pays You Back."
             />
 
             <IndexedList items={routine} className="mt-12" />

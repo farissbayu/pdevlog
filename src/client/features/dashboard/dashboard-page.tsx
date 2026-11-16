@@ -1,14 +1,9 @@
 import {
   AlertTriangle,
+  ArrowRight,
   BookOpen,
-  CheckCircle2,
-  Flame,
-  FolderKanban,
   Sparkles,
-  Tag,
-  TrendingUp,
   Trophy,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import { Link } from "react-router";
@@ -19,7 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/client/components/ui/avat
 import { Button } from "@/client/components/ui/button";
 import { meQueryOptions } from "@/client/features/auth/api";
 import { TagChip } from "@/client/features/brag-logs/tag-chip";
-import { profileQueryOptions } from "@/client/features/profile/api";
 import { WorkspaceTypeBadge } from "@/client/features/workspaces/workspace-type-badge";
 import type { ActivityItem } from "@/shared/schemas/dashboard";
 import {
@@ -27,9 +21,7 @@ import {
   useDashboardQuery,
   useRecentActivityQuery,
 } from "./api";
-import { CheckInCard } from "./check-in-card";
 import { FirstAchievementCard } from "./first-achievement-card";
-
 
 function countLabel(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
@@ -41,8 +33,8 @@ function greetingForHour(hour: number): string {
   return "Good evening";
 }
 
-function getInitials(name: string, email: string): string {
-  const source = name.trim() || email;
+function getInitials(user: { name: string; email: string }): string {
+  const source = user.name.trim() || user.email;
   return source.slice(0, 1).toUpperCase();
 }
 
@@ -56,46 +48,6 @@ function formatActivityDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
-}
-
-type StatCard = {
-  label: string;
-  value: number;
-  hint?: string;
-  icon: LucideIcon;
-  to?: string;
-  className: string;
-};
-
-function StatCard({ stat }: { stat: StatCard }) {
-  const Icon = stat.icon;
-  const content = (
-    <div className="flex items-center gap-4 rounded-lg border bg-card p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md">
-      <div
-        className={`flex size-11 shrink-0 items-center justify-center rounded-lg ${stat.className}`}
-      >
-        <Icon className="size-5" />
-      </div>
-      <div className="min-w-0 space-y-0.5">
-        <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
-        <p className="truncate text-sm text-muted-foreground">{stat.label}</p>
-        {stat.hint ? (
-          <p className="truncate text-xs text-muted-foreground/70">
-            {stat.hint}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-
-  if (stat.to) {
-    return (
-      <Link to={stat.to} className="block">
-        {content}
-      </Link>
-    );
-  }
-  return content;
 }
 
 function ActivityRow({ item }: { item: ActivityItem }) {
@@ -187,14 +139,7 @@ function ActivitySkeleton() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((index) => (
-          <div
-            key={index}
-            className="h-21 animate-pulse rounded-lg border bg-card"
-          />
-        ))}
-      </div>
+      <div className="h-28 animate-pulse rounded-lg border bg-card" />
       <div className="overflow-hidden rounded-lg border bg-card">
         <div className="border-b px-5 py-4">
           <div className="h-5 w-32 animate-pulse rounded bg-muted" />
@@ -209,9 +154,7 @@ export function DashboardPage() {
   const dashboard = useDashboardQuery();
   const activity = useRecentActivityQuery();
   const checkIns = useCheckInsQuery();
-  const profileQuery = useQuery(profileQueryOptions());
   const me = useQuery(meQueryOptions);
-  const insights = profileQuery.data?.skillInsights;
 
   const user = me.data?.user;
   const days = checkIns.data?.days ?? [];
@@ -221,7 +164,7 @@ export function DashboardPage() {
   const weekTotal = days
     .filter((day) => day.date >= weekStartKey)
     .reduce((sum, day) => sum + day.total, 0);
-  const topStrength = insights?.strengths[0]?.area;
+  const stats = dashboard.data?.stats;
 
   const firstName = user?.name.trim().split(/\s+/)[0] || "there";
   const subtitle = checkIns.isPending
@@ -231,76 +174,24 @@ export function DashboardPage() {
       : todayTotal > 0
         ? `${countLabel(todayTotal, "entry")} today · ${countLabel(weekTotal, "thing")} this week.`
         : `${countLabel(weekTotal, "thing")} logged this week.`;
-  const wrapUp =
-    days.length === 0
-      ? "Log a brag, a note, or a spark and this is where your progress will gather."
-      : `${countLabel(weekTotal, "thing")} logged this week${topStrength ? `, leaning into ${topStrength}` : ""}.`;
-
-  const stats: StatCard[] = dashboard.data
-    ? [
-        {
-          label: "Achievements",
-          value: dashboard.data.stats.achievements,
-          hint: `${dashboard.data.stats.achievementsThisMonth} this month`,
-          icon: Trophy,
-          to: "/brag-logs",
-          className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-        },
-        {
-          label: "Skills evidenced",
-          value: dashboard.data.stats.skillsEvidenced,
-          hint: "from your own logs",
-          icon: Tag,
-          to: "/profile",
-          className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-        },
-        {
-          label: "Projects documented",
-          value: dashboard.data.stats.projectsDocumented,
-          hint: "with shipped work",
-          icon: FolderKanban,
-          to: "/workspaces",
-          className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-        },
-        {
-          label: "Sparks inbox",
-          value: dashboard.data.stats.sparksInbox,
-          hint: "open",
-          icon: Sparkles,
-          to: "/sparks",
-          className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-        },
-      ]
-    : [];
 
   const isPending = dashboard.isPending || activity.isPending;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Avatar size="lg">
-            {user?.avatarUrl ? (
-              <AvatarImage src={user.avatarUrl} alt={user.name} />
-            ) : null}
-            <AvatarFallback>
-              {user ? getInitials(user.name, user.email) : "?"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">
-              {greetingForHour(new Date().getHours())}, {firstName}
-            </h1>
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <Avatar size="lg">
+          {user?.avatarUrl ? (
+            <AvatarImage src={user.avatarUrl} alt={user.name} />
+          ) : null}
+          <AvatarFallback>{user ? getInitials(user) : "?"}</AvatarFallback>
+        </Avatar>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">
+            {greetingForHour(new Date().getHours())}, {firstName}
+          </h1>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-
-        <Button asChild variant="outline" size="sm" className="gap-1.5">
-          <Link to="/guides" target="_blank" rel="noreferrer">
-            <BookOpen className="size-4 text-primary" />
-            <span>Guides</span>
-          </Link>
-        </Button>
       </div>
 
       {isPending ? <DashboardSkeleton /> : null}
@@ -330,167 +221,73 @@ export function DashboardPage() {
 
       {!isPending && !activity.isError ? (
         <>
-          {checkIns.isPending ? (
-            <div className="h-[104px] animate-pulse rounded-lg border bg-card" />
-          ) : (
-            <div className="relative overflow-hidden rounded-lg border bg-card p-5 sm:p-6">
-              <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent"
-                aria-hidden
-              />
-              <div className="relative flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Flame className="size-6" />
-                  </span>
-                  <div className="space-y-0.5">
-                    <p className="text-2xl font-semibold tabular-nums">
-                      {countLabel(weekTotal, "thing")} this week
-                    </p>
-                    <p className="text-sm text-muted-foreground">{wrapUp}</p>
-                  </div>
-                </div>
-                {insights ? (
-                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                    {insights.archetype}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat) => (
-              <StatCard key={stat.label} stat={stat} />
-            ))}
-          </div>
-
-          {dashboard.data && dashboard.data.stats.achievements === 0 ? (
-            <FirstAchievementCard />
-          ) : null}
-
-          <CheckInCard />
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            {/* Recent Activity */}
-            <div className="overflow-hidden rounded-lg border bg-card lg:col-span-8">
-
-              <div className="border-b px-5 py-4">
-                <h2 className="font-medium">Recent activity</h2>
+          <section className="rounded-lg border bg-card p-5 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  This week
+                </p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {countLabel(weekTotal, "entry")} logged
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  What you've been building, most recent first.
+                  {countLabel(stats?.achievements ?? 0, "achievement")} ·{" "}
+                  {countLabel(stats?.skillsEvidenced ?? 0, "skill")} evidenced ·{" "}
+                  {countLabel(stats?.sparksInbox ?? 0, "open spark")}
                 </p>
               </div>
-
-              {activity.data && activity.data.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-                    <Trophy className="size-5 text-muted-foreground" />
-                  </div>
-                  <p className="max-w-sm text-sm text-muted-foreground">
-                    Nothing here yet. One win is enough to start — log it before
-                    you forget.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <Button asChild size="sm">
-                      <Link to="/brag-logs">Log a brag</Link>
-                    </Button>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/notes">Write a note</Link>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <ul className="divide-y">
-                  {activity.data?.map((item) => (
-                    <ActivityRow
-                      key={`${item.type}-${item.id}`}
-                      item={item}
-                    />
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Skill & Competency Insights Snapshot */}
-            <div className="flex flex-col rounded-lg border bg-card p-5 lg:col-span-4">
-              <div className="flex items-center justify-between border-b pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="size-4 text-primary" />
-                  <h2 className="font-medium text-sm">Competency Snapshot</h2>
-                </div>
-                {insights && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-medium text-primary">
-                    {insights.archetype}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-1 flex-col justify-center py-4 space-y-3">
-                {insights ? (
-                  <>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                      {insights.summary}
-                    </p>
-
-                    <div className="space-y-1.5">
-                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="size-3" />
-                        Top Superpowers
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {insights.strengths.slice(0, 3).map((s, idx) => (
-                          <span
-                            key={idx}
-                            className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"
-                          >
-                            {s.area}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <TrendingUp className="size-3" />
-                        Growth Focus
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {insights.growthAreas.slice(0, 2).map((g, idx) => (
-                          <span
-                            key={idx}
-                            className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
-                          >
-                            {g.area}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
-                    <Sparkles className="size-8 text-muted-foreground/40" />
-                    <p className="text-xs text-muted-foreground max-w-[220px]">
-                      Your technical superpowers and growth areas show up here
-                      once you analyze your CV in Profile.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t pt-3">
-                <Button asChild variant="outline" size="sm" className="w-full gap-1.5 text-xs">
-                  <Link to="/profile?tab=skills">
-                    <Sparkles className="size-3.5" />
-                    {insights ? "View Full Competency Analysis" : "Analyze Skills in Profile"}
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link to="/week">
+                    Open week recap
+                    <ArrowRight className="size-4" />
                   </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/brag-logs">Log a win</Link>
                 </Button>
               </div>
             </div>
+          </section>
+
+          {stats && stats.achievements === 0 ? <FirstAchievementCard /> : null}
+
+          <div className="overflow-hidden rounded-lg border bg-card">
+            <div className="border-b px-5 py-4">
+              <h2 className="font-medium">Recent activity</h2>
+              <p className="text-sm text-muted-foreground">
+                What you've been building, most recent first.
+              </p>
+            </div>
+
+            {activity.data && activity.data.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
+                <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+                  <Trophy className="size-5 text-muted-foreground" />
+                </div>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Nothing here yet. One win is enough to start — log it before
+                  you forget.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button asChild size="sm">
+                    <Link to="/brag-logs">Log a brag</Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/notes">Write a note</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <ul className="divide-y">
+                {activity.data?.map((item) => (
+                  <ActivityRow key={`${item.type}-${item.id}`} item={item} />
+                ))}
+              </ul>
+            )}
           </div>
         </>
       ) : null}
     </div>
   );
 }
-

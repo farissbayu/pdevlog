@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
+  CalendarRange,
   ChevronsLeft,
   ChevronsRight,
-  FileText,
   FolderKanban,
   LayoutDashboard,
   LogOut,
@@ -13,6 +13,7 @@ import {
   Shield,
   Sparkles,
   Tags,
+  Trophy,
   User,
   Users,
   type LucideIcon,
@@ -48,9 +49,13 @@ type NavItem = {
 
 const appNavItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard", exact: true },
+  { label: "Week", icon: CalendarRange, to: "/week" },
+  { label: "Achievements", icon: Trophy, to: "/brag-logs" },
+];
+
+const appMoreNavItems: NavItem[] = [
   { label: "Workspaces", icon: FolderKanban, to: "/workspaces" },
   { label: "Notes", icon: NotebookPen, to: "/notes" },
-  { label: "Brag Logs", icon: FileText, to: "/brag-logs" },
   { label: "Sparks", icon: Sparkles, to: "/sparks" },
   { label: "Tags", icon: Tags, to: "/tags" },
   { label: "Guides", icon: BookOpen, to: "/guides" },
@@ -133,9 +138,11 @@ function UserMenu({
 function SidebarNav({
   collapsed,
   items,
+  moreItems = [],
 }: {
   collapsed: boolean;
   items: NavItem[];
+  moreItems?: NavItem[];
 }) {
   return (
     <nav className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -180,6 +187,38 @@ function SidebarNav({
           </div>
         ),
       )}
+
+      {moreItems.length > 0 ? (
+        <>
+          {collapsed ? (
+            <div className="mx-2 my-2 border-t" aria-hidden />
+          ) : (
+            <p className="px-3 pt-4 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              More
+            </p>
+          )}
+          {moreItems.map((item) => (
+            <NavLink
+              key={item.label}
+              to={item.to!}
+              end={item.exact}
+              title={collapsed ? item.label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md text-sm font-medium transition-colors",
+                  collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-2",
+                  isActive
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                )
+              }
+            >
+              <item.icon className="size-4 shrink-0" />
+              {!collapsed ? <span className="truncate">{item.label}</span> : null}
+            </NavLink>
+          ))}
+        </>
+      ) : null}
     </nav>
   );
 }
@@ -220,12 +259,14 @@ function SidebarChrome({
   toggleCollapsed,
   mode,
   items,
+  moreItems,
 }: {
   user: UserResponse;
   collapsed: boolean;
   toggleCollapsed: () => void;
   mode: SidebarMode;
   items: NavItem[];
+  moreItems?: NavItem[];
 }) {
   return (
     <aside
@@ -235,7 +276,7 @@ function SidebarChrome({
       )}
     >
       <BrandMark collapsed={collapsed} mode={mode} />
-      <SidebarNav collapsed={collapsed} items={items} />
+      <SidebarNav collapsed={collapsed} items={items} moreItems={moreItems} />
 
       <div
         className={cn(
@@ -361,7 +402,7 @@ function AppMobileBottomNav() {
       </NavLink>
 
       <NavLink
-        to="/workspaces"
+        to="/week"
         className={({ isActive }) =>
           cn(
             "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
@@ -371,8 +412,8 @@ function AppMobileBottomNav() {
           )
         }
       >
-        <FolderKanban className="size-5 shrink-0" />
-        <span>Workspaces</span>
+        <CalendarRange className="size-5 shrink-0" />
+        <span>Week</span>
       </NavLink>
 
       {/* Center Quick Spark Capture Button */}
@@ -389,7 +430,7 @@ function AppMobileBottomNav() {
       </button>
 
       <NavLink
-        to="/notes"
+        to="/brag-logs"
         className={({ isActive }) =>
           cn(
             "flex flex-1 flex-col items-center justify-center gap-1 py-1 text-[11px] font-medium transition-colors",
@@ -399,8 +440,8 @@ function AppMobileBottomNav() {
           )
         }
       >
-        <NotebookPen className="size-5 shrink-0" />
-        <span>Notes</span>
+        <Trophy className="size-5 shrink-0" />
+        <span>Wins</span>
       </NavLink>
 
       {/* More Options Dropdown */}
@@ -416,9 +457,9 @@ function AppMobileBottomNav() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="mb-2 w-52">
           <DropdownMenuItem asChild>
-            <Link to="/brag-logs" className="flex items-center gap-2">
-              <FileText className="size-4" />
-              <span>Brag Logs</span>
+            <Link to="/notes" className="flex items-center gap-2">
+              <NotebookPen className="size-4" />
+              <span>Notes</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
@@ -584,6 +625,7 @@ export function AppLayout() {
           toggleCollapsed={toggleCollapsed}
           mode="app"
           items={appNavItems}
+          moreItems={appMoreNavItems}
         />
 
         <main

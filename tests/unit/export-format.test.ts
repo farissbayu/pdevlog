@@ -4,7 +4,7 @@ import {
   bulletLine,
   collapseWhitespace,
   trimToSentence,
-} from "@/worker/features/export/format";
+} from "@/shared/format/bullets";
 
 describe("collapseWhitespace", () => {
   it("collapses runs of whitespace and trims", () => {

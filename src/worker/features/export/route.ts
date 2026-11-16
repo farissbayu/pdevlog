@@ -2,6 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, desc, eq, gte, lte, type SQL } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
+import { bulletLine } from "@/shared/format/bullets";
 import {
   exportLogsQuerySchema,
   type ExportLogsQuery,
@@ -10,8 +11,6 @@ import { createDb, type Database } from "@/worker/db";
 import { bragLogs, workspaces, type TagRow } from "@/worker/db/schema";
 import type { AppEnv } from "@/worker/env";
 import { loadTagsByOwnerIds } from "@/worker/features/tags/helpers";
-
-import { bulletLine } from "./format";
 
 type QueryInput<T> = { in: { query: T }; out: { query: T } };
 

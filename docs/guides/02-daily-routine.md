@@ -1,68 +1,58 @@
 ---
-title: The 5-Minute Daily Routine
-description: A low-friction habit system designed to flow with your coding sessions instead of feeling like homework.
+title: The 2-Minute Weekly Review
+description: One repeated ritual instead of daily homework — review the week, copy the bullets, set one target.
 category: Getting Started
 order: 2
 ---
 
-## Philosophy: Zero Homework
+## Philosophy: one ritual, not a routine
 
-A developer log fails the moment it feels like filling out a second Jira board. Personal Dev Log is designed around **micro-habits** at three natural checkpoints:
+A developer log dies when it feels like a second Jira board. pdevlog is built
+around **one repeated action**: the week recap. Everything else is optional.
 
-1. **While coding** (10 seconds)
-2. **At the end of the workday** (3–5 minutes)
-3. **On the weekend or learning block** (45–60 minutes)
-
----
-
-## 1. While Coding (10 Seconds)
-
-When you hit a weird edge case, spot tech debt you cannot fix right now, or have an idea for a side project:
-
-1. Press **`Cmd + K`** (or **`Ctrl + K`**) from anywhere in the app.
-2. Type a one-line thought or paste a screenshot directly from your clipboard.
-3. Hit **Save** and get straight back to your editor.
-
-> **Why this works:** You never lose context switching to a heavy note editor, and your ideas wait safely in the [Sparks](/sparks) inbox until you are ready to triage them.
+You do not need to write something every day. You need to be able to answer, at
+any time, *"what did I actually ship recently?"* — and the week recap is where
+that answer comes from.
 
 ---
 
-## 2. End of Workday (3–5 Minutes)
+## The weekly loop (2 minutes)
 
-Before closing your laptop, spend three minutes capturing what moved forward today:
+Open [Week recap](/week) on Friday afternoon (or Monday morning). You get:
 
-### Ship Your Project Items
-- Open your active project under [Workspaces](/workspaces).
-- If you finished a feature, bugfix, or spike, click **Ship** on the project item.
-- Shipping an item automatically stamps its completion date for your `CHANGELOG.md` and offers a one-click shortcut to log a Brag Log.
+1. **What you logged this week** — every brag log with its date and tags, plus a
+   per-day strip so a quiet Tuesday is visible.
+2. **Ready-to-paste bullets** — one line per achievement, generated from your own
+   fields. Click **Copy bullets**, or **Download .md** to keep the file.
+3. **One target for next week** — a single sentence saved to [Sparks](/sparks)
+   so it comes back when it matters.
 
-### Log One Win (When Something Meaningful Shipped)
-You do not need a Brag Log every single day—aim for **1 to 3 per week** whenever you:
-- Resolved a tricky production bug or race condition
-- Improved query latency, bundle size, or CI speed
-- Designed a clean schema or unblocked a teammate
-- Shipped a user-facing feature end-to-end
+That is the whole loop. The output is the point: three lines you can paste into a
+standup, a performance review, or a CV — and they were true on the day you wrote
+them.
 
-Open [Brag Logs](/brag-logs), jot down 2–3 raw sentences about what happened, and click **Generate STAR Breakdown** to let AI structure the Situation, Task, Action, and Result while the details are still fresh.
-
----
-
-## 3. Weekend / Learning Block (60 Minutes)
-
-Instead of passively watching a 20-hour video course, pick one Growth Gap from your [Dashboard](/dashboard) or [Profile](/profile?tab=skills) and turn it into a small, shippable spike:
-
-1. Capture the technology or concept you want to demystify as a [Spark](/sparks) (e.g., *Cloudflare Queues*, *Postgres Row-Level Security*, *WebSockets backpressure*).
-2. Promote the spark into a **Project Item** of kind `spike` in your [Workspaces](/workspaces) backlog.
-3. Scratch the minimal code in your terminal to prove the core concept runs—skip auth, UI polish, and deployment.
-4. Keep a [TIL Note](/notes) with the exact commands and takeaways, attaching reference sources as you go.
-5. Ship the spike item when the core concept runs; it lands in your `CHANGELOG.md`.
+> **Why weekly, not daily:** you do not ship something worth writing down every
+> day. Forcing a daily entry turns the log into a chore and cheapens the record.
 
 ---
 
-## 4. Monthly Calibration (10 Minutes)
+## During the week (10 seconds, only when it matters)
 
-Once a month:
-1. Review your recent [Brag Logs](/brag-logs) and [Notes](/notes).
-2. Head to [Profile & CV](/profile?tab=skills) and re-run **Analyze Skills**.
-3. Check how your recent hands-on work has shifted your **Core Superpowers** and closed previous **Growth Opportunities**.
+- Hitting something worth remembering later? Press **`Cmd + K`** (or
+  **`Ctrl + K`**) anywhere and drop a sentence, a link, or a screenshot into
+  [Sparks](/sparks).
+- Shipped something meaningful? Open [Brag Logs](/brag-logs), write two rough
+  sentences, and hit **Generate with AI** to shape the STAR while the details are
+  fresh.
 
+**1–3 brag logs per week is the healthy range.** More than that is usually
+busywork; fewer than that means the week recap will be thin.
+
+---
+
+## Once a month (10 minutes)
+
+1. Open [Profile → Skills](/profile?tab=skills) and re-run **Analyze Skills**.
+2. Check which strengths now have linked evidence, and which growth areas are
+   still open.
+3. Pick at most one growth area to turn into next month's work.

@@ -16,7 +16,8 @@ with a D1 (SQLite) database.
 - **Sparks** — a frictionless capture inbox. Press `Cmd/Ctrl+K` (or the Spark button) anywhere to dump a link, idea, or screenshot. Recall old sparks with full-text/tag/date filters or a "Surprise me" random pick, then promote them into a note or brag log.
 - **Screenshot attachments** — paste, drag-and-drop, or pick images (PNG/JPEG/WebP/GIF, up to 10 MB, 20 per owner). Stored in R2 and served through an owner-checked backend proxy; carried along when a spark is promoted into a note.
 - **Tags** — cross-cut brag logs and notes; filter and search across them.
-- **Dashboard** — outcome counts (achievements, evidenced skills, documented projects), an activity heatmap, recent activity, and a zero-state capture box that turns one rough note into a saved achievement.
+- **Dashboard** — this week's count, outcome totals, recent activity, and a zero-state capture box that turns one rough note into a saved achievement.
+- **Week recap** — the one repeated ritual: the week's entries, copy-ready CV bullets for exactly that week, a per-day strip, and one target for next week.
 - **Export** — download brag logs as Markdown (full STAR or one-line CV bullets, optionally scoped to a date range), download any note as `.md`, or print it as a PDF.
 - **Account deletion** — remove your account and all owned data (cascading deletes).
 - **Admin page** — for emails listed in `ADMIN_EMAILS`: a separate console with a user datatable (search, sort, paginate), per-user content and AI-token usage, and hard-delete.
